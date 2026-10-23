@@ -1,0 +1,98 @@
+_version: 1
+io.amplitude: AMPLITUDE
+io.applies_to_both_while_stopped_held_results_keep_their: Gilt für beide im gestoppten
+  Zustand. Gehaltene Ergebnisse behalten ihre Abtastrate.
+io.audio_input: Audioeingang
+io.audio_input_no_device_selected: Audioeingang · kein Gerät ausgewählt
+io.audio_stream_stopped_check_device_connection_and_microphone_permission: Audiostream
+  gestoppt. Geräteverbindung und Mikrofonberechtigung prüfen, dann neu starten.
+io.available_with_the_internal_loopback_output_device: Verfügbar mit dem internen
+  Loopback-Ausgabegerät.
+io.captured_readout_condition: BEDINGUNG DES ERFASSTEN MESSWERTS
+io.ch: '%{channels} Kanäle · %{label}'
+io.ch_gain: Verstärkung CH 2
+io.ch_phase_gain: PHASE / VERSTÄRKUNG CH 2
+io.channel_unavailable_in_the_current_input: Kanal im aktuellen Eingang nicht verfügbar
+io.channels_pcm: KANÄLE / PCM
+io.default: '%{name} (Standard)'
+io.degrees: Grad
+io.demo_harmonics: Sinus + Harmonische
+io.demo_signal_qa: Demosignal (QA)
+io.demo_square: Bandbegrenztes Rechteck
+io.device: GERÄT
+io.device_default: Gerätestandard
+io.device_default_khz: Gerätestandard (%{sample_rate} kHz)
+io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Sinusförmige Signale gleicher
+  Amplitude und ohne Rauschen für XY: gleichphasig, quadraturphasig oder gegenphasig.'
+io.frequency: FREQUENZ
+io.fs_peak: FS-Spitze
+io.gain: Verstärkung
+io.generator_input_stopped_check_output_status_stop_input_and: Generator-Eingang gestoppt.
+  Ausgangsstatus prüfen, Eingang stoppen und Ausgang zurücksetzen, bevor neu gestartet
+  wird.
+io.generator_loopback: Generator-Loopback
+io.generator_loopback_out: Generator-Loopback · OUT 1 / 2
+io.hz_2: '%{r} Hz'
+io.hz_3: '%{rate} Hz'
+io.hz_4: '%{rate} Hz · %{format}'
+io.input: Eingang
+io.input_channel: EINGANGSKANAL
+io.input_output_hz: 'Eingang: %{r} · Ausgang: %{rate} Hz'
+io.input_source: 'Eingangsquelle: %{source}'
+io.internal_loopback: Internes Loopback
+io.internal_source_no_audio_output: Interne Quelle · kein Audioausgang
+io.khz: '%{rate} kHz'
+io.no_common_rate_for_these_devices_and_output_format: Keine gemeinsame Abtastrate
+  für diese Geräte und das Ausgabeformat. Getrennte Abtastraten verwenden.
+io.no_input_device: Kein Eingabegerät
+io.noise: Rauschen
+io.noise_2: RAUSCHEN
+io.noise_amplitude_in_digital_full_scale_fs: Rauschamplitude im digitalen Vollbereich
+  (FS).
+io.offset: Offset
+io.out_ch_out_ch_start_input_and_output_separately: OUT 1 → CH 1 · OUT 2 → CH 2 ·
+  Eingang und Ausgang getrennt starten.
+io.output: Ausgang
+io.output_device: AUSGABEGERÄT
+io.physical_unit_e_g_v_a_pa: PHYSIKALISCHE EINHEIT (Z. B. V, A, Pa)
+io.queue_calibration: Kalibrierung vormerken
+io.queue_uncalibrated_fs: Nicht kalibriertes FS vormerken
+io.queued_definitions_apply_on_the_next_start_source_device: Vorgemerkte Definitionen
+  gelten ab dem nächsten Start. Die Auswahl von Quelle/Gerät oder eine Geräteaktualisierung
+  löscht die Vormerkung. Koeffizienten geben Sie selbst an; Referenzbedingungen beschreiben
+  ihre Gültigkeit.
+io.queued_for_next_start: FÜR DEN NÄCHSTEN START VORGEMERKT
+io.rate_changes_apply_on_start_held_results_keep_their: Ratenänderungen gelten ab
+  „Start“. Gehaltene Ergebnisse behalten ihre Abtastrate.
+io.reference_conditions: REFERENZBEDINGUNGEN
+io.reference_device_range_date_uncertainty: Referenz, Gerät/Bereich, Datum, Unsicherheit
+io.refresh_devices: Geräte aktualisieren
+io.sample_rate: ABTASTRATE
+io.sample_rate_channels_pcm: ABTASTRATE / KANÄLE / PCM
+io.sample_rate_input_output: ABTASTRATE · EIN- UND AUSGANG
+io.scope_readouts_and_spectrum_use_y_gain_fs_offset: Scope-Messwerte und Spectrum
+  verwenden y = Verstärkung × FS + Offset. „Gleichanteil entfernen“ in Spectrum hebt
+  den Offset auf. Scope-Kurve/Trigger, Spectrogram und XY-Achsen verwenden FS.
+io.select_common_rate: Gemeinsame Abtastrate auswählen
+io.separate_sample_rates: Getrennte Abtastraten
+io.signal_changes_apply_when_input_restarts_captured_samples_stay: Signaländerungen
+  gelten beim Neustart des Eingangs. Erfasste Samples bleiben gehalten.
+io.software_loopback: Software-Loopback
+io.source: QUELLE
+io.start_input: ▶  Eingang starten
+io.start_input_demo: ▶  Eingang starten (Demo)
+io.start_or_stop_the_shared_input_for_all_instruments: 'Gemeinsamen Eingang für alle
+  Instrumente starten oder stoppen; der Ausgang ist unabhängig. Tastenkürzel: Leertaste'
+io.start_stop_is_always_in_the_top_bar: „Starten / Stoppen“ befindet sich immer in
+  der oberen Leiste.
+io.stop_input: ■  Eingang stoppen
+io.stop_input_and_output_and_select_a_supported_common: Eingang und Ausgang stoppen
+  und eine unterstützte gemeinsame Abtastrate auswählen.
+io.stop_input_and_output_to_change_the_device_or: Eingang und Ausgang stoppen, um
+  Gerät oder Format zu ändern.
+io.supported_device_rates_up_to_khz: Unterstützte Geräte-Abtastraten · bis zu 768
+  kHz
+io.unavailable: Nicht verfügbar
+io.unit: Einheit
+io.unit_fs: Einheit/FS
+io.waveform: SIGNALFORM
