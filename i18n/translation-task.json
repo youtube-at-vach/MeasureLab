@@ -1,62 +1,23 @@
 {
   "version": 1,
-  "base_revision": "41bc3dc01fe26f0f637cffefd30797fa6066cc61",
-  "locale": "zh",
+  "base_revision": "2d2dcd172041081e8e12243a0c71ef30ac5c0bea",
+  "locale": "ko",
   "groups": [
-    "lockin"
+    "common"
   ],
   "entries": [
     {
-      "key": "lockin.amplitude_peak",
-      "group": "lockin",
+      "key": "common.language_fallback",
+      "group": "common",
       "reasons": [
-        "missing"
+        "stale"
       ],
-      "old_english": "Amplitude · peak",
-      "new_english": "Amplitude · peak",
+      "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+      "new_english": "Untranslated text uses English.",
       "variables": [],
-      "translation": null,
-      "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.in_phase_peak",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "In-phase · peak",
-      "new_english": "In-phase · peak",
-      "variables": [],
-      "translation": null,
-      "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.phase_leads_ref",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Phase · leads REF",
-      "new_english": "Phase · leads REF",
-      "variables": [],
-      "translation": null,
-      "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.quadrature_peak",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Quadrature · peak",
-      "new_english": "Quadrature · peak",
-      "variables": [],
-      "translation": null,
-      "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
-      "translated_source_hash": null
+      "translation": "번역되지 않은 텍스트는 영어로 표시됩니다. 기기 번역을 준비 중입니다.",
+      "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+      "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
     }
   ]
 }
