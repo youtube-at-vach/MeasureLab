@@ -161,7 +161,7 @@ common.preparing_input: 入力を準備中…
 common.previous_held_result: 前回の保持結果
 common.psd_band_power_current_reference: PSD帯域電力 現在 − 参照：%{power} %{power_unit}
 common.raw_sample_unavailable: '#%{sample} · 生サンプルなし'
-common.raw_scope_fs_relative_sample_position: スコープの生FS · 相対サンプル位置
+common.raw_scope_fs_relative_sample_position: スコープのFS（校正前）· 相対サンプル位置
 common.ref: REF
 common.ref_ch_sig_ch_windows: '%{label}：%{state} · REF CH %{reference_channel} / SIG
   CH %{response_channel} · %{start}..%{end} · %{averaged_windows} 窓 · %{gain_unit}'
