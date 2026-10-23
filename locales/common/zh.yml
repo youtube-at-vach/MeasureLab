@@ -1,0 +1,296 @@
+_version: 1
+common.acquiring_post_trigger_samples: 正在采集触发后的样本…
+common.active_input_differs_from_the_device_list_stop_and: 当前输入与设备列表不一致；保存前请停止并刷新
+common.all_channels_off: 所有通道均已关闭
+common.all_scope_channels_off: 所有 Scope 通道均已关闭
+common.amplitude_fs: 幅度 [FS]
+common.amplitude_help: FS = 数字满量程。波形和触发电平使用原始 FS。RMS / P-P 读数使用捕获的通道校准，并显示各自的单位。
+common.an_export_is_already_in_progress: 导出已在进行中
+common.band_hz_power_rms: 频带 %{bin_centres_hz} Hz | 功率 %{power} %{power_unit} | RMS
+  %{rms} %{rms_unit}
+common.calibration_rev_gain_offset: 校准 %{id} 修订 %{revision} | 增益 %{gain} 偏移 %{offset}
+  %{unit} | %{conditions}
+common.calibration_rev_gain_offset_2: 校准 %{id} 修订 %{revision} | 增益 %{gain} 偏移 %{offset}
+  | %{conditions}
+common.calibration_rev_y_fs: 校准 %{id} · 修订 %{revision} · y = %{gain} × FS + %{offset}
+  %{unit} · %{conditions}
+common.calibration_revision_exhausted: 校准修订次数已达上限
+common.capacity_limited: ' · 容量受限'
+common.captured_f64: 已捕获 f64：%{v} %{unit}
+common.channel_unavailable: CH 不可用
+common.channels_outside_the_input_range: 通道超出输入范围
+common.check_input_settings_and_the_acquisition_error_then_press: 检查输入设置和采集错误，然后按“启动输入”重试。
+common.choose_an_available_trigger_source_in_scope_settings_or: 在 Scope 设置中选择可用的触发源，或在
+  Audio I/O 中更改输入源。
+common.choose_which_cursor_the_next_plot_click_or_drag: 选择下一次在图表中单击或拖动时放置哪个光标；选择 A
+  或 B 不会放置光标。Scope 保留图表位置。Spectrogram 保留所选 FFT 帧。XY Free 保留 X/Y 幅度；Trace Snap 跟随相对于触发点的样本。
+common.clear_both_a_b_time_cursors_spectrum_spectrogram_frequency: 清除所有仪器中的 A/B 时间光标、Spectrum/Spectrogram
+  频率光标、XY Free 点和 Spectrogram 帧选择。已采集的数据会保留。
+common.clear_cursors: 清除光标
+common.clear_reference: 清除参考
+common.collecting_a_complete_fft_window: 正在采集完整 FFT 窗口…
+common.compare_saved_reference: 比较已保存的参考值
+common.current: 当前
+common.current_held_result: 当前保留结果
+common.current_reference_gain_phase_wrapped_delay_s: 当前 − 参考值：增益 %{gain} · 相位 %{phase_degrees}°
+  · 折返延迟 %{phase_delay_seconds} s
+common.cursor_channel_invalid: ' · %{channel} 值无效'
+common.dc_fs_noise_rms_fs_frequency_offset_hz_ref: DC %{dc_offset} FS | 噪声 RMS %{noise_rms}
+  FS | 频率偏移 %{frequency_offset_hz} Hz | REF %{disabled}
+common.delay_samples: '延迟样本数 '
+common.difference_requires_valid_matching_input_analysis_calibration_and_excitation: 计算差值需要有效且匹配的输入、分析、校准和激励条件，并且不能有数据丢失。独立的外部输出历史无法证明输入样本的激励匹配。
+common.disabled: 已禁用
+common.display_updates_skipped: 跳过显示更新 %{elaxed}
+common.div_help: div = 一个网格刻度。ms/div 设置每个水平刻度的时间；FS/div 设置每个 Scope 通道每个垂直刻度的原始幅度。
+common.dropped: 已丢弃 %{dropped}
+common.dut_dc_fs: 'DUT DC FS '
+common.dut_frequency_offset_hz: 'DUT 频率偏移 Hz '
+common.dut_gain: 'DUT 增益 '
+common.dut_gain_phase_delay_samples: DUT 增益 %{gain} | 相位 %{phase_degrees}° | 延迟 %{delay_samples}
+  个样本
+common.ema_windows_envelope: EMA α %{alpha} | %{processed_windows} 个窗口 | 包络 [%{start},
+  %{end})
+common.enabled: 已启用
+common.enter_a_results_file_path: 输入结果文件路径
+common.enter_a_settings_file_path: 输入设置文件路径
+common.envelope_latest_complete_windows_missing_samples_ref_hz_ac: '包络 [%{start},
+  %{end}) · 最新 [%{start_2}, %{end_2})
+
+  %{processed_windows} 个完整窗口 · 缺少 %{missing_samples} 个样本
+
+  REF %{reference_frequency_hz} Hz · AC RMS %{reference_ac_rms_fs} FS · 正弦拟合 %{reference_sinusoid_fraction}'
+common.export_annotated_png: 导出带注释的 PNG…
+common.export_held_result_csv: 导出保留结果 CSV…
+common.export_held_results: 导出保留结果
+common.export_held_scope_csv: 导出保留的 Scope CSV…
+common.export_held_scope_only: 仅导出保留的 Scope
+common.export_held_scope_png: 导出保留的 Scope PNG…
+common.exporting_results: 正在导出保留结果…
+common.exports_the_retained_scope_interval_and_the_independently_timed: 导出保留的 Scope
+  区间以及独立计时的 Spectrum 结果。缺失样本保持为 null。不包含 Spectrogram、XY 和光标。
+common.external_generator_history_independent_uncalibrated_output_clock_input_window: 外部
+  Generator 历史：输出时钟独立且未经校准；与输入窗口的对应关系未知。
+common.f_hz_rbw_hz: Δf %{bin_width_hz} Hz | RBW %{rbw_hz} Hz
+common.fft_precision: FFT 精度
+common.file: 文件
+common.file_paths_status: 文件路径和状态…
+common.file_selection_cancelled: 已取消文件选择
+common.finishing: 正在结束
+common.finishing_acquisition: 正在结束采集…
+common.fixed_frequency: 固定频率
+common.frequency_hz: '频率 Hz '
+common.gain_phase_coherence: 增益 %{gain} · 相位超前 %{phase_lead_degrees}° · 相干度 %{coherence}
+  · %{state}
+common.generation_nominal_hz_ch: 代次 %{generation} | 标称 %{nominal_sample_rate_hz} Hz
+  | %{channels} 通道
+common.generator_internal_loopback_actual_f64_output_shared_integer_sample: Generator
+  内部回环 · 实际 f64 输出 · 共享整数采样时钟
+common.gpu_segments: '%{len} 个 GPU 片段'
+common.held: 已保留
+common.held_input_generation_does_not_match_results: 保留的输入代次与结果不匹配
+common.held_measurement_results: 保留的测量结果
+common.hz_2: '%{frequency_hz} Hz · %{level_db} %{db_unit}'
+common.hz_3: '%{rate} Hz'
+common.hz_4: '%{unwrap_or} Hz'
+common.input: 输入 %{device_name} | %{sample_format}
+common.input_acquisition_failed: 输入采集失败
+common.input_conditions: 输入条件：—
+common.input_conditions_changed_since_restoration_refresh_devices_and_restore: 恢复后输入条件已变化；请刷新设备并再次恢复
+common.input_is_active_check_the_trigger_source_level_and: 输入已激活。请在 Scope 设置中检查触发源、电平和边沿，或使用自动模式。
+common.input_is_active_waiting_for_enough_samples_to_draw: 输入已激活。正在等待足够的样本以绘制完整扫描。
+common.input_is_active_waiting_for_the_rest_of_the: 输入已激活。正在等待触发扫描的其余部分。
+common.input_ksa_s_nominal_ch: 输入 %{state} · 标称 %{nominal_sample_rate_hz} kSa/s ·
+  %{channels} 通道 · %{format}
+common.input_stopped: 输入已停止
+common.input_stopped_before_a_complete_sweep_was_available_check: 在完整扫描可用之前输入已停止。检查
+  Scope 设置，然后按“启动输入”重新采集。
+common.invalid_fft_window_nonfinite_value: FFT 窗口无效 · 数值非有限
+common.invalid_value: 值无效
+common.keep_held_result_as_reference: 将保留结果作为参考值
+common.known_sine_gain_phase_delay_noise_dut_common_input: 已知正弦 → 增益 / 相位 / 延迟 / 噪声
+  DUT → 公共输入。条件在启动时生效。
+common.language_fallback: 未翻译文本将显示为英语。仪器翻译正在准备中。
+common.last_observed_output_nominal_hz_generation_revision_next_output: 上次观察到的输出：%{label}
+  | 标称 %{nominal_sample_rate} Hz | %{pcm_label} | %{state} | 输出代次 %{output_generation}
+  修订 %{revision} | 下一个输出样本 %{next_sample}
+common.live: 实时
+common.load_reference_result: 加载参考结果…
+common.lock_in_current_reference_each_result_s_own_interval: 'Lock-in 当前值 − 参考值（各自使用本身的区间）：
+
+  ΔX %{x} · ΔY %{y} · ΔR %{amplitude_peak} %{response_unit_peak}
+
+  Δθ %{phase_degrees}°（折返至 ±180°）· Δ增益 %{gain} %{gain_unit}'
+common.lock_in_difference_requires_two_valid_settled_results_with: Lock-in 差值需要两个有效且稳定的结果，标称
+  Fs、通道、REF/滤波器设置和校准须匹配，不得有输入故障；Generator 输入还必须具有已知且匹配的稳定激励。
+common.lock_in_experimental_sig_ch_ref_ch_s_n: 'Lock-in %{state} · 实验性 | SIG CH %{response_channel}
+  / REF CH %{reference_channel}
+
+  τ %{time_constant_seconds} s · N %{integration_samples} · 提示 %{frequency_hz} Hz
+  · %{fixed_frequency} · REF 最小 %{reference_min_rms_fs} FS RMS'
+common.loss_capture_scope_fft_input_fft_windows_missing_nonfinite: '丢失：采集 %{capture_dropped_samples}
+  | Scope %{scope_missing_samples} | FFT 输入 %{missing_input_samples}
+
+  FFT 窗口：缺失 %{missing_windows} | 非有限 %{nonfinite_windows} | 重置后已观察 %{processed_windows_since_reset}
+
+  输入结束 %{input_end} | 已填充 %{filled_samples} | 输入失败 %{input_failed}'
+common.measurement_settings: 测量设置
+common.missing_sample: 缺失样本
+common.ms: '%{index} %{seconds} ms  '
+common.no_complete_fft_window: 没有完整的 FFT 窗口
+common.no_complete_sweep_captured: 未捕获完整扫描
+common.no_held_input_conditions: 没有保留的输入条件
+common.no_samples_acquired_yet: 尚未采集任何样本
+common.no_valid_captured_value: 没有有效的捕获值
+common.noise_rms_fs: '噪声 RMS FS '
+common.not_acquired: 尚未采集
+common.observed_changes_evicted_lost_reports_output_notifications_since_output: '%{len}
+  个观察到的更改 | 已移出 %{evicted_changes} 个 | 丢失 %{lost_reports_since_output_worker_start}
+  条报告 | 输出 worker 启动后的 %{notifications_since_output_worker_start} 条输出通知'
+common.one_reference_is_retained_recordings_use_independent_sample_clock: 保留一个参考值。记录使用独立的采样时钟起点；图表分别显示。
+common.only_this_instrument_s_fft_changes_precision_input_history: 只有此仪器的 FFT 会改变精度。输入历史、直流移除和功率平均使用
+  64 位。
+common.open_input_settings: 打开输入设置
+common.open_input_settings_to_choose_the_source_then_press: 打开输入设置以选择源，然后按顶部栏中的“启动输入”。
+common.open_input_settings_to_select_or_refresh_an_audio: 打开输入设置以选择或刷新音频设备，或选择 Software
+  Loopback。然后按“启动输入”。
+common.outside_sweep: 扫描范围之外
+common.peak_hold: 峰值保持
+common.performance: 性能
+common.phase_lead: '相位超前 ° '
+common.place_cursor: 放置光标：
+common.placed_a: 已放置：A
+common.placed_a_b: 已放置：A、B
+common.placed_b: 已放置：B
+common.placed_none: 已放置：无
+common.precision.f32: 32 位（快速 FFT）
+common.precision.f64: 64 位
+common.preparing_input: 正在准备输入…
+common.previous_held_result: 上一个保留结果
+common.psd_band_power_current_reference: PSD 当前频带功率 − 参考值：%{power} %{power_unit}
+common.raw_sample_unavailable: '#%{sample} · 原始样本不可用'
+common.raw_scope_fs_relative_sample_position: Scope 原始 FS · 相对样本位置
+common.ref: REF
+common.ref_ch_sig_ch_windows: '%{label}: %{state} · REF CH %{reference_channel} /
+  SIG CH %{response_channel} · %{start}..%{end} · 平均 %{averaged_windows} 个窗口 · %{gain_unit}'
+common.reference: 参考值
+common.reference_comparison: 参考值比较
+common.reference_loaded_captured_input_conditions_preserved: 已加载参考值；捕获的输入条件保持不变
+common.reference_peak_fs: '参考峰值 FS '
+common.reference_present: 存在参考值
+common.restore_settings: 恢复设置
+common.restore_settings_2: 恢复设置…
+common.restored_input_selection_changed_restore_settings_again: 恢复的输入选择已更改；请再次恢复设置
+common.result_states.non_finite: 非有限
+common.result_states.partial: 部分
+common.result_states.unavailable: 不可用
+common.result_states.valid: 有效
+common.result_states.waiting: 等待
+common.results_exported: 结果已导出：%{path}
+common.results_json_file_path: 结果 JSON 文件路径
+common.retained_output_condition_intervals_missing_evicted_intervals_are_unknown: '%{len}
+  个保留的输出条件区间；缺失/移出的区间未知'
+common.rev_gain_offset: '%{label}: %{id} 修订 %{revision} · 增益 %{gain} 偏移 %{offset}
+  %{unit} · %{conditions}'
+common.revision_y_fs: '%{id} · 修订 %{revision} · y = %{gain} × FS + %{offset} %{unit}
+  · %{conditions}'
+common.rms_peak_p_p: 'RMS %{rms}
+
+  峰值 %{peak}
+
+  P-P %{peak_to_peak}'
+common.sample_rate_help: Fs = 以样本/秒 (Sa/s) 表示的标称采样率。捕获的时间和频率使用此采样率；物理采样时钟未经校准。
+common.save_held_result_json: 保存保留结果 JSON…
+common.save_held_scope_json: 保存保留的 Scope JSON…
+common.save_settings: 保存设置
+common.save_settings_2: 保存设置…
+common.save_the_queued_input_channels_analysis_and_calibration_for: 保存排队的输入、通道、分析和校准，以供下次启动使用。在停止状态下恢复；然后明确启动输入。
+common.saved: 已保存 %{display}
+common.saved_calibration_conflicts_with_an_existing_id_revision: 已保存的校准与现有 ID/修订冲突
+common.scope_prep_ms: Scope 准备 %{build_ms} ms
+common.scope_trigger_ch_at_fs: Scope [%{start}, %{end}) | %{acquisition_mode} | 触发
+  CH %{channel} %{edge}，电平 %{level} FS
+common.select_a_channel_below_the_plot_and_choose_its: 在图表下方选择通道，并在 Scope 设置中选择其输入源，或在
+  Audio I/O 中更改输入源。
+common.select_an_audio_input_to_observe_audio_device_output: 选择音频输入以观察音频设备输出
+common.select_an_input_device_first: 请先选择输入设备
+common.select_an_input_source: 选择输入源
+common.selected_ch_axis: 已选择 CH%{scope_selected} 轴。%{display}
+common.selecting_file: 正在选择文件…
+common.settings_error: 设置错误
+common.settings_failed: 设置失败：%{detail}
+common.settings_json_file_path: 设置 JSON 文件路径
+common.settings_restored: 输入选择已恢复：%{path}。输入仍处于停止状态；按“启动输入”进行测量。
+common.settings_restored_input_stopped: 设置已恢复；输入已停止
+common.settings_saved: 设置已保存：%{path}
+common.settings_status: 设置状态
+common.sig: SIG
+common.single_complete_fft_window_was_not_filled: 单次采集完成 · FFT 窗口未填满
+common.software_loopback_ch_ref_ch_dut: SOFTWARE LOOPBACK · CH 1 REF / CH 2 DUT
+common.software_loopback_hz_ref_fs_peak: Software Loopback | %{frequency_hz} Hz |
+  REF %{amplitude_peak} FS 峰值
+common.spectrogram_history_ms: Spectrogram 历史准备 %{spectrogram_build_ms} ms
+common.spectrogram_rows_mib_cpu_storage: Spectrogram %{len} / %{spectrogram} 行 · %{storage_bytes}
+  MiB CPU 存储
+common.spectrum_ch_points_dc_removal: 'Spectrum %{state} | CH %{c}
+
+  %{end} | %{size} 点 | %{name}
+
+  %{mode} | 移除直流 %{remove_dc} | %{unit}'
+common.spectrum_definitions_or_known_stationary_excitation_differ_inspect_each: Spectrum
+  定义或已知稳定激励不同；请分别检查每个结果的频点和频带。
+common.spectrum_linear_values_bin_position: Spectrum 线性值 · 频点位置
+common.spectrum_prep_ms: Spectrum 准备 %{spectrum_build_ms} ms
+common.spectrum_windows_missing: Spectrum %{mode} · %{updates} 个窗口 · 缺失 %{missing_windows}
+common.start_input_to_begin_acquisition: 启动输入以开始采集
+common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / 步长 %{hop} · 样本 %{start}..%{end}
+common.stft_history_storage_losses_allocated_mib_peak_mib: STFT 历史存储丢失 %{elaxed} ·
+  已分配 %{allocated_frame_bytes} MiB / 峰值 %{peak_frame_bytes} MiB
+common.stft_input_dropped_rows_dropped: STFT 输入丢弃 %{elaxed} · 行丢弃 %{elaxed_2}
+common.stft_raster_peak_mib_mib_display_requests_replaced: STFT 光栅峰值 %{peak_cache_bytes}
+  MiB / 8 MiB · 显示请求已替换 %{elaxed}
+common.stft_retention_s_frames_mib_retired: STFT 保留 %{retained_seconds} s · %{len}
+  帧 · %{storage_bytes} MiB · 已退役 %{retired}%{else}
+common.stop_input_and_output_and_wait_for_pending_operations: 恢复前请停止输入和输出，并等待待处理操作完成
+common.stop_input_and_wait_for_held_scope_samples: 停止输入并等待保留的 Scope 样本
+common.stop_input_and_wait_for_the_held_measurement_results: 停止输入并等待保留的测量结果
+common.stop_input_before_restoring_settings: 恢复设置前请停止输入
+common.stop_input_then_export_scope_samples_and_statistics_spectrum: 停止输入，然后将 Scope
+  样本和统计信息、Spectrum 频点及其捕获条件导出为 JSON。
+common.stop_input_to_compare_the_current_result: 停止输入以比较当前结果。
+common.stored_cursor_positions_for_this_view_readings_can_be: 此视图保存的光标位置；在已采集数据范围外，读数可能不可用。
+common.synchronous_comparison_at_bin_hz: 频点 %{bin} (%{width} Hz) 的同步比较
+common.t_ms: Δt %{delta} ms
+common.t_ms_2: '%{index} T%{sample_rate} ms  '
+common.time_ms: 时间 [ms]
+common.time_relative_to_the_sweep_reference_t_ms: 相对于扫描参考 (T, 0 ms) 的时间。%{display}
+common.timings_are_cpu_work_not_gpu_execution: 计时数据表示 CPU 工作，不代表 GPU 执行时间。
+common.trace_ch: Trace %{i} CH %{channel} %{state} | %{unit}
+common.trace_current_reference_rms_each_result_s_own_interval: Trace %{i}：当前 − 参考
+  RMS %{rms}（各自使用本身的区间）
+common.trace_differs_in_channel_unit_or_known_stationary_excitation: Trace %{i} 的通道、单位或已知稳定激励不同；无法计算数值差值
+common.tracking: 跟踪 ±10%
+common.trigger_help: 顶部的 T 表示时间参考 (0 ms)；右侧的 T 表示其源通道的原始 FS 触发电平。未确认触发时，两者仅是设置值。
+common.trigger_source_outside_the_input_range: 触发源超出输入范围
+common.turn_on_a_channel_using_the_checkboxes_below_the: 使用图表下方的复选框启用通道。
+common.ui_fps: UI %{fps} fps
+common.unavailable: '%{selected} · 不可用'
+common.unavailable_2: ' · %{channel} 不可用'
+common.uncalibrated: 未经校准
+common.uncalibrated_fs: 未经校准 · FS
+common.uncalibrated_fs_2: '%{label}: 未经校准 · FS'
+common.wait_for_the_generator_settings_to_be_applied: 等待 Generator 设置应用完成
+common.waiting: 等待中
+common.waiting_for_the_final_measurement_acquired_data_will_be: 正在等待最后一次测量。已采集的数据将保留。
+common.waiting_for_the_input_source_and_its_channel_count: 正在等待输入源及其通道数就绪。
+common.waiting_for_trigger: 正在等待触发
+common.window: 窗口 [%{start}, %{end})
+common.window_names.blackman_harris: Blackman-Harris
+common.window_names.hann: Hann
+common.window_names.rectangular: 矩形
+common.worker_fft_ms: Worker FFT %{fft_ms} ms
+common.working: 正在处理…
+common.x_y_r_leads_ref_gain: 'X %{x} · Y %{y} · R %{amplitude_peak} %{response_unit_peak}
+
+  θ %{phase_degrees}°（超前 REF）· 增益 %{gain} %{gain_unit}'
+common.xy_prep_ms: XY 准备 %{xy_build_ms} ms
+common.zero_db_readout: −∞ %{unit}（零）
