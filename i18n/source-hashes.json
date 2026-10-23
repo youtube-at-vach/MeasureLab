@@ -7885,6 +7885,436 @@
         "source": "WAVEFORM",
         "source_hash": "745c4d27a2375ecadfb7da7138ae0235fdc018d90895dd8ae470c122188df924",
         "translation_hash": "18f5809008da7747e1f6336d7ecefde4ab97f827faaed5191637b2d5dcee5c05"
+      },
+      "oscilloscope.acquiring_post_trigger": {
+        "source": "Acquiring post-trigger",
+        "source_hash": "12b4a84699481ece363b045972cd4174cb354507842d92a35d9ae50a737d3905",
+        "translation_hash": "41d59bb32934923c2c2e53504a61d24b82618d538685b4359f5d6773525f308c"
+      },
+      "oscilloscope.acquisition": {
+        "source": "ACQUISITION",
+        "source_hash": "01e0d982813cd8c5143eec925431d6270c5b7d647cb15e479379917ebe932753",
+        "translation_hash": "6afab0f85223f733918117865b12505375ec169ef962288cf5f326b2327bca17"
+      },
+      "oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid": {
+        "source": "An acquired or calibrated value is nonfinite; no valid numeric readout",
+        "source_hash": "b595c97725a959f1ab522947d4e47c5ac527cbcd198ae763f778edf39e0e71b3",
+        "translation_hash": "a01a18746dbeb7c9f4f0aa4377e09ea0e8d7fff487aa94b8d4775d4ef7abdcb0"
+      },
+      "oscilloscope.auto": {
+        "source": "Auto",
+        "source_hash": "0286249762f7c94349cdc0ba3bb2255baf9a80036e2193ead1d77696f888582f",
+        "translation_hash": "4c2a3993c15df5918ed140a3ea63cf8f45fb449cfe32254767dea894675c2cf4"
+      },
+      "oscilloscope.auto_free": {
+        "source": "Auto / free",
+        "source_hash": "51708216d6b0dc52a2544b96ac752d9a6e27665d7fce2b417223b742a72ce2e0",
+        "translation_hash": "0d1c4d94a1ff29fcf2d42fb4695a816456124f442b35e57d17c3d5cea5218cf6"
+      },
+      "oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a": {
+        "source": "Automatically set time scale, amplitude and trigger for a periodic signal",
+        "source_hash": "420b5bde5569ba841a1de599671b2306b42e5618a28ba57fe625549e10fa50a5",
+        "translation_hash": "9cf65a1e56251fe58008ba42e9fd512768e04a7434fabc0ef3a5dba2227108e8"
+      },
+      "oscilloscope.autoset": {
+        "source": "Autoset",
+        "source_hash": "47268da669c3f0e8133ed05cae48c5cb1724d270ba262d2db973476c98f0711f",
+        "translation_hash": "9d7c83684a17bfdc7ab7e702d25cd4bf2b73885a2ded740a13bed3e8310b5c83"
+      },
+      "oscilloscope.autoset_frequency": {
+        "source": "Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
+        "translation_hash": "133759c367f25ea5b2baa4f4697f3cac1523fccc2c619128596b8ae67f6642a6"
+      },
+      "oscilloscope.autoset_held": {
+        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
+        "translation_hash": "c6d753e8afa16ebf0f49de5f093b0ef649ae3f6a8c65695bb6c2eae364ac67bc"
+      },
+      "oscilloscope.capture_once_on_the_next_trigger_crossing": {
+        "source": "Capture once on the next trigger crossing",
+        "source_hash": "9db8198e1d68e5270e330e824e0c4295685bbb03af049a84b7ccff68626e6ed6",
+        "translation_hash": "a7afb538091f2be5be8369389a127d8965332c502371af4501c0d96fc687167a"
+      },
+      "oscilloscope.centre_offset": {
+        "source": "Centre offset",
+        "source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a",
+        "translation_hash": "2ffdd64e47316430f32d5244b0b93cad1c38e7a5cc8082b880c990ac9709f5fb"
+      },
+      "oscilloscope.ch": {
+        "source": "CH%{scope_selected} · %{scope_selected_2}",
+        "source_hash": "8276ee6d6ce5d1d1369bb9bbc0390eecbdeabe4a20f2342b8049af16b67345a3",
+        "translation_hash": "8276ee6d6ce5d1d1369bb9bbc0390eecbdeabe4a20f2342b8049af16b67345a3"
+      },
+      "oscilloscope.ch_2": {
+        "source": "CH%{index}%{else}",
+        "source_hash": "5e1cd689e0925ed5ed6333c3b7c95381e125da4a30246dcf4a1e686ea81f513c",
+        "translation_hash": "5e1cd689e0925ed5ed6333c3b7c95381e125da4a30246dcf4a1e686ea81f513c"
+      },
+      "oscilloscope.ch_select_to_edit_this_channel_in_scope_settings": {
+        "source": "CH%{index} · %{channel}%{else}\n%{index_2}\nSelect to edit this channel in Scope settings. Display on/off is independent.\n%{display}",
+        "source_hash": "3534f67a5010c9a29af959f50ed779d067a28cf1b985322bea67c4c3ad5bc9a4",
+        "translation_hash": "cbafd72c6cc2bf3040f40a10e6f7945513c106342a8f18764c443bf99098d052"
+      },
+      "oscilloscope.channel_out_of_range": {
+        "source": "— · channel out of range",
+        "source_hash": "281591f7b02e512c5d81a0e369e024dd8ed73039909f75156ca2021bcc73b800",
+        "translation_hash": "25a55bfc92e5854d150123b769515391770f27ce6f29c3135e456e09b98bc541"
+      },
+      "oscilloscope.cursor": {
+        "source": "Cursor %{index} · %{join}",
+        "source_hash": "7bdb09d78ad9a3eed3337574a2c64cd3ef733352b66355ee4512130b14590355",
+        "translation_hash": "7bdb09d78ad9a3eed3337574a2c64cd3ef733352b66355ee4512130b14590355"
+      },
+      "oscilloscope.display": {
+        "source": "Display",
+        "source_hash": "34e108c0896d0158ca4f2797d4f12a143943803be2151aa5d2136ea1bcd9a468",
+        "translation_hash": "2e2f6d648fdd0619987362ec8e1bd5c47742c1b1083abc8c78e7fff6ef11cda4"
+      },
+      "oscilloscope.drag_the_slider_or_value_to_adjust_double_click": {
+        "source": "Drag the slider or value to adjust. Double-click the value to type a number.",
+        "source_hash": "b3346f3a5987438d7424d10504f46bea3e6ce5e6f9e4b7ed39c237bcb67bd61e",
+        "translation_hash": "358951d46880845163c41a518c94613ff37a217f76e7c876ab562c622c7398d2"
+      },
+      "oscilloscope.edge": {
+        "source": "Edge",
+        "source_hash": "0f82fe727756eb9a80e0e95581f2ef26aeaffb0bf903dcf8106d575878960fb6",
+        "translation_hash": "4eec19cf34d998c6fa4a645b9471c185507980fe4b8af9888e04f37f6e29bdd5"
+      },
+      "oscilloscope.edge_names.falling": {
+        "source": "Falling",
+        "source_hash": "6192f1847550c59656b0d977617a16d13cce4aec47526218df47011a293dc962",
+        "translation_hash": "e063804c9a6bf165137abc54d921878b5841eae30aad6f380aef5f490fccb9f8"
+      },
+      "oscilloscope.edge_names.free": {
+        "source": "Free",
+        "source_hash": "f411a1fb62758b4c54690d0a702b4955b54dd22115416fa7b1ce51b4a084818d",
+        "translation_hash": "3b09eed1e0da430a3f540330bf380aa05cafe830cacc727ad39263e8e936bc42"
+      },
+      "oscilloscope.edge_names.rising": {
+        "source": "Rising",
+        "source_hash": "522e5549af01c747329d923110c058b7bb7e112816de64bd7919d7b9194fba5b",
+        "translation_hash": "8c0fa1457b2aafcfa6755e27d68e0bedd8dca94c2928fc55d784013f278f41a6"
+      },
+      "oscilloscope.falling_edge": {
+        "source": "Falling edge",
+        "source_hash": "8ff44b6476ef3262c48e0c133a84ecb7d6ee2b130e05fa431429e36523ec42d2",
+        "translation_hash": "9860f299d70111179fa38e00dbce3e84d0f16e3e8087b546e13702848cfe5e7b"
+      },
+      "oscilloscope.fit_amplitude": {
+        "source": "Fit amplitude",
+        "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+        "translation_hash": "f0020faf97aac49a84d14efd8f2b55d93d643b65a4477a33bde7289cc6c4a050"
+      },
+      "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre": {
+        "source": "Fit the selected channel's raw peak and centre its offset",
+        "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+        "translation_hash": "39b7141473628280779fc8176e510a2d7cf3a1dc222a9ba7bc6f025b40506b1e"
+      },
+      "oscilloscope.free_run": {
+        "source": "Free run",
+        "source_hash": "a027d70d45950d5432f65c78b4f9fb7fe92002940b31409667e4fb29bf48c683",
+        "translation_hash": "6628f56e26f50b66eaebd83395c35f067474a69b6717ef6f1e40a3465148614e"
+      },
+      "oscilloscope.fs": {
+        "source": "%{channel}: %{raw} FS → %{value} %{channel_2}",
+        "source_hash": "379d0adad4c6a0becd4f3d83a5245e75dfdef7a47549a9b986375abe682342cd",
+        "translation_hash": "379d0adad4c6a0becd4f3d83a5245e75dfdef7a47549a9b986375abe682342cd"
+      },
+      "oscilloscope.fs_div": {
+        "source": "%{fs_per_div} FS/div",
+        "source_hash": "d1136e354c09347683e8edc079c72694ef741608dad561d8d390762290555279",
+        "translation_hash": "d1136e354c09347683e8edc079c72694ef741608dad561d8d390762290555279"
+      },
+      "oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division": {
+        "source": "FS = full scale · Fs = sample rate · div = grid division",
+        "source_hash": "7e9b94847fd8588545df9e7cd6ca34826553a9bdc2d1893ab0c0cd8df3b7c990",
+        "translation_hash": "c367c2fa93682bb422cca24125cf07a282bb0814b515937b3a749636c1c04200"
+      },
+      "oscilloscope.guides": {
+        "source": "Guides",
+        "source_hash": "572cd72feb9a84e0c639af3ccae73f3a4406f69fe193eac69ab0678eee32baff",
+        "translation_hash": "877b4fc8155dfaad7b28fac090c577fba4b695958308b6902cdd9dab24e9e6bb"
+      },
+      "oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next": {
+        "source": "HELD conditions retained · queued measurement settings apply on next Start",
+        "source_hash": "5da5e24b7f1ace6d236f2583f7b5f65135fab7b90fdbc38b82a6e3f9c22cd06c",
+        "translation_hash": "7797672643a6bf24139cb0e44e72f3fc1c2fc2a1ac470dd564932790efa0277a"
+      },
+      "oscilloscope.horizontal": {
+        "source": "HORIZONTAL",
+        "source_hash": "29b086b8f3bbdb69c32453ba22753c1c749012900499be1637d4363f3ff87cb0",
+        "translation_hash": "29b086b8f3bbdb69c32453ba22753c1c749012900499be1637d4363f3ff87cb0"
+      },
+      "oscilloscope.input_source": {
+        "source": "Input source",
+        "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+        "translation_hash": "6b69f328361b136be91856114422eb71c734a62ec20fb3a01506dc89af7a0109"
+      },
+      "oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger": {
+        "source": "%{channel} · %{reading}\nInterval %{start}..%{end} (exclusive end) · generation %{input_generation} · nominal %{sample_rate} Hz. %{channel_2}. Waveform and trigger are raw FS.",
+        "source_hash": "cf579ed063d29423a695710ec193d4a738ddfc757686d3a4d4bd1db0d5873c33",
+        "translation_hash": "02987b33163d25e07c2882a4b815898088ff14bebbfde830793472022b5671c6"
+      },
+      "oscilloscope.invalid_value": {
+        "source": "— · invalid value",
+        "source_hash": "f31f04a3f03530f3da192f8599c91c7e9af7cbe1c203072b30cc9c4f5cb09ba5",
+        "translation_hash": "f9239193dd9d6330c62b612e1fdc8ab066370ffb1bc5fb78ed1d829049a6613e"
+      },
+      "oscilloscope.level": {
+        "source": "Level",
+        "source_hash": "1709305c9fa966d14f56f0da3c3614bbc10adcf53d72f90341bb96d24afcfca3",
+        "translation_hash": "42e498464823680fee10a5bc259cb1b797a755aeab6c1ceff2e47fa721fec3c2"
+      },
+      "oscilloscope.markers": {
+        "source": "Markers",
+        "source_hash": "4e8d1a7260782cb2cd2eafb4492345c19bf6a29d222ee7e8675e0f3cb25f4290",
+        "translation_hash": "71e8fe1344f0af0e4154a47e922d39febdcd1bd8c8554022213d4fc3d115afaf"
+      },
+      "oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted": {
+        "source": "Markers: T markers only. Guides: T markers and dotted time/level guides. Off: hide both. A horizontal guide appears while editing Level in any mode.",
+        "source_hash": "4aef3c09031b33aba73ffde8e3354cdd1aad351bf1ad3e08a3e87690b654ec84",
+        "translation_hash": "774db453bc5799e9acaeb64cbb55c2f90d4287d646497dd9171a60f9a50593dd"
+      },
+      "oscilloscope.mode_names.auto": {
+        "source": "Auto",
+        "source_hash": "0286249762f7c94349cdc0ba3bb2255baf9a80036e2193ead1d77696f888582f",
+        "translation_hash": "4c2a3993c15df5918ed140a3ea63cf8f45fb449cfe32254767dea894675c2cf4"
+      },
+      "oscilloscope.mode_names.normal": {
+        "source": "Normal",
+        "source_hash": "a7248eeb45eb1ce247f81693283e22e8b39e8a50890cecd22d02e75025547d90",
+        "translation_hash": "a7248eeb45eb1ce247f81693283e22e8b39e8a50890cecd22d02e75025547d90"
+      },
+      "oscilloscope.mode_names.single": {
+        "source": "Single",
+        "source_hash": "8888a029aaf60b70574640efd1655343d1c46c692918c113c16f44f606477253",
+        "translation_hash": "fe7feb6e99cc50a92d3c05bcdb2708855e98e15db79963cb84b5c60b31c421fd"
+      },
+      "oscilloscope.ms": {
+        "source": "%{index} %{seconds} ms · %{sample}",
+        "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
+        "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
+      },
+      "oscilloscope.ms_div_waveform_raw_fs": {
+        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
+        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
+        "translation_hash": "4d2623457673cb213929e75375520d2813b2275833280f7dcbfb1b4b7de45406"
+      },
+      "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
+        "source": "No acquired samples for this channel and interval",
+        "source_hash": "12b75c8568817f8274950727a6e9e77616c482fa9ec6b934cb06e24e8c9bf20d",
+        "translation_hash": "04ab277f6f4b318ad2620f4b0da0881e8c88346f5988bf3ecedcbfb7cd9b538e"
+      },
+      "oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform": {
+        "source": "%{channel} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
+        "source_hash": "ceff997455de4f81e86663a3a5cc73d4814d450c052e79adf95e20f00552b7db",
+        "translation_hash": "21df78d3354ef44af1f0081dfda9d5ff09c880181bed98b3c1d3a34f71f81906"
+      },
+      "oscilloscope.no_samples_in_this_interval": {
+        "source": "— · no samples in this interval",
+        "source_hash": "86e99220c3bcb0a818e5bee7265a76dab51451f6c0ce18d4d7125c7a4f81e5e2",
+        "translation_hash": "73baf15db9b649f6a91cf27f6e578f14bc407fdbf4c35337f9d478c5405d0b7b"
+      },
+      "oscilloscope.normal": {
+        "source": "Normal",
+        "source_hash": "a7248eeb45eb1ce247f81693283e22e8b39e8a50890cecd22d02e75025547d90",
+        "translation_hash": "a7248eeb45eb1ce247f81693283e22e8b39e8a50890cecd22d02e75025547d90"
+      },
+      "oscilloscope.off": {
+        "source": "Off",
+        "source_hash": "ca7981b46ecf2c1787b6d76d81d9fd7fa0ca95842e2fcc2a452869891a9334d1",
+        "translation_hash": "f0ce94502ed90ac3253eeb12f85f320eeb87b7c2d2be0a1a56f540b5603ead1b"
+      },
+      "oscilloscope.out_of_range": {
+        "source": "Out of range",
+        "source_hash": "312e9333f389bcb7c6eb6e2756f37911e5706afc03e643c5dd7db148a9fe4756",
+        "translation_hash": "e46557bb9f6b2694c5e29641380f03bbc344bcc01c41c57602f0b242aa0d4618"
+      },
+      "oscilloscope.outside_input_channel_range": {
+        "source": " · outside input channel range",
+        "source_hash": "9beb00fecff5c7a89ae12f808ada679be081e4e0bf13c18e85751dbffd29da48",
+        "translation_hash": "aff59abaa95d3fb14455af642a998a7323839e613ba027225958354d4c52e3ad"
+      },
+      "oscilloscope.outside_input_channel_range_2": {
+        "source": "%{channel} · outside input channel range",
+        "source_hash": "8f98c63f96c5ae12d69442c7f2aa2a74bafb8901f528921b3e05512431b16130",
+        "translation_hash": "ba87ce418ba77706452d19a957a755b0adf69e0a432e32f102bb9dc49d02c2fc"
+      },
+      "oscilloscope.outside_sweep": {
+        "source": "%{index} #%{sample} · outside sweep",
+        "source_hash": "b9393c5c76608100e55505bdfdccd825af6c7743a2949b8af8eb3f47e28a351d",
+        "translation_hash": "9b67b0a7c2241e688dc126e7edef3114e6c3e37ce2da79b61d2b69b6bae5e409"
+      },
+      "oscilloscope.partial_missing_samples": {
+        "source": "Partial · %{scope_missing} missing samples",
+        "source_hash": "0db1139b2c0df61f64212d41892533b30250b99686b6d77cb6956eac05575598",
+        "translation_hash": "8c0a1b050befc6e4db3f6c7800e73a077965be04bbf7c3e6042726805b2de92f"
+      },
+      "oscilloscope.position": {
+        "source": "Position",
+        "source_hash": "6d031af10da7a25e554bb21247f28f0e6cef77f1471175199e7fcc571964dc3d",
+        "translation_hash": "6d031af10da7a25e554bb21247f28f0e6cef77f1471175199e7fcc571964dc3d"
+      },
+      "oscilloscope.reset_time_position": {
+        "source": "Reset time position",
+        "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
+        "translation_hash": "3ee76733f0a3134d2f50159e9adf3c48527252b7009d19c16e892d6e1824d00f"
+      },
+      "oscilloscope.rising_edge": {
+        "source": "Rising edge",
+        "source_hash": "ddad45af406e0046bd19fc82778867ee3aef835d121b692d1720ac011a413907",
+        "translation_hash": "a68e21a8f9cc1557f843508ceb54cc4125978dc90999bae3d79a954a6fdd9af8"
+      },
+      "oscilloscope.rms_p_p": {
+        "source": "RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit}",
+        "source_hash": "f0d816b5a34553e7fa65f0cc270cfa4d5025113bd48377a165dbaaabf57b2c4b",
+        "translation_hash": "875790e8bb49d8d186f893a5eb8080a009048fa100c17a809d28eee53a891c54"
+      },
+      "oscilloscope.rms_p_p_peak_acquired_samples": {
+        "source": "RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit} · Peak %{peak} %{unit} · %{samples} acquired samples",
+        "source_hash": "2eba37351c822b514d7e0253c0da75f768affd001aee8df9382df79443aef152",
+        "translation_hash": "5eeb74de2dc09540facb233cadd9ce2460ab9c8f19ba2a191382619bdce432b2"
+      },
+      "oscilloscope.show_ch_waveform_keeps_selection_and_measurements": {
+        "source": "Show CH%{index} waveform (keeps selection and measurements)",
+        "source_hash": "961d15920a71ee2ab8b774d9ba38752078d521cfc3d9dc13f2b32b5da837ee11",
+        "translation_hash": "fc3719772f3bcf5382c537ec9132a9b6fcc78a8746e91ae8f689f6dedfccbc72"
+      },
+      "oscilloscope.single": {
+        "source": "Single",
+        "source_hash": "8888a029aaf60b70574640efd1655343d1c46c692918c113c16f44f606477253",
+        "translation_hash": "fe7feb6e99cc50a92d3c05bcdb2708855e98e15db79963cb84b5c60b31c421fd"
+      },
+      "oscilloscope.single_complete": {
+        "source": "Single complete",
+        "source_hash": "801f6814b4db7826df3ffb5e802cb6cba00539a7964503141615fe4850bd3e47",
+        "translation_hash": "57b43c12138ec34647400183d5beee9b59a556b635d16a196e517473733a0dc1"
+      },
+      "oscilloscope.source": {
+        "source": "Source",
+        "source_hash": "0e570ca6fabe24f94e52c1833f3ffd25567022beb826fa16891f3322051bc221",
+        "translation_hash": "0378894a522e5f0776685b9689937098a0d2116d1e4b8d998554f804d9f1b9bc"
+      },
+      "oscilloscope.source_level_raw_fs_the_level_follows_the_source": {
+        "source": "%{display}\n%{scope_trigger_marker_status} · source %{channel} · level %{level} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
+        "source_hash": "36e8de28ee92f6ce75298ff4141140d94f69d2766da27dadbec893489125aa27",
+        "translation_hash": "93b22c6c19610f21138828e18e29ed44078d814168c4e550f9cc253e01c45fb5"
+      },
+      "oscilloscope.spectrogram_time_hz_cursor": {
+        "source": "Spectrogram · time / Hz cursor",
+        "source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac",
+        "translation_hash": "aa3f52c989b27efb4dac4fd4d6c33d27314ab4b9772ab2c30ea1943698264132"
+      },
+      "oscilloscope.start_input_and_wait_for_a_single_triggered_capture": {
+        "source": "Start input and wait for a single triggered capture",
+        "source_hash": "66f0436edf78fe6e103cd927a2748a1d4144219f94473bfd4f623e83d32331d4",
+        "translation_hash": "55bf1d798d9eb4e896c822c175726ecc8205b6e2fbf53d5b6dc26d5baa8c23cc"
+      },
+      "oscilloscope.start_single_capture": {
+        "source": "Start single capture",
+        "source_hash": "a8d5bf0618eaf606dee759a890894499efe99511b9bdc89b5fc9faaa8716e002",
+        "translation_hash": "2695909e797c12bd659a1b0213be1dd836b8a579d05dbb9b357981edfa7cf4a0"
+      },
+      "oscilloscope.t_markers_captured": {
+        "source": "T markers: captured",
+        "source_hash": "07d577d66fdc84977acf98b0d62d61ccdc318db4e6bf59417a21dd314fcd9857",
+        "translation_hash": "54132519a129c7800f82c796c8d2ea282636302b363764f29d0d2c9f69bea99e"
+      },
+      "oscilloscope.t_markers_settings_only": {
+        "source": "T markers: settings only",
+        "source_hash": "5498fef66e723df47d75e2a445552673a8cd8bdf89d885eb79a1f24f31b5e362",
+        "translation_hash": "18fa235df8cd91e7add35b2e06228459ae8046e498ed8bea037214ad79d872ec"
+      },
+      "oscilloscope.t_markers_top_ms_right_level": {
+        "source": "T markers: top = 0 ms · right = level",
+        "source_hash": "2c68afa37fc08ba6d0a29bca65f0ed1c2a378e4e3841f32d10d266f651adb5c3",
+        "translation_hash": "c48cbb84db2ac957621f4fe469278c14d8a7989cd1a797c2cb4dbd88bc2acbee"
+      },
+      "oscilloscope.time_scale": {
+        "source": "Time scale",
+        "source_hash": "0cbc7c021ddc7296dede1b529acca097ab7ff7cd00115653ae0fe2166733cfca",
+        "translation_hash": "ef152490684abe432060f1527729c1c3b6c970fa9ad69d02ab8a5d471ef17bff"
+      },
+      "oscilloscope.time_trigger_edits_apply_on_next_start": {
+        "source": "Time / trigger edits apply on next Start",
+        "source_hash": "db77c7447c35e316b040340c97a65ece5fe351bd3340606421025ebff52f635a",
+        "translation_hash": "f9f2d980c4486afe445b07c03c9e082c5f5c8af2e955dcda5baa108ded83e722"
+      },
+      "oscilloscope.trigger": {
+        "source": "TRIGGER",
+        "source_hash": "f3bbca3a684e7f2d444140623724b2e48d741dcd44afeeae3ac4ee34f853c3f4",
+        "translation_hash": "f3bbca3a684e7f2d444140623724b2e48d741dcd44afeeae3ac4ee34f853c3f4"
+      },
+      "oscilloscope.trigger_settings": {
+        "source": "Trigger settings",
+        "source_hash": "17c982d8eb68e4222746c5ead854a02d128bfdd9218a9353f2cfe109b9a35b8f",
+        "translation_hash": "a6152c38891d51d095afb560952afeb3011f2cb02a50473d0732c7b202e77916"
+      },
+      "oscilloscope.trigger_source_unavailable": {
+        "source": "Trigger source unavailable",
+        "source_hash": "4d4b4daeaf32356594e2a8169b4132ed85a904bb6011678b91a1febafd463430",
+        "translation_hash": "4b3b9defe1edc6d70c91328c9bbb29c0c55127745564ee1710d92a4b3510eca7"
+      },
+      "oscilloscope.triggered": {
+        "source": "Triggered",
+        "source_hash": "aeffb9182e3d7f3dee2c4e9582abbc2ec33be7c8d12a7497664694677e836a1b",
+        "translation_hash": "8235eb51fc8e871d6d16653f6794b6573b760cc6291a3ae2e4ec5b51f4f3576f"
+      },
+      "oscilloscope.update_even_without_a_trigger_crossing": {
+        "source": "Update even without a trigger crossing",
+        "source_hash": "ed149bd87c740c0a409eec846cf050b8a06713f7d8391ffa7de937d167ff5bea",
+        "translation_hash": "a8791d22597f2292002d6ef71836ea2c0eb7ce9620c4f40043676fc1bd59ddf1"
+      },
+      "oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while": {
+        "source": "Update on trigger crossings; hold the last capture while waiting",
+        "source_hash": "14c8dc71bc614c180b8ae751814dd82a97de7fd70527439c8621170049894ede",
+        "translation_hash": "754415754dae7966b22a21506dc33fd8b1f665771bd707077bcc0e9ce3d3134e"
+      },
+      "oscilloscope.vertical_ch": {
+        "source": "VERTICAL · CH%{index}",
+        "source_hash": "7cc0908e73156f4837d26e010526b52be8f07a238ff35207be19155b0eb66463",
+        "translation_hash": "67c75c85cacf7976004b7f7844e0d16fce5087ea73da46461721c65f3c0b3cdb"
+      },
+      "oscilloscope.vertical_range": {
+        "source": "Vertical range",
+        "source_hash": "42fb30843c9e7f5efa035f51f3d3fcb405943622a311a51a0bb36631721c8d68",
+        "translation_hash": "bb9d76c75b0389b424e953c4a6b2f5c93a6cae226c69f6cfd82e69549ac4454a"
+      },
+      "oscilloscope.waiting_for_sweep": {
+        "source": "%{index} · waiting for sweep",
+        "source_hash": "7c87e4f7280dfd2b39339acaaa75f044ada07ba599dbb11b211047231732f60d",
+        "translation_hash": "7c3c3fd0f8b7a9497ea9a72d7918913e916258b2f5b26fc78d5d60d48f5b4a84"
+      },
+      "oscilloscope.waiting_for_trigger": {
+        "source": "Waiting for trigger",
+        "source_hash": "37123a7026801535dd14ff5c82d4e7c51f8bf6b56533989b9af8cd00a3382f7d",
+        "translation_hash": "7dfbc456e71d95e8dd5038de28140cf23a291127051e5f5c4bb44d5ea3e6ba15"
+      },
+      "oscilloscope.waiting_previous_capture": {
+        "source": "Waiting · previous capture",
+        "source_hash": "200c7c4b2c0853e7544ab0b31c68b854678dc050584f665c4dd7267d902b18dd",
+        "translation_hash": "86e840f605174c5a064e7d049850c78ed42de6c86b4b40ac265fcc87f5d0ec4c"
+      },
+      "oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale": {
+        "source": "Wheel: time scale · Shift+wheel: selected channel scale",
+        "source_hash": "c401e82a95ddfa61c5763a08a7b32fae05d9f3b7caa9781fb6a4aea7f1e122ee",
+        "translation_hash": "21ed13d45dd811e7d701062b239e5f83094c0814cac55661874062986bf0d8bc"
+      },
+      "oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double": {
+        "source": "%{display}\n%{display_2}\nWheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view",
+        "source_hash": "82e3f01ef3f744a04083a9244f56cc5fa8463b4000869e0e2d6ea94d7e56bf73",
+        "translation_hash": "914d67cfddcf48e852b963c5aa9a092736905f5de4d40b11320a0286a9f966e6"
+      },
+      "oscilloscope.zero_level": {
+        "source": "Zero level",
+        "source_hash": "8e13fc6cda8918a62d28e2f395444ddf63f485dcceb4c70662fa4a046a5f6269",
+        "translation_hash": "0e12e5c034accd33b4001c422609d0eccadf09076c8e99d6aea24e6827435f98"
+      },
+      "oscilloscope.zero_offset": {
+        "source": "Zero offset",
+        "source_hash": "bbe4278b46bf6f1d3c0fed2d1799046af975c03015efd828dc36d65701b0e44a",
+        "translation_hash": "e786fdf3b03e126b6cb2d640a6f421d1e8265e1cbb2455aabe89b34cda5e6167"
       }
     }
   }
