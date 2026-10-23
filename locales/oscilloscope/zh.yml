@@ -28,8 +28,8 @@ oscilloscope.edge_names.falling: 下降
 oscilloscope.edge_names.free: 自由运行
 oscilloscope.edge_names.rising: 上升
 oscilloscope.falling_edge: 下降沿
-oscilloscope.fit_amplitude: 拟合幅度
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 拟合所选通道的原始峰值并将偏移居中
+oscilloscope.fit_amplitude: 按幅度缩放
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 根据所选通道的原始峰值调整纵轴范围，并将偏移归零。
 oscilloscope.free_run: 自由运行
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
