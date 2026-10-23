@@ -83,7 +83,7 @@ oscilloscope.outside_input_channel_range_2: '%{channel} · außerhalb des Eingan
 oscilloscope.outside_sweep: '%{index} #%{sample} · außerhalb des Sweeps'
 oscilloscope.partial_missing_samples: Teilweise · %{scope_missing} fehlende Samples
 oscilloscope.position: Position
-oscilloscope.reset_time_position: Zeitposition zurücksetzen
+oscilloscope.reset_time_position: Position zurücksetzen
 oscilloscope.rising_edge: Steigende Flanke
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak}

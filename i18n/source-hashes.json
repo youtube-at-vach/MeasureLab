@@ -11759,7 +11759,7 @@
       "oscilloscope.reset_time_position": {
         "source": "Reset time position",
         "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
-        "translation_hash": "3ee76733f0a3134d2f50159e9adf3c48527252b7009d19c16e892d6e1824d00f"
+        "translation_hash": "717755bb064bf88215027f247dc908e80c3a1b969365a47321fd8dc97270df28"
       },
       "oscilloscope.rising_edge": {
         "source": "Rising edge",
