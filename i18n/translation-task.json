@@ -1,23 +1,23 @@
 {
   "version": 1,
-  "base_revision": "cd821ebc52532f8d5c6f9abe163abd0df3a95e8b",
+  "base_revision": "51d4af268dab3d981d582b9bd805f3450386133c",
   "locale": "ru",
   "groups": [
-    "common"
+    "oscilloscope"
   ],
   "entries": [
     {
-      "key": "common.language_fallback",
-      "group": "common",
+      "key": "oscilloscope.spectrogram_time_hz_cursor",
+      "group": "oscilloscope",
       "reasons": [
         "stale"
       ],
-      "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
-      "new_english": "Untranslated text uses English.",
+      "old_english": "Spectrogram · time / Hz cursor",
+      "new_english": "Time / frequency cursors",
       "variables": [],
-      "translation": "Непереведённый текст отображается на английском. Перевод приборов готовится.",
-      "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
-      "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+      "translation": "Курсор времени / Hz в Spectrogram",
+      "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+      "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
     }
   ]
 }

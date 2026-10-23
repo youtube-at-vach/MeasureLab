@@ -25953,9 +25953,9 @@
         "translation_hash": "a9dc674c48887c99ea0d11965c0fbac50e0e0ae64c9892c69b3d10b7192ea62c"
       },
       "oscilloscope.spectrogram_time_hz_cursor": {
-        "source": "Spectrogram · time / Hz cursor",
-        "source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac",
-        "translation_hash": "33cb1a9a32e4700cae98ecaebee5d8152ebc981d407930fe268e3dc61ec6301c"
+        "source": "Time / frequency cursors",
+        "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+        "translation_hash": "ccc448ee2e8a5c1c97b9e7009e0f683e21e862c6e62c68fea3f483405cb07730"
       },
       "oscilloscope.start_input_and_wait_for_a_single_triggered_capture": {
         "source": "Start input and wait for a single triggered capture",

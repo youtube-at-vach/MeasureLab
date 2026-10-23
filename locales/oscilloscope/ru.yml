@@ -98,7 +98,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
   %{scope_trigger_marker_status} · источник %{channel} · уровень %{level} необработанный
   FS. Уровень соответствует вертикальному диапазону исходного канала, который может
   отличаться от оси выбранного канала.'
-oscilloscope.spectrogram_time_hz_cursor: Курсор времени / Hz в Spectrogram
+oscilloscope.spectrogram_time_hz_cursor: Курсоры времени / частоты
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Запустите вход и
   дождитесь одиночного захвата по триггеру
 oscilloscope.start_single_capture: Запустить одиночный захват
