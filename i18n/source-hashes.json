@@ -24018,9 +24018,9 @@
         "translation_hash": "bf2fef1eabe36f9aef190efdc5952409fc435fb11738918698d6a6985ecb28a6"
       },
       "common.language_fallback": {
-        "source": "Untranslated text uses English. Instrument translation is in preparation.",
-        "source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9",
-        "translation_hash": "e7dc621a8c6003079b41c70c9606ecbe3ce19b4c3a065e53abad51c2e204364b"
+        "source": "Untranslated text uses English.",
+        "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+        "translation_hash": "aafe562e0450bf54065b5142ccead288bbdfcfa419d1afc1f0f5beaa3f3c6efc"
       },
       "common.last_observed_output_nominal_hz_generation_revision_next_output": {
         "source": "Last observed output: %{label} | nominal %{nominal_sample_rate} Hz | %{pcm_label} | %{state} | generation %{output_generation} revision %{revision} | next output sample %{next_sample}",
