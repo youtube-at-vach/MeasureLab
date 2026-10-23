@@ -1,0 +1,100 @@
+_version: 1
+io.amplitude: AMPLITUD
+io.applies_to_both_while_stopped_held_results_keep_their: Se aplica a ambos mientras
+  estén detenidos. Los resultados retenidos conservan su frecuencia.
+io.audio_input: Entrada de audio
+io.audio_input_no_device_selected: Entrada de audio · ningún dispositivo seleccionado
+io.audio_stream_stopped_check_device_connection_and_microphone_permission: Flujo de
+  audio detenido. Compruebe la conexión del dispositivo y el permiso del micrófono;
+  después reinicie.
+io.available_with_the_internal_loopback_output_device: Disponible con el dispositivo
+  de salida de bucle interno.
+io.captured_readout_condition: CONDICIÓN DE LECTURA CAPTURADA
+io.ch: '%{channels} canales · %{label}'
+io.ch_gain: Ganancia CH 2
+io.ch_phase_gain: FASE / GANANCIA CH 2
+io.channel_unavailable_in_the_current_input: Canal no disponible en la entrada actual
+io.channels_pcm: CANALES / PCM
+io.default: '%{name} (predeterminado)'
+io.degrees: grados
+io.demo_harmonics: Seno + armónicos
+io.demo_signal_qa: Señal de demostración (QA)
+io.demo_square: Cuadrada limitada en banda
+io.device: DISPOSITIVO
+io.device_default: Definido por el dispositivo
+io.device_default_khz: Definido por el dispositivo (%{sample_rate} kHz)
+io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Señales sinusoidales de igual
+  amplitud y sin ruido para XY: en fase, cuadratura o fase opuesta.'
+io.frequency: FRECUENCIA
+io.fs_peak: Pico FS
+io.gain: Ganancia
+io.generator_input_stopped_check_output_status_stop_input_and: Entrada de Generator
+  detenida. Compruebe el estado de salida, detenga la entrada y reinicie la salida
+  antes de volver a iniciar.
+io.generator_loopback: Bucle de Generator
+io.generator_loopback_out: Bucle de Generator · OUT 1 / 2
+io.hz_2: '%{r} Hz'
+io.hz_3: '%{rate} Hz'
+io.hz_4: '%{rate} Hz · %{format}'
+io.input: Entrada
+io.input_channel: CANAL DE ENTRADA
+io.input_output_hz: 'Entrada: %{r} · Salida: %{rate} Hz'
+io.input_source: 'Fuente de entrada: %{source}'
+io.internal_loopback: Bucle interno
+io.internal_source_no_audio_output: Fuente interna · sin salida de audio
+io.khz: '%{rate} kHz'
+io.no_common_rate_for_these_devices_and_output_format: No hay una frecuencia común
+  para estos dispositivos y el formato de salida. Use frecuencias de muestreo separadas.
+io.no_input_device: Ningún dispositivo de entrada
+io.noise: Ruido
+io.noise_2: RUIDO
+io.noise_amplitude_in_digital_full_scale_fs: Amplitud del ruido en escala completa
+  digital (FS).
+io.offset: Desplazamiento
+io.out_ch_out_ch_start_input_and_output_separately: OUT 1 → CH 1 · OUT 2 → CH 2 ·
+  Inicie la entrada y la salida por separado.
+io.output: Salida
+io.output_device: DISPOSITIVO DE SALIDA
+io.physical_unit_e_g_v_a_pa: UNIDAD FÍSICA (P. EJ., V, A, Pa)
+io.queue_calibration: Poner calibración en cola
+io.queue_uncalibrated_fs: Poner FS sin calibrar en cola
+io.queued_definitions_apply_on_the_next_start_source_device: Las definiciones en cola
+  se aplican en el siguiente inicio. Seleccionar o actualizar el dispositivo/fuente
+  borra la cola. Usted proporciona los coeficientes; las condiciones de referencia
+  describen su validez.
+io.queued_for_next_start: EN COLA PARA EL SIGUIENTE INICIO
+io.rate_changes_apply_on_start_held_results_keep_their: Los cambios de frecuencia
+  se aplican al iniciar. Los resultados retenidos conservan su frecuencia.
+io.reference_conditions: CONDICIONES DE REFERENCIA
+io.reference_device_range_date_uncertainty: Referencia, dispositivo/rango, fecha,
+  incertidumbre
+io.refresh_devices: Actualizar dispositivos
+io.sample_rate: FRECUENCIA DE MUESTREO
+io.sample_rate_channels_pcm: FRECUENCIA DE MUESTREO / CANALES / PCM
+io.sample_rate_input_output: FRECUENCIA DE MUESTREO · ENTRADA + SALIDA
+io.scope_readouts_and_spectrum_use_y_gain_fs_offset: Las lecturas de Scope y Spectrum
+  usan y = ganancia × FS + desplazamiento. Eliminar CC en Spectrum cancela el desplazamiento.
+  El trazo/disparo de Scope, Spectrogram y los ejes XY usan FS.
+io.select_common_rate: Seleccionar frecuencia común
+io.separate_sample_rates: Frecuencias de muestreo separadas
+io.signal_changes_apply_when_input_restarts_captured_samples_stay: Los cambios de
+  señal se aplican al reiniciar la entrada. Las muestras capturadas se conservan.
+io.software_loopback: Bucle de software
+io.source: FUENTE
+io.start_input: ▶  Iniciar entrada
+io.start_input_demo: ▶  Iniciar entrada (demo)
+io.start_or_stop_the_shared_input_for_all_instruments: 'Inicie o detenga la entrada
+  compartida para todos los instrumentos; la salida es independiente. Atajo: Espacio'
+io.start_stop_is_always_in_the_top_bar: Iniciar / detener siempre está en la barra
+  superior.
+io.stop_input: ■  Detener entrada
+io.stop_input_and_output_and_select_a_supported_common: Detenga la entrada y la salida
+  y seleccione una frecuencia común compatible.
+io.stop_input_and_output_to_change_the_device_or: Detenga la entrada y la salida para
+  cambiar el dispositivo o el formato.
+io.supported_device_rates_up_to_khz: Frecuencias de dispositivo compatibles · hasta
+  768 kHz
+io.unavailable: No disponible
+io.unit: unidad
+io.unit_fs: unidad/FS
+io.waveform: FORMA DE ONDA

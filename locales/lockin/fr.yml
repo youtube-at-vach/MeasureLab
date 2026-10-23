@@ -1,0 +1,100 @@
+_version: 1
+lockin.all_four: Les quatre
+lockin.applying_settings_display_retains_its_captured_conditions: Application des
+  paramètres · l’affichage conserve les conditions de la mesure capturée
+lockin.averaged_samples_latest_window: Échantillons moyennés %{start}..%{end} · dernière
+  fenêtre %{start_2}..%{end_2}
+lockin.calibrated: ÉTALONNÉ
+lockin.captured_hint_ref_threshold: Indication capturée %{hz_2} · τ %{s} · seuil REF
+  %{fs}
+lockin.ch_calibration_revision_gain_fs: Étalonnage CH %{ch} %{id} / révision %{revision}
+  · gain %{gain} %{unit} / FS
+lockin.ch_settings_unavailable: CH / PARAMÈTRES INDISPONIBLES
+lockin.check_sig_ref_channel_availability_and_frequency_against_nominal: Vérifiez
+  la disponibilité des canaux SIG / REF et la fréquence par rapport au Fs nominal.
+lockin.complete_windows_missing_samples: '%{processed_windows} fenêtres complètes
+  · %{missing_samples} échantillons manquants'
+lockin.disabled: DÉSACTIVÉ
+lockin.display_bars_auto_scale_they_do_not_change_input: Les barres d’affichage se
+  mettent à l’échelle automatiquement ; elles ne modifient pas la sensibilité d’entrée.
+  Ajustement sinusoïdal Hann périodique + deux pôles EMA. REF physique / synchronisation
+  non vérifiés.
+lockin.display_scale_only: '%{v} %{unit} · échelle d’affichage uniquement'
+lockin.ema_poles_settling_fundamental_only: 2 pôles EMA · stabilisation en 10τ · fondamental
+  uniquement
+lockin.experimental: EXPÉRIMENTAL
+lockin.experimental_input_reference: EXPÉRIMENTAL · RÉFÉRENCE D’ENTRÉE
+lockin.f_ref: f REF  %{hz_2}
+lockin.fixed_frequency: FRÉQUENCE FIXE
+lockin.frequency_must_be_below_nominal_fs_hz: '%{error} : la fréquence doit être inférieure
+  à 0,45 × Fs nominal (%{rate} Hz)'
+lockin.fs_rms: ' FS RMS'
+lockin.gain: Gain  %{gain}
+lockin.input_failed: DÉFAILLANCE D’ENTRÉE
+lockin.input_gap: LACUNE D’ENTRÉE
+lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: L’entrée ou le calcul
+  n’est pas fini. Aucune mesure valide n’est disponible.
+lockin.input_samples_are_missing_the_filter_clears_and_settles: Des échantillons d’entrée
+  manquent. Après leur récupération, le filtre est réinitialisé et se stabilise de
+  nouveau.
+lockin.integration_samples: 'Intégration : %{integration_samples} échantillons'
+lockin.invalid_input: ENTRÉE INVALIDE
+lockin.lock_in_amplifier: Amplificateur Lock-in
+lockin.measurement_details: Détails de mesure
+lockin.min_ref: 'REF min. '
+lockin.next_start_settings_changed_display_retains_captured_conditions: Paramètres
+  du prochain démarrage modifiés · l’affichage conserve les conditions capturées
+lockin.no_capture: AUCUNE CAPTURE
+lockin.no_valid_reading_no_bar_marker_is_shown: Aucune mesure valide ; aucun repère
+  de barre n’est affiché
+lockin.nominal_fs_hz_input_generation: Fs nominal %{sample_rate} Hz · génération d’entrée
+  %{input_generation}
+lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: REF physique
+  et synchronisation restent non vérifiés. Aucune sortie d’oscillateur physique ni
+  sensibilité matérielle sélectionnable.
+lockin.poles_n: τ %{s}   ·   2 pôles   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R, X et Y sont des amplitudes
+  de crête. Une phase positive est en avance sur REF. Le filtre EMA fixe à deux pôles
+  se stabilise après 10τ d’échantillons valides. Les paramètres modifiés à l’arrêt
+  s’appliquent au prochain démarrage.
+lockin.ref: REF
+lockin.ref_ac_rms_sinusoid_fit: RMS CA REF %{fs} · ajustement sinusoïdal %{v}
+lockin.ref_and_signal_use_the_same_input_sample_clock: REF et le signal utilisent
+  la même horloge d’échantillonnage d’entrée.
+lockin.ref_hint: 'Indication de fréquence REF '
+lockin.ref_is_below_its_ac_rms_threshold_values_clear: REF est sous son seuil RMS
+  CA. Les valeurs sont effacées jusqu’au rétablissement de REF.
+lockin.ref_lost: REF PERDUE
+lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within: REF exige au moins
+  3 cycles par fenêtre, un ajustement sinusoïdal ≥98 % et une fréquence dans la plage
+  indiquée.
+lockin.ref_unstable: REF INSTABLE
+lockin.ref_valid: REF VALIDE
+lockin.reference_filter: RÉFÉRENCE ET FILTRE
+lockin.reference_validity: VALIDITÉ DE LA RÉFÉRENCE
+lockin.samples: '%{n} échantillons'
+lockin.select_sig_ref_channels_press_start_analysis_then_start: Sélectionnez les canaux
+  SIG / REF, appuyez sur Démarrer l’analyse, puis sur Démarrer l’entrée si elle est
+  arrêtée.
+lockin.settling: STABILISATION
+lockin.settling_of: Stabilisation · %{progress} % de 10τ
+lockin.sig: SIG
+lockin.sig_ch_ref_ch: SIG CH %{response_channel}   /   REF CH %{reference_channel}
+lockin.start_analysis: Démarrer l’analyse
+lockin.start_input_to_acquire_a_synchronous_sig_ref_window: Démarrez l’entrée pour
+  acquérir une fenêtre SIG / REF synchrone.
+lockin.state_names.disabled: Désactivé
+lockin.state_names.missing: Manquant
+lockin.state_names.non_finite: Non fini
+lockin.state_names.reference_lost: REF perdue
+lockin.state_names.reference_unstable: REF instable
+lockin.state_names.settling: Stabilisation
+lockin.state_names.unavailable: Indisponible
+lockin.state_names.valid: Valide
+lockin.stop_analysis: Arrêter l’analyse
+lockin.time_constant_presets: Valeurs prédéfinies de la constante de temps
+lockin.track_input_ref_hint: Suivre la REF d’entrée (indication ±10 %)
+lockin.track_ref: SUIVRE REF
+lockin.uncalibrated_fs: NON ÉTALONNÉ · FS
+lockin.waiting_for_a_complete_synchronous_input_window: En attente d’une fenêtre d’entrée
+  synchrone complète.

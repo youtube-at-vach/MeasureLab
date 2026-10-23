@@ -1,0 +1,121 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: Im Generator-Bereich ein Signal hinzufügen.
+generator.add_signal: + Signal hinzufügen
+generator.applied: ÜBERNOMMEN
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: 'Übernommenes Fs: %{nominal_sample_rate}
+  Hz (nominal). Einstellungs-Vorschau verwendet FS-Spitze; gemessene Samples werden
+  in Scope angezeigt.'
+generator.applied_hz_dbfs_peak_lead: 'Übernommen: %{frequency_hz} Hz · %{amplitude_dbfs}
+  dBFS Spitze · Phasenvorlauf %{phase_degrees}°'
+generator.applied_output: AUSGABE ÜBERNOMMEN
+generator.applied_sample: Übernommenes Sample %{applied_sample}
+generator.applied_seed: Übernommener Seed %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: ±-Schaltflächen / Hoch / Runter
+  verwenden diesen Schritt in Hz, dBFS oder Grad. Eingabe / Fokus übernimmt; Esc bricht
+  ab.
+generator.down: Runter
+generator.duplicate: Duplizieren
+generator.edit_step: SCHRITT BEARBEITEN
+generator.enter_a_finite_number_settings_were_not_applied: Endliche Zahl eingeben;
+  Einstellungen wurden nicht übernommen
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Eingabe / Fokus zum Übernehmen
+  · Esc zum Abbrechen · Hoch / Runter für Schritt
+generator.error: FEHLER
+generator.error_reason.already_active: Ausgabe ist bereits aktiv
+generator.error_reason.amplitude: 'Karte an Position %{position}: Amplitude muss endlich
+  sein und im Bereich −120 bis 0 dBFS Spitze liegen'
+generator.error_reason.callback_stalled: Zeitüberschreitung im Audioausgabe-Callback;
+  Ausgabe freigegeben
+generator.error_reason.channel_count: Ausgabe erfordert 1–16 Kanäle
+generator.error_reason.counter_exhausted: Ausgabesample, Generation oder Steuerungszähler
+  erschöpft
+generator.error_reason.duplicate_routing: Zwei Signale können nicht denselben Ausgangskanal
+  verwenden
+generator.error_reason.frequency: 'Karte an Position %{position}: Frequenz muss ≥
+  0,1 Hz und < 0,45 × Ausgangs-Fs sein'
+generator.error_reason.no_enabled_signals: Vor dem Starten der Ausgabe mindestens
+  ein Signal auswählen
+generator.error_reason.non_finite_output: Nicht endliche Ausgabe; Ausgabe gestoppt
+generator.error_reason.output_range: Ausgabe übersteuert Vollbereich; Ausgabe gestoppt
+generator.error_reason.output_stream: Audioausgabe fehlgeschlagen; Ausgabe vor dem
+  Neustart zurücksetzen
+generator.error_reason.phase: 'Karte an Position %{position}: Phase muss endlich sein
+  und im Bereich −180 bis 180° liegen'
+generator.error_reason.producer_suspended: Interne Generierung war länger als 250
+  ms ausgesetzt; Ausgabe gestoppt
+generator.error_reason.revision: Einstellungsrevision muss steigen
+generator.error_reason.routing: 'Karte an Position %{position}: Ausgangskanal ist
+  nicht verfügbar oder nicht zugewiesen'
+generator.error_reason.routing_while_active: Vor Änderung von Karten, Signalformdetails
+  oder Kanalzuweisungen die Ausgabe stoppen
+generator.error_reason.sample_rate: Nicht unterstützte nominale Ausgangsabtastrate
+generator.error_reason.signal_count: Generator unterstützt höchstens 16 Karten
+generator.error_reason.signal_identity: Generator-Karten-IDs müssen eindeutig sein
+  und vor der nächsten ID liegen
+generator.error_reason.stopping: Warten, bis die Ausgabe ausgeblendet wurde
+generator.error_reason.waveform: 'Karte an Position %{position}: Rausch-Seed darf
+  nicht null sein'
+generator.frequency: Frequenz
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS Spitze · %{phase_degrees}°
+generator.generation_revision: Generation %{output_generation} · Revision %{revision}
+generator.hide_signal_controls: Signalsteuerungen ausblenden
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · %{channels} Kanäle. Eingangsstopp hält die Messung; die Ausgabe läuft weiter.'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} Kanäle · %{pcm_label}
+  · nominales Fs'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS Spitze ·
+  Phasenvorlauf %{phase_degrees}°'
+generator.in_use: ' · in Verwendung'
+generator.ms_cycles: '%{frequency_hz} ms / 2 Zyklen'
+generator.no_signals_add_a_signal_to_choose_its_waveform: Keine Signale. Signal hinzufügen,
+  um Signalform und Ausgang auszuwählen.
+generator.off: AUS
+generator.on: EIN
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: AUSGANG
+generator.output_details: Ausgabedetails
+generator.peak_level: Spitzenpegel
+generator.pending: AUSSTEHEND
+generator.phase_lead: Phasenvorlauf
+generator.remove: Entfernen
+generator.reset_output_stays_off: Ausgang zurücksetzen (bleibt AUS)
+generator.running: LÄUFT
+generator.seed: Seed
+generator.selected_transition_ends: Ausgewählter Übergang endet bei %{i}
+generator.settings_preview_fs_ceiling: Einstellungs-Vorschau · ±%{amplitude_peak}
+  FS-Grenze · %{frequency_hz}
+generator.show_signal_controls: Signalsteuerungen anzeigen
+generator.start_output: ▶ Ausgabe starten
+generator.start_replays_the_seed_frequency_and_phase_do_not: „Start“ verwendet erneut
+  den Seed. Frequenz und Phase wirken sich nicht auf Rauschen aus.
+generator.starting: WIRD GESTARTET
+generator.starting_pending: WIRD GESTARTET · ausstehend
+generator.stop_generator_output_independently_of_input_and_analysis: Generator-Ausgabe
+  unabhängig von Eingang und Analyse stoppen
+generator.stop_output: ■ Ausgabe stoppen
+generator.stop_output_2: Ausgabe stoppen
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: Vor Hinzufügen, Entfernen,
+  Duplizieren, Neuordnen oder Ändern von Signalform / Routing die Ausgabe stoppen.
+generator.stopped: GESTOPPT
+generator.stopping: WIRD GESTOPPT
+generator.transition: ÜBERGANG
+generator.unassigned: Nicht zugewiesen
+generator.up: Hoch
+generator.up_to_odd_harmonics_below_fs_peak_level_is: Bis zu 16 ungerade Harmonische
+  unter 0,45 Fs. Spitzenpegel ist die Vollbereichsgrenze; RMS hängt von der Frequenz
+  ab.
+generator.waveform: Signalform
+generator.waveform_names.noise: Rauschen
+generator.waveform_names.sine: Sinus
+generator.waveform_names.square: Rechteck
+generator.waveform_names.triangle: Dreieck
+generator.white_noise: weißes Rauschen
+generator.white_noise_uniform_peak_bounded: Weißes Rauschen · gleichverteilt · Spitzenwert
+  begrenzt
