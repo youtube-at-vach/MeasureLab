@@ -1,5 +1,6 @@
 _version: 1
 lockin.all_four: 全部四个
+lockin.amplitude_peak: 幅度 · 峰值
 lockin.applying_settings_display_retains_its_captured_conditions: 正在应用设置 · 显示保留其捕获条件
 lockin.averaged_samples_latest_window: 平均样本 %{start}..%{end} · 最新窗口 %{start_2}..%{end_2}
 lockin.calibrated: 已校准
@@ -24,6 +25,7 @@ lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: 频率必须低于 0.45
   Hz)'
 lockin.fs_rms: ' FS RMS'
 lockin.gain: 增益  %{gain}
+lockin.in_phase_peak: 同相分量 · 峰值
 lockin.input_failed: 输入失败
 lockin.input_gap: 输入间隙
 lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: 输入或计算不是有限值。没有有效的测量结果。
@@ -38,8 +40,10 @@ lockin.next_start_settings_changed_display_retains_captured_conditions: 下次�
 lockin.no_capture: 没有捕获
 lockin.no_valid_reading_no_bar_marker_is_shown: 没有有效读数；不会显示柱状标记
 lockin.nominal_fs_hz_input_generation: 标称 Fs %{sample_rate} Hz · 输入代次 %{input_generation}
+lockin.phase_leads_ref: 相位 · 超前 REF
 lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: 物理 REF 和定时仍未经验证。没有物理振荡器输出或可选的硬件灵敏度。
 lockin.poles_n: τ %{s}   ·   2 个极点   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.quadrature_peak: 正交分量 · 峰值
 lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R、X 和 Y 为峰值幅度。正相位超前 REF。滤波器有两个固定的
   EMA 极点，并在 10τ 的有效样本后稳定。停止时更改的设置会在下次启动时应用。
 lockin.ref: REF
