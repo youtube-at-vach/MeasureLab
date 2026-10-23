@@ -20,7 +20,7 @@ common.captured_f64: 取得値 f64：%{v} %{unit}
 common.channel_unavailable: CH利用不可
 common.channels_outside_the_input_range: 入力範囲外のチャンネル
 common.check_input_settings_and_the_acquisition_error_then_press: 入力設定と取得エラーを確認し、「入力を開始」で再試行してください。
-common.choose_an_available_trigger_source_in_scope_settings_or: スコープ設定で利用可能なトリガー元を選ぶか、オーディオ入出力で入力元を変更してください。
+common.choose_an_available_trigger_source_in_scope_settings_or: スコープ設定で利用可能なトリガーソースを選ぶか、オーディオ入出力で入力ソースを変更してください。
 common.choose_which_cursor_the_next_plot_click_or_drag: 次のプロットのクリックやドラッグで配置するカーソルを選びます。A／Bの選択だけでは配置しません。スコープはプロット上の位置を保持します。スペクトログラムは選択したFFTフレームを保持します。XYのFreeはX/Y振幅を保持し、Trace
   Snapはトリガー基準のサンプルに追従します。
 common.clear_both_a_b_time_cursors_spectrum_spectrogram_frequency: 全計器のA/B時間カーソル、スペクトラム／スペクトログラムの周波数カーソル、XY
@@ -93,7 +93,7 @@ common.input: 入力 %{device_name} | %{sample_format}
 common.input_acquisition_failed: 入力の取得に失敗しました
 common.input_conditions: 入力条件：—
 common.input_conditions_changed_since_restoration_refresh_devices_and_restore: 復元後に入力条件が変わりました。デバイス一覧を更新し、再度復元してください
-common.input_is_active_check_the_trigger_source_level_and: 入力は動作中です。スコープ設定でトリガー元・レベル・エッジを確認するか、Autoモードを使用してください。
+common.input_is_active_check_the_trigger_source_level_and: 入力は動作中です。スコープ設定でトリガーソース・レベル・エッジを確認するか、Autoモードを使用してください。
 common.input_is_active_waiting_for_enough_samples_to_draw: 入力は動作中です。完全な掃引を描画するために必要なサンプルを待っています。
 common.input_is_active_waiting_for_the_rest_of_the: 入力は動作中です。トリガーされた掃引の残りのサンプルを待っています。
 common.input_ksa_s_nominal_ch: 入力 %{state} · 公称 %{nominal_sample_rate_hz} kSa/s ·
@@ -144,7 +144,7 @@ common.observed_changes_evicted_lost_reports_output_notifications_since_output: 
 common.one_reference_is_retained_recordings_use_independent_sample_clock: 参照結果は1件保持します。各記録はサンプル時計の起点が独立しているため、プロットは個別に表示します。
 common.only_this_instrument_s_fft_changes_precision_input_history: 精度を変更するのは、この計器のFFTだけです。入力履歴、DC除去、電力平均には64ビットを使用します。
 common.open_input_settings: 入力設定を開く
-common.open_input_settings_to_choose_the_source_then_press: 入力設定を開いて入力元を選び、上部バーの「入力を開始」を押してください。
+common.open_input_settings_to_choose_the_source_then_press: 入力設定を開いて入力ソースを選び、上部バーの「入力を開始」を押してください。
 common.open_input_settings_to_select_or_refresh_an_audio: 入力設定を開いてオーディオデバイスを選択・更新するか、ソフトウェアループバックを選び、「入力を開始」を押してください。
 common.outside_sweep: 掃引範囲外
 common.peak_hold: ピークホールド
@@ -201,10 +201,10 @@ common.saved_calibration_conflicts_with_an_existing_id_revision: 保存された
 common.scope_prep_ms: スコープ準備 %{build_ms} ms
 common.scope_trigger_ch_at_fs: スコープ [%{start}, %{end}) | %{acquisition_mode} | トリガー
   CH %{channel} %{edge} レベル %{level} FS
-common.select_a_channel_below_the_plot_and_choose_its: プロット下でチャンネルを選び、スコープ設定でその入力元を指定するか、オーディオ入出力で入力元を変更してください。
+common.select_a_channel_below_the_plot_and_choose_its: プロット下でチャンネルを選び、スコープ設定でその入力ソースを指定するか、オーディオ入出力で入力ソースを変更してください。
 common.select_an_audio_input_to_observe_audio_device_output: オーディオデバイスの出力を観測するには、オーディオ入力を選択してください
 common.select_an_input_device_first: 先に入力デバイスを選択してください
-common.select_an_input_source: 入力元を選択
+common.select_an_input_source: 入力ソースを選択
 common.selected_ch_axis: 選択中のCH%{scope_selected}の軸。%{display}
 common.selecting_file: ファイルを選択中…
 common.settings_error: 設定エラー
@@ -258,8 +258,8 @@ common.trace_current_reference_rms_each_result_s_own_interval: トレース %{i}
   %{rms}（各結果それぞれの区間）
 common.trace_differs_in_channel_unit_or_known_stationary_excitation: トレース %{i}はチャンネル・単位・既知の定常励振が異なるため、数値差分を表示しません
 common.tracking: 追従 ±10%
-common.trigger_help: 上端のTは時間基準（0 ms）、右端のTはトリガー元チャンネルの生FSでのトリガーレベルを示します。トリガーが確定していないときは、どちらも設定値のみを示します。
-common.trigger_source_outside_the_input_range: トリガー元が入力範囲外です
+common.trigger_help: 上端T：時間基準（0 ms）。右端T：ソースCHのトリガーレベル（校正前のFS）。トリガー未確定時は設定値を示します。
+common.trigger_source_outside_the_input_range: トリガーソースが入力範囲外です
 common.turn_on_a_channel_using_the_checkboxes_below_the: プロット下のチェックボックスでチャンネルをONにしてください。
 common.ui_fps: UI %{fps} fps
 common.unavailable: '%{selected} · 利用不可'
@@ -270,7 +270,7 @@ common.uncalibrated_fs_2: '%{label}：未校正 · FS'
 common.wait_for_the_generator_settings_to_be_applied: 信号発生器の設定が適用されるまでお待ちください
 common.waiting: 待機
 common.waiting_for_the_final_measurement_acquired_data_will_be: 最終測定を待っています。取得済みデータは保持します。
-common.waiting_for_the_input_source_and_its_channel_count: 入力元とチャンネル数の準備を待っています。
+common.waiting_for_the_input_source_and_its_channel_count: 入力ソースとチャンネル数の準備を待っています。
 common.waiting_for_trigger: トリガー待ち
 common.window: 窓 [%{start}, %{end})
 common.window_names.blackman_harris: Blackman-Harris
