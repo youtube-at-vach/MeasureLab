@@ -16256,7 +16256,7 @@
       "oscilloscope.centre_offset": {
         "source": "Centre offset",
         "source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a",
-        "translation_hash": "2f35b8eeb654e8501a9358cb2b122e9d62bd857f54f0cd9bcc008567e63dde57"
+        "translation_hash": "b1a1e8e3cf7c522ed8606c3c3c3f35d3299eca78cb664fec00d9787da111f418"
       },
       "oscilloscope.ch": {
         "source": "CH%{scope_selected} · %{scope_selected_2}",
@@ -16476,7 +16476,7 @@
       "oscilloscope.reset_time_position": {
         "source": "Reset time position",
         "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
-        "translation_hash": "dfd368783f252eba961d207f1bee4845b452f782062b4eae4a029b6eb08ef032"
+        "translation_hash": "c1e992a0b5b03a63dabbb324541d330a98852bd7ea9ba03a19e60c444ac76b1d"
       },
       "oscilloscope.rising_edge": {
         "source": "Rising edge",

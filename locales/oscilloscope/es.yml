@@ -14,7 +14,7 @@ oscilloscope.autoset_held: Amplitud de la captura retenida ajustada; tiempo/disp
   se aplican en el siguiente inicio (%{frequency} Hz)
 oscilloscope.capture_once_on_the_next_trigger_crossing: Capturar una vez en el siguiente
   cruce del disparo
-oscilloscope.centre_offset: Desplazamiento central
+oscilloscope.centre_offset: Offset
 oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
 oscilloscope.ch_2: CH%{index}%{else}
 oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
@@ -85,7 +85,7 @@ oscilloscope.outside_input_channel_range_2: '%{channel} · fuera del rango del c
 oscilloscope.outside_sweep: '%{index} #%{sample} · fuera del barrido'
 oscilloscope.partial_missing_samples: Parcial · faltan %{scope_missing} muestras
 oscilloscope.position: Posición
-oscilloscope.reset_time_position: Reiniciar posición temporal
+oscilloscope.reset_time_position: Restablecer posición
 oscilloscope.rising_edge: Flanco ascendente
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · pico a pico %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · pico a pico %{peak_to_peak}
