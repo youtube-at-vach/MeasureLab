@@ -14130,6 +14130,26 @@
         "source": "Wrapped delay",
         "source_hash": "4b36dc4d6910aef6d886b106dc560c2cc1c0c4630bd71bbf44fd4a741f4c43e5",
         "translation_hash": "94a6b757b937eedd4e84d9d80cebcfda4a0a025621697f9d413285779b2273ab"
+      },
+      "lockin.amplitude_peak": {
+        "source": "Amplitude · peak",
+        "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+        "translation_hash": "56528045653325c0ea4dc055e17c383e5e2ebeecf969cf45971515a54f006c23"
+      },
+      "lockin.in_phase_peak": {
+        "source": "In-phase · peak",
+        "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+        "translation_hash": "0fded0b998875d930798fc5ee619fa23eb7aa196672c1eb61ef8bd4f04cd0c75"
+      },
+      "lockin.phase_leads_ref": {
+        "source": "Phase · leads REF",
+        "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+        "translation_hash": "def7fd04d08128fa933e4de7bd9d703d0e94a253637808cdebbd2d3ee2fc4e26"
+      },
+      "lockin.quadrature_peak": {
+        "source": "Quadrature · peak",
+        "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+        "translation_hash": "6ec52c33e47b15ef2f23ed67180a75b58f4d2e86ac69e6dcd6b5146b05a1c581"
       }
     },
     "es": {
