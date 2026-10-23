@@ -7907,7 +7907,7 @@
       "spectrogram.gestures": {
         "source": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
         "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
-        "translation_hash": "29f32e3b27cb8f03a42f85892b51556e4e1c9291d3aba86cdb0021114665ab51"
+        "translation_hash": "03c5f89b9fd3edcfeb9268818a02a6df283f205659873b5a39441c1bce75461b"
       },
       "spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history": {
         "source": "Higher overlap produces more FFT windows and uses history capacity sooner.",

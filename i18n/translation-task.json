@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "base_revision": "bdf277f425406162b9f2e482944d81e2e3c42953",
-  "locale": "ja",
+  "base_revision": "05fc7c9840129bcc43fb84bbd7902bc5f3193eb2",
+  "locale": "fr",
   "groups": [
     "spectrogram"
   ],
@@ -18,7 +18,7 @@
       "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
       "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
       "variables": [],
-      "translation": "スペクトログラム：ホイールで周波数をズーム、ドラッグで周波数／時間をパンします。Shift＋ホイールまたは時間軸上のホイールで履歴をスクロールします。クリックで履歴を保持してフレームを選択し、カーソル線のドラッグで位置を移動します。ライブで履歴固定を解除します。ダブルクリックで周波数／時間位置をリセットします。",
+      "translation": "Spectrogramme : molette pour zoomer sur la fréquence ; glisser pour déplacer la fréquence ou le temps ; Maj + molette ou molette sur l’axe temporel pour parcourir l’historique ; cliquer pour maintenir et sélectionner une trame ; faire glisser une ligne de curseur pour la déplacer ; En direct libère l’historique ; double-cliquer réinitialise la position de fréquence et de temps.",
       "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
       "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
     }
