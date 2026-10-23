@@ -1,0 +1,84 @@
+_version: 1
+lockin.all_four: 4개 모두
+lockin.applying_settings_display_retains_its_captured_conditions: 설정 적용 중 · 화면에는 캡처
+  시 조건이 유지됩니다
+lockin.averaged_samples_latest_window: 평균 샘플 %{start}..%{end} · 최신 윈도우 %{start_2}..%{end_2}
+lockin.calibrated: 보정됨
+lockin.captured_hint_ref_threshold: 캡처된 힌트 %{hz_2} · τ %{s} · REF 기준 %{fs}
+lockin.ch_calibration_revision_gain_fs: CH %{ch} 보정 %{id} / 리비전 %{revision} · 이득 %{gain}
+  %{unit} / FS
+lockin.ch_settings_unavailable: CH / 설정을 사용할 수 없음
+lockin.check_sig_ref_channel_availability_and_frequency_against_nominal: SIG / REF
+  채널 사용 가능 여부와 주파수를 공칭 Fs에 맞춰 확인하세요.
+lockin.complete_windows_missing_samples: 완료 윈도우 %{processed_windows}개 · 누락 샘플 %{missing_samples}개
+lockin.disabled: 비활성화됨
+lockin.display_bars_auto_scale_they_do_not_change_input: 화면 막대는 자동 축척되며 입력 감도를 바꾸지
+  않습니다. 주기적 Hann 피팅 + EMA 폴 2개. 물리적 REF / 타이밍은 검증되지 않았습니다.
+lockin.display_scale_only: '%{v} %{unit} · 화면 축척만 적용'
+lockin.ema_poles_settling_fundamental_only: EMA 폴 2개 · 10τ 안정화 · 기본 주파수만 사용
+lockin.experimental: 실험용
+lockin.experimental_input_reference: 실험용 · 입력 기준
+lockin.f_ref: f REF  %{hz_2}
+lockin.fixed_frequency: 고정 주파수
+lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: 주파수는 공칭 Fs의 0.45배 미만이어야 합니다
+  (%{rate} Hz)'
+lockin.fs_rms: ' FS RMS'
+lockin.gain: 이득  %{gain}
+lockin.input_failed: 입력 실패
+lockin.input_gap: 입력 간격
+lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: 입력 또는 계산 결과가 유한하지
+  않습니다. 유효한 측정값이 없습니다.
+lockin.input_samples_are_missing_the_filter_clears_and_settles: 입력 샘플이 누락되었습니다. 복구
+  후 필터가 초기화되고 다시 안정화됩니다.
+lockin.integration_samples: '적분: %{integration_samples}개 샘플'
+lockin.invalid_input: 유효하지 않은 입력
+lockin.lock_in_amplifier: Lock-in 증폭기
+lockin.measurement_details: 측정 세부 정보
+lockin.min_ref: 'REF 최소 '
+lockin.next_start_settings_changed_display_retains_captured_conditions: 다음 시작 설정이
+  변경되었습니다 · 화면에는 캡처 시 조건이 유지됩니다
+lockin.no_capture: 캡처 없음
+lockin.no_valid_reading_no_bar_marker_is_shown: 유효한 판독값이 없어 막대 마커를 표시하지 않습니다
+lockin.nominal_fs_hz_input_generation: 공칭 Fs %{sample_rate} Hz · 입력 세대 %{input_generation}
+lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: 물리적 REF와
+  타이밍은 아직 검증되지 않았습니다. 물리 오실레이터 출력이나 선택 가능한 하드웨어 감도는 없습니다.
+lockin.poles_n: τ %{s}   ·   폴 2개   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R, X 및 Y는 피크 진폭입니다. 양의 위상은 REF보다
+  앞섭니다. 필터는 고정된 EMA 폴 2개를 사용하며 유효 샘플로 10τ 후 안정화됩니다. 중지 상태에서 변경한 설정은 다음 시작 시 적용됩니다.
+lockin.ref: REF
+lockin.ref_ac_rms_sinusoid_fit: REF AC RMS %{fs} · 정현파 피팅 %{v}
+lockin.ref_and_signal_use_the_same_input_sample_clock: REF와 신호는 동일한 입력 샘플 클록을 사용합니다.
+lockin.ref_hint: 'REF 힌트 '
+lockin.ref_is_below_its_ac_rms_threshold_values_clear: REF가 AC RMS 기준보다 낮습니다. REF가
+  회복될 때까지 값이 지워집니다.
+lockin.ref_lost: REF 손실
+lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within: REF에는 윈도우당 3주기 이상,
+  정현파 피팅 98% 이상, 힌트 범위 내 주파수가 필요합니다.
+lockin.ref_unstable: REF 불안정
+lockin.ref_valid: REF 유효
+lockin.reference_filter: 기준 및 필터
+lockin.reference_validity: 기준 유효성
+lockin.samples: '%{n}개 샘플'
+lockin.select_sig_ref_channels_press_start_analysis_then_start: SIG / REF 채널을 선택하고
+  분석 시작을 누르세요. 입력이 중지된 경우 입력 시작도 누르세요.
+lockin.settling: 안정화 중
+lockin.settling_of: 안정화 중 · 10τ 중 %{progress}%
+lockin.sig: SIG
+lockin.sig_ch_ref_ch: SIG CH %{response_channel}   /   REF CH %{reference_channel}
+lockin.start_analysis: 분석 시작
+lockin.start_input_to_acquire_a_synchronous_sig_ref_window: 동기화된 SIG / REF 구간을 취득하려면
+  입력 시작을 누르세요.
+lockin.state_names.disabled: 비활성화됨
+lockin.state_names.missing: 누락
+lockin.state_names.non_finite: 유한하지 않음
+lockin.state_names.reference_lost: 기준 손실
+lockin.state_names.reference_unstable: 기준 불안정
+lockin.state_names.settling: 안정화 중
+lockin.state_names.unavailable: 사용 불가
+lockin.state_names.valid: 유효
+lockin.stop_analysis: 분석 중지
+lockin.time_constant_presets: 시간 상수 프리셋
+lockin.track_input_ref_hint: 입력 REF 추적 (힌트 ±10%)
+lockin.track_ref: REF 추적
+lockin.uncalibrated_fs: 비보정 · FS
+lockin.waiting_for_a_complete_synchronous_input_window: 완전한 동기 입력 구간을 기다리는 중입니다.
