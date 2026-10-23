@@ -4696,6 +4696,26 @@
         "source": "Y AXIS",
         "source_hash": "74022c1abdb3d772114e66a29bcb2dee7a2ea100bcaf5849fc4371616e2dc86b",
         "translation_hash": "2b88f304627e96137df3ce60e4c47d28254352c38fd5af37cbe49063f77c1d1d"
+      },
+      "lockin.amplitude_peak": {
+        "source": "Amplitude · peak",
+        "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+        "translation_hash": "4d3068db9ebe3f89f1c5f78465edfc890cb8c52755f78629de48a2f811cf76e5"
+      },
+      "lockin.in_phase_peak": {
+        "source": "In-phase · peak",
+        "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+        "translation_hash": "508b66828fe0cbf6c7bc39f2d0dbf20ed4fd3862658acbdc08ee689de862cfcb"
+      },
+      "lockin.phase_leads_ref": {
+        "source": "Phase · leads REF",
+        "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+        "translation_hash": "a85373790cc1eecb52e7fea4958307ceef7e3c15f1907d51bc9c8210c3d388fc"
+      },
+      "lockin.quadrature_peak": {
+        "source": "Quadrature · peak",
+        "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+        "translation_hash": "a06151a5a37363bca19ce21a4921a1d6081d7fc2448cf1a6952dc02d24a4e88e"
       }
     },
     "fr": {
