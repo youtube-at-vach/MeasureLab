@@ -12,6 +12,7 @@ from pathlib import Path
 import yaml
 
 from i18n import (
+    TASK,
     ENGLISH,
     METADATA,
     Catalog,
@@ -556,6 +557,56 @@ class RepositoryTests(unittest.TestCase):
         with self.assertRaisesRegex(InvalidCatalog, "no pending translation"):
             prepare(self.root, "ja", "io")
         self.assertEqual(set(self.root.rglob("*")), before)
+
+    def test_explicit_review_revises_only_selected_current_keys_and_computes_hashes(self):
+        self.translate()
+        self.write({".gitignore": "dist/\n"})
+        self.commit()
+        task = prepare(self.root, "ja", "common", ["common.ready"])
+        self.assertEqual([row["key"] for row in task["entries"]], ["common.ready"])
+        self.assertEqual(task["entries"][0]["translation"], "準備完了")
+        answers = json.loads((self.root / ANSWERS).read_text(encoding="utf-8"))
+        answers["entries"][0]["text"] = "準備済み"
+        self.save_answers(answers)
+        self.assertEqual(apply(self.root), 1)
+        current = self.catalogs()[2]
+        self.assertEqual(current.texts["ja"]["common.ready"], "準備済み")
+        self.assertEqual(current.records["ja"]["common.ready"]["translation_hash"], digest("準備済み"))
+        self.assertEqual(current.state("ja", "common.other"), "missing")
+        self.commit()
+        self.assertEqual(verify(self.root), (1, 0))
+
+    def test_explicit_review_rejects_invalid_selection_before_writing_a_task(self):
+        self.translate()
+        self.commit()
+        before = snapshot(self.root)
+        for keys in ([], ["common.ready", "common.ready"], ["common.other"], ["io.ready"], [None]):
+            with self.subTest(keys=keys), self.assertRaises(InvalidCatalog):
+                prepare(self.root, "ja", "common", keys)
+            self.assertEqual(snapshot(self.root), before)
+            self.assertFalse((self.root / TASK).exists())
+
+    def test_explicit_review_rejects_tampered_source_variables_and_outside_edits(self):
+        self.translate()
+        self.write({".gitignore": "dist/\n"})
+        self.commit()
+        task = prepare(self.root, "ja", "common", ["common.ready"])
+        answers = json.loads((self.root / ANSWERS).read_text(encoding="utf-8"))
+        before = snapshot(self.root)
+        answers["entries"][0]["text"] = "準備 %{extra}"
+        self.save_answers(answers)
+        with self.assertRaisesRegex(InvalidCatalog, "original named variables"):
+            apply(self.root)
+        self.assertEqual(snapshot(self.root), before)
+        task["entries"][0]["new_english"] = "Changed"
+        self.write({TASK: json.dumps(task)})
+        with self.assertRaisesRegex(InvalidCatalog, "base snapshot"):
+            apply(self.root)
+        task["entries"][0]["new_english"] = "Ready"
+        self.write({TASK: json.dumps(task)})
+        self.write({"locales/common/fr.yml": "_version: 1\ncommon.ready: Prêt\n"})
+        with self.assertRaisesRegex(InvalidCatalog, "mixes feature"):
+            apply(self.root)
 
 
 if __name__ == "__main__":

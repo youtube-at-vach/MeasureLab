@@ -391,6 +391,37 @@ def changed_keys(before: dict, after: dict) -> set[str]:
     return {key for key in before.keys() | after.keys() if before.get(key) != after.get(key)}
 
 
+def make_review(catalog: Catalog, locale: str, groups: list[str], keys: list[str], base: str) -> dict:
+    """Explicitly select existing, current translations for a one-group review."""
+    if (
+        len(groups) != 1
+        or not isinstance(keys, list)
+        or not keys
+        or any(not isinstance(key, str) for key in keys)
+        or len(keys) != len(set(keys))
+    ):
+        raise InvalidCatalog("review must select distinct existing keys in one group")
+    entries = []
+    for key in sorted(keys):
+        if key not in catalog.english or key.split(".")[0] != groups[0] or catalog.state(locale, key) != "current":
+            raise InvalidCatalog(f"review key must be current and in the selected group: {key}")
+        source = catalog.english[key]
+        entries.append(
+            dict(
+                key=key,
+                group=groups[0],
+                reasons=["review"],
+                old_english=source,
+                new_english=source,
+                variables=sorted(variables(source)),
+                translation=catalog.texts[locale][key],
+                source_hash=digest(source),
+                translated_source_hash=catalog.records[locale][key]["source_hash"],
+            )
+        )
+    return dict(version=1, base_revision=base, locale=locale, groups=groups, review_keys=sorted(keys), entries=entries)
+
+
 def check_scope(root: Path, base: str, old: Catalog, current: Catalog, task: dict | None) -> None:
     translated = {
         (locale, key)
@@ -427,7 +458,11 @@ def check_scope(root: Path, base: str, old: Catalog, current: Catalog, task: dic
         raise InvalidCatalog("translation task must select distinct groups")
     if any(group not in GROUPS for group in groups):
         raise InvalidCatalog("translation task contains unknown groups")
-    expected = make_diff(old, old, locale, groups, base)
+    expected = (
+        make_review(old, locale, groups, task["review_keys"], base)
+        if "review_keys" in task
+        else make_diff(old, old, locale, groups, base)
+    )
     if task != expected:
         raise InvalidCatalog("translation task does not match its base snapshot; re-extract before editing")
     allowed = {entry["key"] for entry in expected["entries"]}

@@ -1,6 +1,6 @@
 _version: 1
 common:
-  language_fallback: Untranslated text uses English. Instrument translation is in preparation.
+  language_fallback: Untranslated text uses English.
 common.acquiring_post_trigger_samples: "Acquiring post-trigger samples…"
 common.all_channels_off: "All channels OFF"
 common.all_scope_channels_off: "All Scope channels OFF"

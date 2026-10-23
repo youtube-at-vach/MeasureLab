@@ -19,6 +19,7 @@ from i18n import (
     git,
     load_catalog,
     make_diff,
+    make_review,
     read_json,
     revision,
     snapshot,
@@ -33,14 +34,18 @@ def json_text(value):
     return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
 
 
-def prepare(root: Path, locale: str, group: str) -> dict:
+def prepare(root: Path, locale: str, group: str, review_keys: list[str] | None = None) -> dict:
     if git(root, "status", "--porcelain", "--untracked-files=all").strip():
         raise InvalidCatalog("prepare requires a clean working tree; commit or preserve existing work first")
     base = revision(root, "HEAD")
     files = snapshot(root)
     catalog = load_catalog(files)
     check_calls(files, catalog)
-    task = make_diff(catalog, catalog, locale, [group], base)
+    task = (
+        make_review(catalog, locale, [group], review_keys, base)
+        if review_keys is not None
+        else make_diff(catalog, catalog, locale, [group], base)
+    )
     if not task["entries"]:
         raise InvalidCatalog(f"no pending translation keys in {locale}/{group}")
     answers = {
@@ -156,20 +161,23 @@ def main() -> int:
     prep = commands.add_parser("prepare", help="prepare one locale/group from clean HEAD")
     prep.add_argument("--locale", choices=LOCALES[1:], required=True)
     prep.add_argument("--group", choices=GROUPS, required=True)
+    prep.add_argument(
+        "--review-key", action="append", help="explicit current key to revise (repeatable, selected group only)"
+    )
     commands.add_parser("apply", help="validate answers, then write only scoped translations and hashes")
     commands.add_parser("verify", help="read-only check against the saved task base, including after committing")
     args = parser.parse_args()
     try:
         root = args.root.resolve()
         if args.command == "prepare":
-            task = prepare(root, args.locale, args.group)
+            task = prepare(root, args.locale, args.group, args.review_key)
             print(f"Prepared {len(task['entries'])} keys at {task['base_revision']}.")
             print(f"Edit only text fields in {ANSWERS}; null defers a key. Removed keys are cleaned by apply.")
         elif args.command == "apply":
             print(f"Applied {apply(root)} translations. Review the diff, then run translate.py verify.")
         else:
             completed, deferred = verify(root)
-            print(f"Translation task verified: {completed} current, {deferred} deferred; deferred keys use English.")
+            print(f"Translation task verified: {completed} current, {deferred} awaiting translation.")
     except (InvalidCatalog, OSError, ValueError, TypeError, KeyError, RecursionError) as error:
         print(f"translation error: {error}", file=sys.stderr)
         return 1
