@@ -27,11 +27,10 @@ spectrogram.fft_overlap: FFT-ÜBERLAPPUNG
 spectrogram.frequency_hz: Frequenz / Hz
 spectrogram.frequency_scale: FREQUENZSKALA
 spectrogram.from: Von
-spectrogram.gestures: 'Spectrogram: Mausrad zum Zoomen der Frequenz; ziehen zum Verschieben
-  von Frequenz/Zeit; Umschalt+Mausrad oder Mausrad auf der Zeitachse zum Scrollen
-  des Verlaufs; klicken, um einen Frame zu halten und auszuwählen; Cursorlinie ziehen,
-  um sie zu verschieben; „Live“ gibt den Verlauf frei; Doppelklick setzt Frequenz-/Zeitposition
-  zurück.'
+spectrogram.gestures: 'Mausrad: Frequenz zoomen. Ziehen: Frequenz/Zeit verschieben.
+  Umschalt+Mausrad oder Mausrad auf der Zeitachse: Verlauf scrollen. Klick: Frame
+  halten und auswählen. Cursorlinie ziehen: verschieben. Live: Halten beenden. Doppelklick:
+  Frequenz-/Zeitposition zurücksetzen.'
 spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: Größere Überlappung
   erzeugt mehr FFT-Fenster und verbraucht die Verlaufskapazität schneller.
 spectrogram.history_available_s_unavailable_time_stays_blank: 'Verlauf verfügbar:
