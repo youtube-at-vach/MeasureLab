@@ -1,0 +1,97 @@
+_version: 1
+io.amplitude: AMPLITUDE
+io.applies_to_both_while_stopped_held_results_keep_their: Aplica-se a ambos enquanto
+  parados. Resultados retidos mantêm sua taxa.
+io.audio_input: Entrada de áudio
+io.audio_input_no_device_selected: Entrada de áudio · nenhum dispositivo selecionado
+io.audio_stream_stopped_check_device_connection_and_microphone_permission: Fluxo de
+  áudio parado. Verifique a conexão do dispositivo e a permissão do microfone; depois
+  reinicie.
+io.available_with_the_internal_loopback_output_device: Disponível com o dispositivo
+  de saída loopback interno.
+io.captured_readout_condition: CONDIÇÃO DA LEITURA CAPTURADA
+io.ch: '%{channels} canais · %{label}'
+io.ch_gain: Ganho CH 2
+io.ch_phase_gain: FASE / GANHO CH 2
+io.channel_unavailable_in_the_current_input: Canal indisponível na entrada atual
+io.channels_pcm: CANAIS / PCM
+io.default: '%{name} (padrão)'
+io.degrees: graus
+io.demo_harmonics: Seno + harmônicos
+io.demo_signal_qa: Sinal de demonstração (QA)
+io.demo_square: Onda quadrada limitada em banda
+io.device: DISPOSITIVO
+io.device_default: Padrão do dispositivo
+io.device_default_khz: Padrão do dispositivo (%{sample_rate} kHz)
+io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Sinais senoidais sem ruído
+  e de amplitude igual para XY: em fase, quadratura ou fase oposta.'
+io.frequency: FREQUÊNCIA
+io.fs_peak: Pico FS
+io.gain: Ganho
+io.generator_input_stopped_check_output_status_stop_input_and: Entrada do Generator
+  parada. Verifique o status da saída, pare a entrada e redefina a saída antes de
+  reiniciar.
+io.generator_loopback: Loopback do Generator
+io.generator_loopback_out: Loopback do Generator · OUT 1 / 2
+io.hz_2: '%{r} Hz'
+io.hz_3: '%{rate} Hz'
+io.hz_4: '%{rate} Hz · %{format}'
+io.input: Entrada
+io.input_channel: CANAL DE ENTRADA
+io.input_output_hz: 'Entrada: %{r} · Saída: %{rate} Hz'
+io.input_source: 'Fonte de entrada: %{source}'
+io.internal_loopback: Loopback interno
+io.internal_source_no_audio_output: Fonte interna · sem saída de áudio
+io.khz: '%{rate} kHz'
+io.no_common_rate_for_these_devices_and_output_format: Não há uma taxa comum para
+  estes dispositivos e o formato de saída. Use taxas de amostragem separadas.
+io.no_input_device: Nenhum dispositivo de entrada
+io.noise: Ruído
+io.noise_2: RUÍDO
+io.noise_amplitude_in_digital_full_scale_fs: Amplitude de ruído em escala digital
+  completa (FS).
+io.offset: Offset
+io.out_ch_out_ch_start_input_and_output_separately: OUT 1 → CH 1 · OUT 2 → CH 2 ·
+  Inicie a entrada e a saída separadamente.
+io.output: Saída
+io.output_device: DISPOSITIVO DE SAÍDA
+io.physical_unit_e_g_v_a_pa: UNIDADE FÍSICA (POR EX., V, A, Pa)
+io.queue_calibration: Enfileirar calibração
+io.queue_uncalibrated_fs: Enfileirar FS não calibrado
+io.queued_definitions_apply_on_the_next_start_source_device: Definições enfileiradas
+  se aplicam no próximo início. Selecionar/atualizar a fonte ou dispositivo limpa
+  a fila. Os coeficientes são fornecidos por você; as condições de referência descrevem
+  sua validade.
+io.queued_for_next_start: ENFILEIRADO PARA O PRÓXIMO INÍCIO
+io.rate_changes_apply_on_start_held_results_keep_their: Alterações de taxa se aplicam
+  ao iniciar. Resultados retidos mantêm sua taxa.
+io.reference_conditions: CONDIÇÕES DE REFERÊNCIA
+io.reference_device_range_date_uncertainty: Referência, dispositivo/faixa, data, incerteza
+io.refresh_devices: Atualizar dispositivos
+io.sample_rate: TAXA DE AMOSTRAGEM
+io.sample_rate_channels_pcm: TAXA DE AMOSTRAGEM / CANAIS / PCM
+io.sample_rate_input_output: TAXA DE AMOSTRAGEM · ENTRADA + SAÍDA
+io.scope_readouts_and_spectrum_use_y_gain_fs_offset: Leituras de Scope e Spectrum
+  usam y = ganho × FS + offset. Remover CC no Spectrum cancela o offset. Traço/disparo
+  do Scope, Spectrogram e eixos XY usam FS.
+io.select_common_rate: Selecionar taxa comum
+io.separate_sample_rates: Taxas de amostragem separadas
+io.signal_changes_apply_when_input_restarts_captured_samples_stay: Alterações de sinal
+  se aplicam quando a entrada reiniciar. Amostras capturadas permanecem retidas.
+io.software_loopback: Loopback de software
+io.source: FONTE
+io.start_input: ▶  Iniciar entrada
+io.start_input_demo: ▶  Iniciar entrada (demo)
+io.start_or_stop_the_shared_input_for_all_instruments: 'Inicie ou pare a entrada compartilhada
+  de todos os instrumentos; a saída é independente. Atalho: Espaço'
+io.start_stop_is_always_in_the_top_bar: Iniciar / parar fica sempre na barra superior.
+io.stop_input: ■  Parar entrada
+io.stop_input_and_output_and_select_a_supported_common: Pare a entrada e a saída e
+  selecione uma taxa comum compatível.
+io.stop_input_and_output_to_change_the_device_or: Pare a entrada e a saída para alterar
+  o dispositivo ou formato.
+io.supported_device_rates_up_to_khz: Taxas de dispositivo compatíveis · até 768 kHz
+io.unavailable: Indisponível
+io.unit: unidade
+io.unit_fs: unidade/FS
+io.waveform: FORMA DE ONDA
