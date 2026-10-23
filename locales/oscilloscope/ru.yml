@@ -1,0 +1,133 @@
+_version: 1
+oscilloscope.acquiring_post_trigger: Захват посттриггерного участка
+oscilloscope.acquisition: ЗАХВАТ
+oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: Захваченное или
+  откалиброванное значение не является конечным; корректное числовое показание отсутствует
+oscilloscope.auto: Авто
+oscilloscope.auto_free: Авто / свободный режим
+oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: Автоматически
+  настроить шкалу времени, амплитуду и триггер для периодического сигнала
+oscilloscope.autoset: Автонастройка
+oscilloscope.autoset_frequency: 'Автонастройка: %{frequency} Hz по необработанным
+  пересечениям'
+oscilloscope.autoset_held: Амплитуда удерживаемого захвата подогнана; время/триггер
+  применятся при следующем запуске (%{frequency} Hz)
+oscilloscope.capture_once_on_the_next_trigger_crossing: Выполнить захват один раз
+  при следующем пересечении триггера
+oscilloscope.centre_offset: Смещение центра
+oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
+oscilloscope.ch_2: CH%{index}%{else}
+oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
+
+  %{index_2}
+
+  Выберите, чтобы изменить этот канал в настройках Scope. Включение/выключение отображения
+  независимо.
+
+  %{display}'
+oscilloscope.channel_out_of_range: — · канал вне диапазона
+oscilloscope.cursor: Курсор %{index} · %{join}
+oscilloscope.display: Отображение
+oscilloscope.drag_the_slider_or_value_to_adjust_double_click: Перетащите ползунок
+  или значение для настройки. Дважды щёлкните значение, чтобы ввести число.
+oscilloscope.edge: Фронт
+oscilloscope.edge_names.falling: Спадающий
+oscilloscope.edge_names.free: Свободный
+oscilloscope.edge_names.rising: Нарастающий
+oscilloscope.falling_edge: Спадающий фронт
+oscilloscope.fit_amplitude: Подогнать амплитуду
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Подогнать необработанный
+  пик выбранного канала и центрировать смещение
+oscilloscope.free_run: Свободный запуск
+oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
+oscilloscope.fs_div: '%{fs_per_div} FS/div'
+oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = полная шкала · Fs
+  = частота дискретизации · div = деление сетки
+oscilloscope.guides: Направляющие
+oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: УСЛОВИЯ
+  УДЕРЖИВАЕМОГО ЗАХВАТА СОХРАНЕНЫ · настройки измерения из очереди применятся при
+  следующем запуске
+oscilloscope.horizontal: ГОРИЗОНТАЛЬНЫЕ
+oscilloscope.input_source: Источник входа
+oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
+  · %{reading}
+
+  Интервал %{start}..%{end} (конец не включён) · поколение %{input_generation} · номинал
+  %{sample_rate} Hz. %{channel_2}. Форма сигнала и триггер используют необработанный
+  FS.'
+oscilloscope.invalid_value: — · недопустимое значение
+oscilloscope.level: Уровень
+oscilloscope.markers: Маркеры
+oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted: 'Маркеры: только
+  маркеры T. Направляющие: маркеры T и пунктирные направляющие времени/уровня. Выкл.:
+  скрыть оба типа. Горизонтальная направляющая отображается при редактировании уровня
+  в любом режиме.'
+oscilloscope.mode_names.auto: Авто
+oscilloscope.mode_names.normal: Обычный
+oscilloscope.mode_names.single: Одиночный
+oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
+oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · форма сигнала:
+  необработанный FS'
+oscilloscope.no_acquired_samples_for_this_channel_and_interval: Для этого канала и
+  интервала нет захваченных отсчётов
+oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
+  · Нет захваченных отсчётов
+
+  Условия входа не захвачены. Форма сигнала и триггер используют необработанный FS.'
+oscilloscope.no_samples_in_this_interval: — · в этом интервале нет отсчётов
+oscilloscope.normal: Обычный
+oscilloscope.off: Выкл.
+oscilloscope.out_of_range: Вне диапазона
+oscilloscope.outside_input_channel_range: ' · вне диапазона входного канала'
+oscilloscope.outside_input_channel_range_2: '%{channel} · вне диапазона входного канала'
+oscilloscope.outside_sweep: '%{index} #%{sample} · вне развёртки'
+oscilloscope.partial_missing_samples: 'Частично · отсутствует отсчётов: %{scope_missing}'
+oscilloscope.position: Положение
+oscilloscope.reset_time_position: Сбросить положение времени
+oscilloscope.rising_edge: Нарастающий фронт
+oscilloscope.rms_p_p: RMS %{rms} %{unit} · от пика до пика %{peak_to_peak} %{unit}
+oscilloscope.rms_p_p_peak_acquired_samples: 'RMS %{rms} %{unit} · от пика до пика
+  %{peak_to_peak} %{unit} · пик %{peak} %{unit} · захвачено отсчётов: %{samples}'
+oscilloscope.show_ch_waveform_keeps_selection_and_measurements: Показать форму сигнала
+  CH%{index} (сохранить выбор и измерения)
+oscilloscope.single: Одиночный
+oscilloscope.single_complete: Одиночный захват завершён
+oscilloscope.source: Источник
+oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
+
+  %{scope_trigger_marker_status} · источник %{channel} · уровень %{level} необработанный
+  FS. Уровень соответствует вертикальному диапазону исходного канала, который может
+  отличаться от оси выбранного канала.'
+oscilloscope.spectrogram_time_hz_cursor: Курсор времени / Hz в Spectrogram
+oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Запустите вход и
+  дождитесь одиночного захвата по триггеру
+oscilloscope.start_single_capture: Запустить одиночный захват
+oscilloscope.t_markers_captured: 'Маркеры T: захвачено'
+oscilloscope.t_markers_settings_only: 'Маркеры T: только настройки'
+oscilloscope.t_markers_top_ms_right_level: 'Маркеры T: сверху = 0 ms · справа = уровень'
+oscilloscope.time_scale: Шкала времени
+oscilloscope.time_trigger_edits_apply_on_next_start: Изменения времени/триггера применятся
+  при следующем запуске
+oscilloscope.trigger: ТРИГГЕР
+oscilloscope.trigger_settings: Настройки триггера
+oscilloscope.trigger_source_unavailable: Источник триггера недоступен
+oscilloscope.triggered: Запущен по триггеру
+oscilloscope.update_even_without_a_trigger_crossing: Обновлять, даже если пересечения
+  триггера нет
+oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: Обновлять при
+  пересечениях триггера; удерживать последний захват во время ожидания
+oscilloscope.vertical_ch: ВЕРТИКАЛЬНЫЙ · CH%{index}
+oscilloscope.vertical_range: Вертикальный диапазон
+oscilloscope.waiting_for_sweep: '%{index} · ожидание развёртки'
+oscilloscope.waiting_for_trigger: Ожидание триггера
+oscilloscope.waiting_previous_capture: Ожидание · предыдущий захват
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale: 'Колесо: шкала времени
+  · Shift+колесо: шкала выбранного канала'
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double: '%{display}
+
+  %{display_2}
+
+  Колесо: шкала времени · Shift+колесо: шкала выбранного канала · двойной щелчок:
+  сбросить вид'
+oscilloscope.zero_level: Нулевой уровень
+oscilloscope.zero_offset: Нулевое смещение

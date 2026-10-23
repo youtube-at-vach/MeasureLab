@@ -1,0 +1,189 @@
+_version: 1
+spectrum.advanced_analysis_diagnostics: Расширенный анализ / диагностика
+spectrum.amplitude: Амплитуда
+spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum: Изменения
+  анализа применяются при перезапуске входа. Захваченный Spectrum остаётся удерживаемым.
+spectrum.auto: Авто
+spectrum.average: Среднее
+spectrum.averaging: УСРЕДНЕНИЕ
+spectrum.avg_off: СРЕДНЕЕ ВЫКЛ.
+spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum: Мощность полосы
+  недоступна · окно или диапазон недопустимы либо сумма нечисловая
+spectrum.band_rms: RMS полосы %{rms} %{unit}
+spectrum.before_input_began_no_stft_frame: До запуска входа · кадр STFT отсутствует
+spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin: Амплитуда бина · 0 dBFS = синус
+  с пиковым значением 1 FS в центре бина. Когерентное усиление окна скорректировано;
+  для тонов вне центра бина возникает scalloping-потеря.
+spectrum.bottom: Снизу
+spectrum.calibration_rev: Калибровка %{id} · ред. %{revision}
+spectrum.captured_fft_source_units_and_averaging_are_read_only: Захваченные FFT, источник,
+  единицы и усреднение доступны только для чтения. Обычный Spectrum работает независимо.
+spectrum.ch: CH%{index}
+spectrum.ch_input: CH%{shown_spectrum_index} · вход %{channel} · %{db_unit}
+spectrum.ch_input_select_for_peak_cursor_and_export_display: 'CH%{index} · вход %{source}
+  · %{db_unit}
+
+  Выберите для пика/курсора и экспорта. Включение/выключение отображения независимо.
+  При повторном включении начинается новое усреднение.'
+spectrum.choose_which_cursor_the_next_spectrum_click_or_drag: Выберите курсор, который
+  установит следующий щелчок или перетаскивание в Spectrum; выбор A или B не устанавливает
+  курсор. Оба курсора показывают ближайший бин FFT выбранного канала.
+spectrum.clear_both_frequency_cursors_shared_by_spectrum_and_spectrogram: Очистить
+  оба частотных курсора, общих для Spectrum и Spectrogram. Временные курсоры, выбранные
+  кадры Spectrogram, точки XY Free и захваченные данные сохраняются.
+spectrum.clear_frequency: Очистить частоту
+spectrum.clear_hold: Очистить удержание
+spectrum.click_drag_the_plot_to_place_a_cursor: Щёлкните или перетащите график, чтобы
+  установить курсор
+spectrum.continuous_hop_ms: Непрерывно · шаг %{sample_rate} ms
+spectrum.continuous_process_every_window: Непрерывно · обрабатывать каждое окно
+spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: 'Курсор %{index}
+  · ближайший бин: %{value} %{linear_unit}. Последнее окно: отсчёты %{start}..%{end}
+  (конец не включён), CH %{channel}, %{sample_rate} Hz, точек %{size}, %{name}, %{name_2}.
+  EMA α = 1/%{averages}; обработано окон: %{updates}, огибающая вклада %{start_2}..%{end_2}
+  (экспоненциальные веса). Поколение входа %{input_generation}; отсутствует окон:
+  %{missing_windows}.%{times}'
+spectrum.custom_frequency_range: Пользовательский диапазон частот
+spectrum.ema: EMA 1/%{averages}
+spectrum.ema_settling: Установление EMA
+spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: Спектральная
+  плотность энергии · энергия на Hz. При выборе ESD для одиночного переходного сигнала
+  задаются окно «Прямоугольное», среднее ВЫКЛ. и удаление постоянной составляющей
+  ВЫКЛ.
+spectrum.exponential_average_of_linear_power_off_uses_the_latest: Экспоненциальное
+  среднее линейной мощности. При выключении используется последнее обработанное окно.
+spectrum.exponential_power_average_approximately_settled_after_weight_windows: Экспоненциальное
+  усреднение мощности · α = 1/%{averages}. Примерно 95% установления после окон весом
+  3 ×.
+spectrum.export_reason: Экспорт истории Spectrum недоступен. JSON / CSV / PNG только
+  Scope остаются доступны после остановки входа; обычный Spectrum восстанавливает
+  комбинированный экспорт.
+spectrum.f_hz: Δf %{bin_hz} Hz
+spectrum.f_hz_l_db: Δf %{frequency_hz} Hz · ΔL %{delta_level} dB
+spectrum.f_hz_rbw_hz_window_ms_processed_windows: 'Δf %{bin_hz} Hz · RBW %{rbw_hz}
+  Hz
+
+  Окно %{sample_rate} ms · обработано окон: %{updates}'
+spectrum.fft: FFT
+spectrum.fft_edits_apply_on_next_start_captured_results_retain: Изменения FFT применяются
+  при следующем запуске; захваченные результаты сохраняют свои условия.
+spectrum.fft_end_acquired_end: 'Конец FFT #%{end} · конец захвата #%{end_2}'
+spectrum.filling_window_samples: Заполнение окна · %{filled_samples} / %{size} отсчётов
+spectrum.fit_the_entire_transient_inside_one_fft_window_trigger: Разместите весь переходный
+  сигнал в одном окне FFT. Захват по триггеру не связан.
+spectrum.frequency_scale: ЧАСТОТА / ШКАЛА
+spectrum.from: От
+spectrum.full_nyquist: Полная / Найквиста
+spectrum.history_read_only: История · только чтение
+spectrum.hz_ch_samples: '%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}
+
+  CH %{channel} · отсчёты %{start}..%{end}'
+spectrum.hz_no_complete_window: '%{index} %{frequency} Hz · полное окно отсутствует'
+spectrum.hz_power: '%{first_hz}–%{last_hz} Hz · мощность %{power} %{power_unit}'
+spectrum.input_source: Источник входа
+spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power: Недопустимое окно
+  FFT · нечисловой отсчёт или откалиброванная мощность
+spectrum.invalid_stft_window_nonfinite_input: Недопустимое окно STFT · нечисловой
+  вход
+spectrum.json_csv_png_use_the_selected_trace: JSON / CSV / PNG используют выбранную
+  трассу.
+spectrum.latest_observe_at_a_limited_rate: Последнее · наблюдение с ограниченной частотой
+spectrum.latest_target_ms: Последнее · целевое значение %{observation_ms} ms
+spectrum.level_axis: Ось уровня
+spectrum.linear_hz: Линейная Hz
+spectrum.live_observe_newest_window: Активно · наблюдать последнее окно
+spectrum.live_target_ms: Активно · целевое значение %{observation_ms} ms
+spectrum.live_up_to_updates_s: Активно · до 60 обновлений/с
+spectrum.log_hz: Логарифмическая Hz
+spectrum.manual: Вручную
+spectrum.measurement_ch: ИЗМЕРЕНИЕ · CH%{index}
+spectrum.missing_input_invalid_windows_missed_observations: '%{cadence} · отсутствующие
+  входные отсчёты %{input_missing} · недопустимых окон %{invalid_windows} · пропущенных
+  наблюдений %{missed_observations}'
+spectrum.mixed_level_references_units_shown_per_channel: Смешанные уровни отсчёта
+  · единицы указаны для каждого канала
+spectrum.mode_names.continuous: Непрерывно
+spectrum.mode_names.latest: Последнее
+spectrum.mode_names.live: Активно
+spectrum.newest_complete_window_only_intermediate_windows_can_be_skipped: Только последнее
+  полное окно; промежуточные окна могут пропускаться. Не менее 33 ms / N/4 для малых
+  FFT и 100 ms для больших. Захват переходных сигналов не гарантируется.
+spectrum.no_input: Нет входа
+spectrum.no_stft_frame_gap_unavailable_or_different_generation: Нет кадра STFT · разрыв,
+  недоступность или другое поколение
+spectrum.normal_spectrum: Обычный Spectrum
+spectrum.observe_the_newest_complete_window_with_a_processing_time: Наблюдать последнее
+  полное окно в пределах бюджета времени обработки. Среднее и удержание обновляются
+  для каждого наблюдаемого окна независимо от отрисовки. Для обработки каждого окна
+  N/4 используйте «Непрерывно».
+spectrum.off: ВЫКЛ.
+spectrum.one_complete_window_s_continuous_step_s_n: 'Одно полное окно: %{sample_rate}
+  s · непрерывный шаг: %{sample_rate_2} s (N/4)'
+spectrum.peak_bin_hz: Пиковый бин %{frequency} Hz
+spectrum.peak_hold: Удержание пика
+spectrum.peak_markers: Маркеры пиков
+spectrum.place_cursor: 'Установить курсор:'
+spectrum.place_frequency_cursor: 'Установить частотный курсор:'
+spectrum.points: '%{size} точек'
+spectrum.power_in_band: Мощность в полосе
+spectrum.power_spectral_density_power_per_hz_with_window_noise: Спектральная плотность
+  мощности · мощность на Hz с коррекцией полосы шума окна
+spectrum.psd: PSD
+spectrum.pt_fs_hz_f_hz: '%{size} pt · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz}
+  Hz · %{averaging}'
+spectrum.quantity.amplitude: Амплитуда бина
+spectrum.quantity.esd: Переходный сигнал (ESD)
+spectrum.quantity.psd: Спектральная плотность мощности
+spectrum.rectangular_recommended_other_windows_attenuate_energy_without_correction: 'Рекомендуется
+  прямоугольное окно: другие окна ослабляют энергию без коррекции.'
+spectrum.remove_dc_offset: Удалить постоянную составляющую
+spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: 'Запрошено %{requested_hz}–%{requested_hz_2}
+  Hz, включая центры бинов %{first_bin}..=%{last_bin}. Сумма f64 PSD × Δf; полный
+  вес для DC/Найквиста. CH %{channel}, поколение %{input_generation}, обработано окон:
+  %{updates}, огибающая вклада %{start}..%{end}. Потери входа %{dropped}; отсутствует
+  окон: %{missing_windows}. Средний квадрат окна после необязательного удаления постоянной
+  составляющей; не интервал наблюдения Scope.'
+spectrum.reset: Сбросить
+spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: Сбросить усреднение
+  и удержание пиков для всех трасс Spectrum
+spectrum.select_a_time_frame_in_spectrogram: Выбрать временной кадр в Spectrogram
+spectrum.show_ch_spectrum: Показать Spectrum CH%{index}
+spectrum.span: Диапазон %{hz}
+spectrum.span_2: Диапазон %{span_hz}
+spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated: История Spectrogram
+  · амплитуда бина · FS / dBFS · СРЕДНЕЕ ВЫКЛ. · не откалибровано
+spectrum.spectrum_analyzer: Анализатор Spectrum
+spectrum.spectrum_and_scope_xy_have_independent_sample_intervals_fft: Spectrum и Scope/XY
+  используют независимые интервалы отсчётов. Время обработки FFT и возраст окна —
+  разные условия.
+spectrum.stopping_finishing_spectrum_windows: Остановка · завершение окон Spectrum
+spectrum.subtracts_each_window_s_mean_before_windowing_in_esd: Перед оконной функцией
+  вычитается среднее каждого окна. Для ESD это меняет энергию переходного сигнала
+  и её зависимость от длины окна.
+spectrum.sum_of_f64_esd_f_over_all_bins_including: Сумма f64 ESD × Δf по всем бинам,
+  включая DC/Найквиста. Энергия оконной формы сигнала после необязательного удаления
+  постоянной составляющей. Усреднение формирует EMA энергий окон, а не накопленную
+  энергию. Номинальные часы отсчётов входа.
+spectrum.time: Время %{i}
+spectrum.time_2: Время %{i} · %{i_2}
+spectrum.time_a_b_from_spectrogram: Время A/B из Spectrogram
+spectrum.time_end_s_ch_samples_hz_pt_dc: Время %{i} · конец %{sample_rate} s · CH
+  %{channel} · отсчёты %{start}..%{end} · %{sample_rate_2} Hz · %{size} pt · %{name}
+  · %{name_2} · DC %{retained}
+spectrum.time_nearest_bin_acquired_samples_hz_points_no_average: Время %{selected}
+  · ближайший бин %{value} %{linear_unit} · захваченные отсчёты %{start}..%{end} ·
+  %{sample_rate} Hz · точек %{size} · %{name} · %{name_2} · без усреднения и калибровки
+spectrum.to: До
+spectrum.to_uses_nyquist_inclusive_bin_centres_whole_bins_band: До = 0 означает частоту
+  Найквиста. Включены центры бинов; только целые бины. Изменение полосы считывает
+  удерживаемую PSD без сброса усреднения.
+spectrum.to_uses_nyquist_narrow_ranges_show_individual_bins: До = 0 означает частоту
+  Найквиста. В узких диапазонах показаны отдельные бины.
+spectrum.top: Сверху
+spectrum.update_mode: РЕЖИМ ОБНОВЛЕНИЯ
+spectrum.weight: Вес %{count}
+spectrum.weight_2: Вес %{average_weight}
+spectrum.window: ' · окно %{index} %{outside}'
+spectrum.window_duration_available_after_input_starts: Длительность окна доступна
+  после запуска входа
+spectrum.window_energy_s: Энергия окна %{spectrum_energy} %{power_unit}·s

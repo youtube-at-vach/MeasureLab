@@ -1,0 +1,60 @@
+_version: 1
+xy.amplitude_range: Диапазон амплитуды
+xy.auto_no_crossing: ' · Авто (пересечений нет)'
+xy.b_a_x_y_fs: B−A ΔX %{delta} · ΔY %{delta_2} FS
+xy.cursors: КУРСОРЫ
+xy.fix_x_y_amplitudes_independently_of_the_moving_trace: Зафиксировать амплитуды X/Y
+  независимо от движущейся трассы. Измерять ΔX и ΔY.
+xy.follow_a_real_sample_at_a_fixed_time_offset: Следовать за реальным отсчётом с постоянным
+  временным смещением от триггера XY. Используются настройки триггера Scope.
+xy.free: Свободный
+xy.free_click_or_drag_to_fix_x_y_amplitudes: 'Свободный режим: щёлкните или перетащите,
+  чтобы зафиксировать амплитуды X/Y. A/B измеряют ΔX и ΔY независимо от движущейся
+  трассы. Позиции сохраняются при переключении в Trace Snap.'
+xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: Свободный режим фиксирует амплитуды
+  X/Y и показывает ΔX/ΔY. Позиции курсоров сохраняются при смене режима.
+xy.free_outside_plot: Свободный · вне графика
+xy.free_run_moving_reference: ' · свободный запуск (движущийся эталон)'
+xy.input_source: Источник входа
+xy.ms_samples: '%{sample_rate} ms · отсчёты %{start}..%{end}%{else}%{auto_no_crossing}'
+xy.observation: НАБЛЮДЕНИЕ
+xy.observation_window: Окно наблюдения
+xy.outside_xy_window_or_unavailable: '%{index} · за пределами окна XY или недоступно'
+xy.point_limit: ' · лимит точек'
+xy.reset_xy_scales: Сбросить шкалы XY
+xy.shared_with_scope: Общие со Scope
+xy.source_changes_apply_on_start_held_xy_keeps_its: Изменения источника применяются
+  при запуске. Удерживаемый XY сохраняет каналы.
+xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
+xy.trace_snap: Trace Snap
+xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Trace Snap следует за отсчётом
+  относительно триггера. Авто/свободный режим может перемещать маркер; «Стоп» фиксирует
+  его.
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: 'Trace Snap: выбирает ближайшую
+  фактическую пару отсчётов назначенных каналов X/Y и сохраняет её смещение от триггера
+  XY. Используются источник, фронт и уровень триггера Scope. Если пересечения нет,
+  эталон перемещается вместе с последним окном. Для совпадающих точек выбирается последний
+  отсчёт; «Стоп» фиксирует захват.'
+xy.trigger: ТРИГГЕР
+xy.triggered: ' · Запущен по триггеру'
+xy.up_to_real_sample_pairs_longer_windows_show_the: До %{xy} реальных пар отсчётов;
+  в длинных окнах показан последний участок.
+xy.waiting_for_sample_pairs: Ожидание пар отсчётов…
+xy.x_axis: ОСЬ X
+xy.x_fs_div_y_fs_div: 'X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2}
+  · %{y_fs_per_div} FS/div'
+xy.x_fs_y_fs: X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS
+xy.x_fs_y_fs_2: '%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS
+
+  %{detail}'
+xy.x_y_use_the_same_input_frame_equal_axis: X/Y используют один кадр входа. Одинаковые
+  масштабы осей сохраняют окружности на квадратном графике.
+xy.xy_free_cursor: XY · свободный курсор
+xy.xy_lissajous: XY / Лиссажу
+xy.xy_requires_at_least_two_input_channels: Для XY требуется как минимум два входных
+  канала.
+xy.xy_requires_two_input_channels: Для XY нужны два входных канала
+xy.xy_trace_snap_cursor: XY · курсор Trace Snap
+xy.xy_unavailable_assigned_channel_missing: 'XY недоступен: назначенный канал отсутствует'
+xy.xy_unavailable_mono_input: 'XY недоступен: монофонический вход'
+xy.y_axis: ОСЬ Y
