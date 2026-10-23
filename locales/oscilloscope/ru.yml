@@ -35,9 +35,9 @@ oscilloscope.edge_names.falling: Спадающий
 oscilloscope.edge_names.free: Свободный
 oscilloscope.edge_names.rising: Нарастающий
 oscilloscope.falling_edge: Спадающий фронт
-oscilloscope.fit_amplitude: Подогнать амплитуду
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Подогнать необработанный
-  пик выбранного канала и центрировать смещение
+oscilloscope.fit_amplitude: Подогнать масштаб
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Подогнать вертикальный
+  масштаб под необработанный пик выбранного канала и сбросить смещение в ноль.
 oscilloscope.free_run: Свободный запуск
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
