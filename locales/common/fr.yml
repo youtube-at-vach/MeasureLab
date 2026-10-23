@@ -136,8 +136,7 @@ common.invalid_value: valeur invalide
 common.keep_held_result_as_reference: Conserver le résultat maintenu comme référence
 common.known_sine_gain_phase_delay_noise_dut_common_input: Sinusoïde connue → gain
   / phase / retard / bruit DUT → entrée commune. Les conditions s’appliquent au démarrage.
-common.language_fallback: Le texte non traduit s’affiche en anglais. La traduction
-  des instruments est en préparation.
+common.language_fallback: Le texte non traduit s’affiche en anglais.
 common.last_observed_output_nominal_hz_generation_revision_next_output: 'Dernière
   sortie observée : %{label} | nominale %{nominal_sample_rate} Hz | %{pcm_label} |
   %{state} | génération %{output_generation} révision %{revision} | prochain échantillon
