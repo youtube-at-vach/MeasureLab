@@ -98,7 +98,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
   %{scope_trigger_marker_status} · Quelle %{channel} · Pegel %{level} rohes FS. Der
   Pegel folgt dem Vertikalbereich des Quellkanals, der sich von der Achse des ausgewählten
   Kanals unterscheiden kann.'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · Zeit-/Hz-Cursor
+oscilloscope.spectrogram_time_hz_cursor: Zeit-/Frequenzcursor
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Eingang starten
   und auf eine einzelne getriggerte Erfassung warten
 oscilloscope.start_single_capture: Einzelerfassung starten
