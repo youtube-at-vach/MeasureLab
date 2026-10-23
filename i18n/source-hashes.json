@@ -4550,7 +4550,7 @@
       "xy.input_source": {
         "source": "Input source",
         "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
-        "translation_hash": "f149355cf7da6dc3648c6fc88ed4c370da8e85d854ba4dab28e51eed6ae2b242"
+        "translation_hash": "bd87e0c594d988f4808ad287ec9dfe544627eb2711f5d6767354156d9eea4d09"
       },
       "xy.ms_samples": {
         "source": "%{sample_rate} ms · samples %{start}..%{end}%{else}%{auto_no_crossing}",
@@ -4590,7 +4590,7 @@
       "xy.source_changes_apply_on_start_held_xy_keeps_its": {
         "source": "Source changes apply on Start. Held XY keeps its channels.",
         "source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89",
-        "translation_hash": "57e155b258346978d43c9e1d7af46575ec747bc404e86dbcdfda8d1c1e4bcf22"
+        "translation_hash": "c4d06af61c2ca9f845de87a7a1092f33e5e364674f570c5a217f8b1f0541462d"
       },
       "xy.t_ms": {
         "source": "T%{sample_rate} ms · #%{sample}",
@@ -4610,7 +4610,7 @@
       "xy.trace_snap_selects_the_nearest_actual_pair_from_the": {
         "source": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
         "source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621",
-        "translation_hash": "99c6fc780bac4adc7af90ddccd524925e399360a3c8ee06d6710f2512c5bdfe5"
+        "translation_hash": "e69600e4df4851a5e026274f3fbf6c31a162b4c6d890f71a33ffe420b123e745"
       },
       "xy.trigger": {
         "source": "TRIGGER",

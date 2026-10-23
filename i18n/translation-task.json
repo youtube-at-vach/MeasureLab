@@ -1,31 +1,19 @@
 {
   "version": 1,
-  "base_revision": "ca8cccc32a636f1d002801e0b19fea055097be8e",
+  "base_revision": "ec129fbe531aa631b27c35771c1b50471ccb7b5c",
   "locale": "ja",
   "groups": [
-    "spectrum"
+    "xy"
   ],
   "review_keys": [
-    "spectrum.captured_fft_source_units_and_averaging_are_read_only",
-    "spectrum.input_source"
+    "xy.input_source",
+    "xy.source_changes_apply_on_start_held_xy_keeps_its",
+    "xy.trace_snap_selects_the_nearest_actual_pair_from_the"
   ],
   "entries": [
     {
-      "key": "spectrum.captured_fft_source_units_and_averaging_are_read_only",
-      "group": "spectrum",
-      "reasons": [
-        "review"
-      ],
-      "old_english": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
-      "new_english": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
-      "variables": [],
-      "translation": "取得時のFFT、入力元、単位、平均化設定は読み取り専用です。通常スペクトラムの解析は独立して続きます。",
-      "source_hash": "791c826af16c642a880363aac3af9e1ffd1f5f868f5009c13718e931c6872cd7",
-      "translated_source_hash": "791c826af16c642a880363aac3af9e1ffd1f5f868f5009c13718e931c6872cd7"
-    },
-    {
-      "key": "spectrum.input_source",
-      "group": "spectrum",
+      "key": "xy.input_source",
+      "group": "xy",
       "reasons": [
         "review"
       ],
@@ -35,6 +23,32 @@
       "translation": "入力元",
       "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
       "translated_source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b"
+    },
+    {
+      "key": "xy.source_changes_apply_on_start_held_xy_keeps_its",
+      "group": "xy",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Source changes apply on Start. Held XY keeps its channels.",
+      "new_english": "Source changes apply on Start. Held XY keeps its channels.",
+      "variables": [],
+      "translation": "入力元の変更はStart時に適用されます。保持中のXYは取得時のチャンネルを維持します。",
+      "source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89",
+      "translated_source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89"
+    },
+    {
+      "key": "xy.trace_snap_selects_the_nearest_actual_pair_from_the",
+      "group": "xy",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+      "new_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+      "variables": [],
+      "translation": "Trace Snap：割り当てたX/Yチャンネルの実サンプル対から最も近い点を選び、そのサンプルのXYトリガーからのオフセットを保ちます。スコープのトリガー元・エッジ・レベルを使います。トリガー交差がない場合は、参照位置が最新ウィンドウに合わせて移動します。点が重なる場合は最新サンプルを選びます。Stopすると取得結果を固定します。",
+      "source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621",
+      "translated_source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621"
     }
   ]
 }
