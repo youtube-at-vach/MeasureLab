@@ -28,11 +28,10 @@ spectrogram.fft_overlap: SOLAPAMIENTO FFT
 spectrogram.frequency_hz: Frecuencia / Hz
 spectrogram.frequency_scale: ESCALA DE FRECUENCIA
 spectrogram.from: Desde
-spectrogram.gestures: 'Spectrogram: use la rueda para acercar la frecuencia; arrastre
-  para desplazar frecuencia/tiempo; Mayús+rueda o rueda sobre el eje temporal para
-  recorrer el historial; haga clic para retener y seleccionar un cuadro; arrastre
-  una línea de cursor para moverla; En vivo libera el historial; doble clic restablece
-  la posición de frecuencia/tiempo.'
+spectrogram.gestures: 'Rueda: zoom de frecuencia. Arrastrar: desplazar frecuencia/tiempo.
+  Mayús+rueda, o rueda sobre el eje temporal: recorrer el historial. Clic: retener
+  y seleccionar un cuadro. Arrastrar una línea de cursor: moverla. En vivo: salir
+  de la retención. Doble clic: restablecer la posición de frecuencia/tiempo.'
 spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: Un mayor solapamiento
   produce más ventanas FFT y consume antes la capacidad del historial.
 spectrogram.history_available_s_unavailable_time_stays_blank: 'Historial disponible:
