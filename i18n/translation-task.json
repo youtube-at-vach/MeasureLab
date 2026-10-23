@@ -1,815 +1,131 @@
 {
   "version": 1,
-  "base_revision": "4b331bd222e1726f93c7868f3b2e29837492ff2c",
+  "base_revision": "3148985e94849bfa4ae726d12c30caf8619ca6d3",
   "locale": "ko",
   "groups": [
-    "lockin"
+    "comparison"
   ],
   "entries": [
     {
-      "key": "lockin.all_four",
-      "group": "lockin",
+      "key": "comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "All four",
-      "new_english": "All four",
+      "old_english": "AC comparison · positive phase leads REF; positive delay lags REF. Stopped edits apply on the next Start.",
+      "new_english": "AC comparison · positive phase leads REF; positive delay lags REF. Stopped edits apply on the next Start.",
       "variables": [],
       "translation": null,
-      "source_hash": "e5b50efb51e139314e6cd3e96a34b3471697984635529b86bef22413dfd7e962",
+      "source_hash": "849635e04bd615dd2337a411ee2e40f5e86b5b0c482f6b16080a7f88cee2ca8a",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.applying_settings_display_retains_its_captured_conditions",
-      "group": "lockin",
+      "key": "comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "Applying settings · display retains its captured conditions",
-      "new_english": "Applying settings · display retains its captured conditions",
-      "variables": [],
-      "translation": null,
-      "source_hash": "58a77c71f25a19abcc8122327eb340d925d98f18b7ffb20eac6555740d644d27",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.averaged_samples_latest_window",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Averaged samples %{start}..%{end} · latest window %{start_2}..%{end_2}",
-      "new_english": "Averaged samples %{start}..%{end} · latest window %{start_2}..%{end_2}",
+      "old_english": "%{name} · AC mean removed · disjoint arithmetic batches · REF floor %{reference_min_psd_fs2_hz} FS²/Hz · coherence ≥%{minimum_coherence}",
+      "new_english": "%{name} · AC mean removed · disjoint arithmetic batches · REF floor %{reference_min_psd_fs2_hz} FS²/Hz · coherence ≥%{minimum_coherence}",
       "variables": [
-        "end",
-        "end_2",
-        "start",
-        "start_2"
+        "minimum_coherence",
+        "name",
+        "reference_min_psd_fs2_hz"
       ],
       "translation": null,
-      "source_hash": "19d6eb91dc9389da3e849d96e174e000e76c4d067e16240f69c53f6ae84241be",
+      "source_hash": "dc597c2eebb9e4eae0a5faabcf795730d3b0ac58a3d42d71ac763230e6745569",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.calibrated",
-      "group": "lockin",
+      "key": "comparison.around_reading",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "CALIBRATED",
-      "new_english": "CALIBRATED",
+      "old_english": "Around reading",
+      "new_english": "Around reading",
       "variables": [],
       "translation": null,
-      "source_hash": "b71f2fdd9e5f38df73e5c896dec624bdc93b701a20a66b05baf530ca5d1e1e66",
+      "source_hash": "c3282ce89567af063e57a96812a478c0a0844b45c61344f6a79e1107c47bbfa5",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.captured_hint_ref_threshold",
-      "group": "lockin",
+      "key": "comparison.average_windows",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "Captured hint %{hz_2} · τ %{s} · REF threshold %{fs}",
-      "new_english": "Captured hint %{hz_2} · τ %{s} · REF threshold %{fs}",
-      "variables": [
-        "fs",
-        "hz_2",
-        "s"
-      ],
-      "translation": null,
-      "source_hash": "b1c2bef16eb919333354089fbdf7183ccc82883d4750cdeb614c1b2bb678af3c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ch_calibration_revision_gain_fs",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "CH %{ch} calibration %{id} / revision %{revision} · gain %{gain} %{unit} / FS",
-      "new_english": "CH %{ch} calibration %{id} / revision %{revision} · gain %{gain} %{unit} / FS",
-      "variables": [
-        "ch",
-        "gain",
-        "id",
-        "revision",
-        "unit"
-      ],
-      "translation": null,
-      "source_hash": "560349fef9e4d09af14e70aedd5f0ec479fc78add0cf6b6106639614c22d338b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ch_settings_unavailable",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "CH / SETTINGS UNAVAILABLE",
-      "new_english": "CH / SETTINGS UNAVAILABLE",
+      "old_english": "Average windows ",
+      "new_english": "Average windows ",
       "variables": [],
       "translation": null,
-      "source_hash": "e23447c656421de2d35be048f4b6e7bd05fe97e29b619c03e6f48a08a0d0369d",
+      "source_hash": "82a915b0392f23fbf5aa5cb1b6e24daffe718884e5b25ae0bf654c7ccc21fa6f",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.check_sig_ref_channel_availability_and_frequency_against_nominal",
-      "group": "lockin",
+      "key": "comparison.averaged_windows_processed_missing_invalid_samples",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "Check SIG / REF channel availability and frequency against nominal Fs.",
-      "new_english": "Check SIG / REF channel availability and frequency against nominal Fs.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e8009d86c647693a9d8997a6f11ec8e38c2c5953d0f833c7464f3694c47735ad",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.complete_windows_missing_samples",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{processed_windows} complete windows · %{missing_samples} missing samples",
-      "new_english": "%{processed_windows} complete windows · %{missing_samples} missing samples",
+      "old_english": "%{averaged_windows} averaged windows · %{processed_windows} processed · %{missing_samples} missing · %{invalid_samples} invalid samples",
+      "new_english": "%{averaged_windows} averaged windows · %{processed_windows} processed · %{missing_samples} missing · %{invalid_samples} invalid samples",
       "variables": [
+        "averaged_windows",
+        "invalid_samples",
         "missing_samples",
         "processed_windows"
       ],
       "translation": null,
-      "source_hash": "301a7b73e63a3e70ae96b56e59cb8107daa17af3001b6022b47204e5d267439a",
+      "source_hash": "d4a13275dc89e92c42baade2e8370d4172357fe5e1c81e8e164467102c9fb4ea",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.disabled",
-      "group": "lockin",
+      "key": "comparison.bin_hz",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "DISABLED",
-      "new_english": "DISABLED",
-      "variables": [],
-      "translation": null,
-      "source_hash": "0c7ef33e451eadb5c230e83d5155fe481df0dccf42529851a31110a88a776d12",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.display_bars_auto_scale_they_do_not_change_input",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Display bars auto-scale; they do not change input sensitivity. Periodic Hann fit + two EMA poles. Physical REF / timing unverified.",
-      "new_english": "Display bars auto-scale; they do not change input sensitivity. Periodic Hann fit + two EMA poles. Physical REF / timing unverified.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a1d07184d7c638b6820086ed7a3295e2ee7de2c1c3be198a20884f97898a0cac",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.display_scale_only",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{v} %{unit} · display scale only",
-      "new_english": "%{v} %{unit} · display scale only",
+      "old_english": "Bin %{k} · %{bin_width_hz} Hz · %{state}",
+      "new_english": "Bin %{k} · %{bin_width_hz} Hz · %{state}",
       "variables": [
-        "unit",
-        "v"
+        "bin_width_hz",
+        "k",
+        "state"
       ],
       "translation": null,
-      "source_hash": "58af75a0855d06edb33d8dc90834ecf94a7f2f9ce6ab6ee681a13632301c602b",
+      "source_hash": "aa8c40181fc59f9fad9c0be8bb32f583e9387beb007c2f9c27ef2188a49b9fc2",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.ema_poles_settling_fundamental_only",
-      "group": "lockin",
+      "key": "comparison.bin_states.averaging",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "2 EMA poles · 10τ settling · fundamental only",
-      "new_english": "2 EMA poles · 10τ settling · fundamental only",
+      "old_english": "Averaging",
+      "new_english": "Averaging",
       "variables": [],
       "translation": null,
-      "source_hash": "48ec18b634303a2713ca0d8335de9b49e0a5061b0d999ca63ef6078028eb7392",
+      "source_hash": "687df0b852a36e61eaac0ff3ef6ad85a8d0c8c319e480ba0d6c9fd94cb74bdb7",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.experimental",
-      "group": "lockin",
+      "key": "comparison.bin_states.incoherent",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "EXPERIMENTAL",
-      "new_english": "EXPERIMENTAL",
+      "old_english": "Incoherent",
+      "new_english": "Incoherent",
       "variables": [],
       "translation": null,
-      "source_hash": "da8d62a8d6ae22a3b0d58296336a2eae8860a7665f33931fa12f44f33a72a80b",
+      "source_hash": "4a32c9fb49be4f5be91ec27e84be2239358e49a43ed4dcd5db0c1dbbd3bed354",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.experimental_input_reference",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "EXPERIMENTAL · INPUT REFERENCE",
-      "new_english": "EXPERIMENTAL · INPUT REFERENCE",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ec577715bfe01a0a3b00e336ef695eaf54c4a4319ab922b2412ff740bcfae93b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.f_ref",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "f REF  %{hz_2}",
-      "new_english": "f REF  %{hz_2}",
-      "variables": [
-        "hz_2"
-      ],
-      "translation": null,
-      "source_hash": "9b9d7d322f846220a3d208131b6e0a10efa53b19fcab8f444e1356498fd44caa",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.fixed_frequency",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "FIXED FREQUENCY",
-      "new_english": "FIXED FREQUENCY",
-      "variables": [],
-      "translation": null,
-      "source_hash": "61c461b58b22d28485e15f1c9b88be32be9be3141ec64e700b1ee903ad247f8d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.frequency_must_be_below_nominal_fs_hz",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{error}: frequency must be below 0.45 × nominal Fs (%{rate} Hz)",
-      "new_english": "%{error}: frequency must be below 0.45 × nominal Fs (%{rate} Hz)",
-      "variables": [
-        "error",
-        "rate"
-      ],
-      "translation": null,
-      "source_hash": "f5b1399ad7f237fbe3e20aa859fb4b79e367029d90a391ba66f9f0989acf91c8",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.fs_rms",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": " FS RMS",
-      "new_english": " FS RMS",
-      "variables": [],
-      "translation": null,
-      "source_hash": "019172d433d62e0cc34c687aa6f3398a90567b5b602b9e5e705d6ae8c3aeefc2",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.gain",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Gain  %{gain}",
-      "new_english": "Gain  %{gain}",
-      "variables": [
-        "gain"
-      ],
-      "translation": null,
-      "source_hash": "b027d790ec6bb66000ef184e85da22e42a61550ddf41cbe3a943d067c38e08be",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.input_failed",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "INPUT FAILED",
-      "new_english": "INPUT FAILED",
-      "variables": [],
-      "translation": null,
-      "source_hash": "aa17b9fb21bf159e747220162bb56fe17c5d1b149648dc85114056a6e09a6d13",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.input_gap",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "INPUT GAP",
-      "new_english": "INPUT GAP",
-      "variables": [],
-      "translation": null,
-      "source_hash": "23fba561104a5fe80c0e6fae346214728655c28d9ae944f936bfd34456287e27",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Input or calculation is nonfinite. No valid measurement is available.",
-      "new_english": "Input or calculation is nonfinite. No valid measurement is available.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4fa1f20ef6f934387c91063a4a65dcf8bbad42d7a501addac6ae53897bfde0e6",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.input_samples_are_missing_the_filter_clears_and_settles",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Input samples are missing. The filter clears and settles again after recovery.",
-      "new_english": "Input samples are missing. The filter clears and settles again after recovery.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "38670e1ad909f544b7b2e559fed2f80565aad10494daa6de5363d5c604eb02b4",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.integration_samples",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Integration: %{integration_samples} samples",
-      "new_english": "Integration: %{integration_samples} samples",
-      "variables": [
-        "integration_samples"
-      ],
-      "translation": null,
-      "source_hash": "17560e61dc22bfa42f5a6527ef8c277e07b7a71f6e8359acaaa1890e2b105302",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.invalid_input",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "INVALID INPUT",
-      "new_english": "INVALID INPUT",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d0f66ac4568a3581e5a7f777fb27c9ffdb5485941875e6ac5cb648e30ce576a0",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.lock_in_amplifier",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Lock-in amplifier",
-      "new_english": "Lock-in amplifier",
-      "variables": [],
-      "translation": null,
-      "source_hash": "fd18f54bfb11f9060f10a41f1718be309beaf095fa30e113733d44b5b07a7b1a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.measurement_details",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Measurement details",
-      "new_english": "Measurement details",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f36cfff6c97e2c228a1d55145150c784552f4baf5804585fac7fdb4813ca9b71",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.min_ref",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Min REF ",
-      "new_english": "Min REF ",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f9847355d20c1fdf11caed7d373bfefedf729038bc887a146b22cf9cb01e44c3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.next_start_settings_changed_display_retains_captured_conditions",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Next Start settings changed · display retains captured conditions",
-      "new_english": "Next Start settings changed · display retains captured conditions",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e70e895e91294b145237a99c1761ec51fb4ab0dc7dff0d5a50fce4b459533d5f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.no_capture",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "NO CAPTURE",
-      "new_english": "NO CAPTURE",
-      "variables": [],
-      "translation": null,
-      "source_hash": "81679ab818274cd4c9d87dcedb55d9433d9563a0ab78822c1c80d6127031df57",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.no_valid_reading_no_bar_marker_is_shown",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "No valid reading; no bar marker is shown",
-      "new_english": "No valid reading; no bar marker is shown",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1b39be3e2a41a7e05c884132be1623c91943e93c615060bb99dfc604abec85c6",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.nominal_fs_hz_input_generation",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Nominal Fs %{sample_rate} Hz · input generation %{input_generation}",
-      "new_english": "Nominal Fs %{sample_rate} Hz · input generation %{input_generation}",
-      "variables": [
-        "input_generation",
-        "sample_rate"
-      ],
-      "translation": null,
-      "source_hash": "491fa1c0dd9b31e7b6592f0b73c9ba4068b80ca09425066ee330bae2b81a3ba5",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Physical REF and timing remain unverified. No physical oscillator output or selectable hardware sensitivity.",
-      "new_english": "Physical REF and timing remain unverified. No physical oscillator output or selectable hardware sensitivity.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4fdb62ac260cd32154eecc2d5c77954298f3e84751d1b9d6540dcabd02671671",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.poles_n",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "τ %{s}   ·   2 poles   ·   N %{integration_samples}   ·   %{fixed_frequency}",
-      "new_english": "τ %{s}   ·   2 poles   ·   N %{integration_samples}   ·   %{fixed_frequency}",
-      "variables": [
-        "fixed_frequency",
-        "integration_samples",
-        "s"
-      ],
-      "translation": null,
-      "source_hash": "77023899bb2652d270f1968eb99a77c293e635ebb90ec0b979d1cc37259f086b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.r_x_and_y_are_peak_amplitudes_positive_phase",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "R, X and Y are peak amplitudes. Positive phase leads REF. The filter has two fixed EMA poles and settles after 10τ of valid samples. Settings changed while stopped apply on the next Start.",
-      "new_english": "R, X and Y are peak amplitudes. Positive phase leads REF. The filter has two fixed EMA poles and settles after 10τ of valid samples. Settings changed while stopped apply on the next Start.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "696842b78c7c8664c300a8397c73041dc53448919d1e14b6aaca10779be2daa2",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF",
-      "new_english": "REF",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_ac_rms_sinusoid_fit",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF AC RMS %{fs} · sinusoid fit %{v}",
-      "new_english": "REF AC RMS %{fs} · sinusoid fit %{v}",
-      "variables": [
-        "fs",
-        "v"
-      ],
-      "translation": null,
-      "source_hash": "16d24c427a55de17f5e98edce74d4b42a8a3f55d7ef4ddf9ebeda3721735ee27",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_and_signal_use_the_same_input_sample_clock",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF and signal use the same input sample clock.",
-      "new_english": "REF and signal use the same input sample clock.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8b87925bfa6ebc6ac0cd25dddefbddc2be6142017ae06fad8ae35115e16d70a8",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_hint",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF hint ",
-      "new_english": "REF hint ",
-      "variables": [],
-      "translation": null,
-      "source_hash": "573aa933ca4a53b73d90dd496edb5f7a8093772117064e4ab6fcf18db78dfb17",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_is_below_its_ac_rms_threshold_values_clear",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF is below its AC RMS threshold. Values clear until REF recovers.",
-      "new_english": "REF is below its AC RMS threshold. Values clear until REF recovers.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "65fcd1b0d6594a90034deadd370f58f4915b2bb2aa325f71c60125ac5e1e511d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_lost",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF LOST",
-      "new_english": "REF LOST",
-      "variables": [],
-      "translation": null,
-      "source_hash": "5a5d3b40f7b7e7377c9d3307c02a4af3999477ff55d4dc62d3c81ee5aae6d344",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF needs ≥3 cycles/window, ≥98% sinusoid fit and frequency within the hint range.",
-      "new_english": "REF needs ≥3 cycles/window, ≥98% sinusoid fit and frequency within the hint range.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f96a41192cab331648f03f0ac1c3d5e355e6072855e91c24731ff6709b2b1ae2",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_unstable",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF UNSTABLE",
-      "new_english": "REF UNSTABLE",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d7d688a9d49f87aac457b8eb30db867b40b7d59f406707229bd4bba173b8bc30",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.ref_valid",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF VALID",
-      "new_english": "REF VALID",
-      "variables": [],
-      "translation": null,
-      "source_hash": "af9b761c4ce500e256c84bae586ece57081f6911e3fa20d7407a7aa0a8a89ddd",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.reference_filter",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REFERENCE & FILTER",
-      "new_english": "REFERENCE & FILTER",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e2479dcee7fec078f73c9aeb64b0c4348c298fd304ca59ec484f65956d3ae5d1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.reference_validity",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REFERENCE VALIDITY",
-      "new_english": "REFERENCE VALIDITY",
-      "variables": [],
-      "translation": null,
-      "source_hash": "39aec79525893adb02172aa98be81fc07507cdd0ff682cbbd7fb06f5594de3a9",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.samples",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{n} samples",
-      "new_english": "%{n} samples",
-      "variables": [
-        "n"
-      ],
-      "translation": null,
-      "source_hash": "d6373315ba1e8ea7ed6450746df8a4b14f02bc5282b73a70e710d9e780cf7726",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.select_sig_ref_channels_press_start_analysis_then_start",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Select SIG / REF channels, press Start analysis, then Start input if input is stopped.",
-      "new_english": "Select SIG / REF channels, press Start analysis, then Start input if input is stopped.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b66c2df415a1c81206a41ed72b5c72c7a40743d5433221860554befc8c3c365e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.settling",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "SETTLING",
-      "new_english": "SETTLING",
-      "variables": [],
-      "translation": null,
-      "source_hash": "fd754227f33333495f545ee8fa326a7398a82b37d46fd9578b3d6b2dd9a0e3ce",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.settling_of",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Settling · %{progress}% of 10τ",
-      "new_english": "Settling · %{progress}% of 10τ",
-      "variables": [
-        "progress"
-      ],
-      "translation": null,
-      "source_hash": "501134ec0571793e47eada23c7182e882cf4ebecc5178aa05f3773431a96bfd0",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.sig",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "SIG",
-      "new_english": "SIG",
-      "variables": [],
-      "translation": null,
-      "source_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.sig_ch_ref_ch",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "SIG CH %{response_channel}   /   REF CH %{reference_channel}",
-      "new_english": "SIG CH %{response_channel}   /   REF CH %{reference_channel}",
-      "variables": [
-        "reference_channel",
-        "response_channel"
-      ],
-      "translation": null,
-      "source_hash": "a66a0bb657b1ee9312a445da14a90f6ad8aa73a6f8de88d916743260c20444c5",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.start_analysis",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Start analysis",
-      "new_english": "Start analysis",
-      "variables": [],
-      "translation": null,
-      "source_hash": "fd46355dd422d985735b936e6b8c43efce52da6a0aa54a7882c3f784f9feec98",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.start_input_to_acquire_a_synchronous_sig_ref_window",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Start input to acquire a synchronous SIG / REF window.",
-      "new_english": "Start input to acquire a synchronous SIG / REF window.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "249cfcea81a3b09184f1634e674fb69428b62d496b80300347892d60c0645fce",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.state_names.disabled",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Disabled",
-      "new_english": "Disabled",
-      "variables": [],
-      "translation": null,
-      "source_hash": "75081b593d15cf6e631971bc6768723f593b88b172477e40ae7d363e4829816d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.state_names.missing",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Missing",
-      "new_english": "Missing",
-      "variables": [],
-      "translation": null,
-      "source_hash": "6be36ca49ee85210c5d1ad9c377d90a9859c66d889110a2a5b0dccd390d12e20",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.state_names.non_finite",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "NonFinite",
-      "new_english": "NonFinite",
-      "variables": [],
-      "translation": null,
-      "source_hash": "5cc9c7200631482f91b1b5d48900c1fb069d49cc06004a2bb7421b0e3d9dc64c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.state_names.reference_lost",
-      "group": "lockin",
+      "key": "comparison.bin_states.reference_lost",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
@@ -821,47 +137,21 @@
       "translated_source_hash": null
     },
     {
-      "key": "lockin.state_names.reference_unstable",
-      "group": "lockin",
+      "key": "comparison.bin_states.response_lost",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "ReferenceUnstable",
-      "new_english": "ReferenceUnstable",
+      "old_english": "ResponseLost",
+      "new_english": "ResponseLost",
       "variables": [],
       "translation": null,
-      "source_hash": "3c6d1ade0e240d294b3ebcc2e857b4b55eab5f90afa8253a2edfea91d154587b",
+      "source_hash": "906a2d2434d3cfa61e2d34617baf0e39d0417069cf011346f82775444a14f2c3",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.state_names.settling",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Settling",
-      "new_english": "Settling",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c5fd7cc168faf8cf8bccca1021a3960d8613b2199a17929a5aea94124f04be05",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.state_names.unavailable",
-      "group": "lockin",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Unavailable",
-      "new_english": "Unavailable",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
-      "translated_source_hash": null
-    },
-    {
-      "key": "lockin.state_names.valid",
-      "group": "lockin",
+      "key": "comparison.bin_states.valid",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
@@ -873,8 +163,679 @@
       "translated_source_hash": null
     },
     {
-      "key": "lockin.stop_analysis",
-      "group": "lockin",
+      "key": "comparison.captured_conditions",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Captured conditions",
+      "new_english": "Captured conditions",
+      "variables": [],
+      "translation": null,
+      "source_hash": "47bab890ad28a3ba805e4c4c1c008f60a582480c327d875cd0f2266091225fb3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.ch_revision_fs",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "CH %{ch}: %{id} / revision %{revision} · %{gain} %{unit} / FS",
+      "new_english": "CH %{ch}: %{id} / revision %{revision} · %{gain} %{unit} / FS",
+      "variables": [
+        "ch",
+        "gain",
+        "id",
+        "revision",
+        "unit"
+      ],
+      "translation": null,
+      "source_hash": "50742159ea88143a83bcd855db0c19a78f1865443432a30f86ef0d417038967d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.check_ref_sig_channels_fft_and_nominal_fs_settings",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Check REF / SIG channels, FFT and nominal Fs settings.",
+      "new_english": "Check REF / SIG channels, FFT and nominal Fs settings.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9a7fef1925df13d90eb57d6add39ea1c9929940ee7eb6c1e0ed900fe35a5600e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.coherence",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Coherence γ²",
+      "new_english": "Coherence γ²",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f418486f71510320162dbcc5d07575195d7f04543dd40962e9ff6b3b5cc4469d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.custom",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Custom",
+      "new_english": "Custom",
+      "variables": [],
+      "translation": null,
+      "source_hash": "494ca78f7374e46fb2de9ad9f2dbd4aaae89b50b2ca044177a1566a59e06627e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.display_only_captured_analysis_validity_thresholds_and_the_phase",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Display only: captured analysis, validity thresholds and the phase-slope band are unchanged. Log Hz omits DC.",
+      "new_english": "Display only: captured analysis, validity thresholds and the phase-slope band are unchanged. Log Hz omits DC.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "051a0536aefd367db9a50e84ac6889a18e2c4f3c666bf36746ee5f60a2204e17",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.display_range",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Display range",
+      "new_english": "Display range",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7c1540cb135c9fe28cf259bf8d5e52d8a32f108b9f1c9915591a521911372300",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.finishing_analysis_before_holding_the_result",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Finishing analysis before holding the result.",
+      "new_english": "Finishing analysis before holding the result.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "0e2a31120745ccf5f4a81dfdc910f3819e1f78519eabae70ed2496bdfd6ed0c6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.from",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "From ",
+      "new_english": "From ",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e484a95dcc85865b7e2bf8a9726935f1a5d9f90a056afcea487f88756039cc17",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.fs_hz",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": " FS²/Hz",
+      "new_english": " FS²/Hz",
+      "variables": [],
+      "translation": null,
+      "source_hash": "8ab07b56deb066cd8f2c1310da544ee686382093bfb606200b91139303c6b210",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.full_nyquist",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Full / Nyquist",
+      "new_english": "Full / Nyquist",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c72ac558bb67db6413fb8859ec89c90da2597b7c22fb4e033449be27b747c29e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.gain",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Gain",
+      "new_english": "Gain",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4e125a3ef68a00b029459c9aa8aa94aa07e74cc54188ffef7f60f38f016e61ca",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.gain_db",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Gain dB",
+      "new_english": "Gain dB",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f6da0953508c7b318c8dec06de0dab55859b30d6c150cad90e50b1be592add99",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "H1 = Pxy/Pxx. Scope, Spectrum and comparison each retain their own intervals. Slope fit assumes adjacent phase steps below π; periodic/wrapped data cannot determine absolute latency.",
+      "new_english": "H1 = Pxy/Pxx. Scope, Spectrum and comparison each retain their own intervals. Slope fit assumes adjacent phase steps below π; periodic/wrapped data cannot determine absolute latency.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7d4f361c12e8da0f54b91a650e24b35c3cf6bbffd70bb8db0d84b32bdfa1c8db",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.held_conditions_retained_queued_analysis_settings_apply_on_next",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "HELD conditions retained · queued analysis settings apply on next Start",
+      "new_english": "HELD conditions retained · queued analysis settings apply on next Start",
+      "variables": [],
+      "translation": null,
+      "source_hash": "56fb11bb8b06a061d81eae2512943e23a9f892dfb2d46a6e4a210ade91aa4c6d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.hz",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{selected_hz} Hz",
+      "new_english": "%{selected_hz} Hz",
+      "variables": [
+        "selected_hz"
+      ],
+      "translation": null,
+      "source_hash": "33276a15f6a87aacc765c617cdae50285e248d651045e4c3af7f1d04bb29afc5",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.hz_2",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{fraction} Hz",
+      "new_english": "%{fraction} Hz",
+      "variables": [
+        "fraction"
+      ],
+      "translation": null,
+      "source_hash": "2f19044b1656de9eb975de295330122254e5456868b25eea4341c19698810615",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.input_gap_press_start_input_to_acquire_again",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Input gap · press Start input to acquire again.",
+      "new_english": "Input gap · press Start input to acquire again.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "488c2d4328ef6803413591ee3518c0c018e49cdbd9063996ea0fa812191a796b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.input_gap_waiting_for_a_new_complete_average",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Input gap · waiting for a new complete average.",
+      "new_english": "Input gap · waiting for a new complete average.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "a1ff83b724a3a6529d46ddbc84c1a70d86bbbcbdb016d8edef79c1a9a9a64892",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.input_generation_analysis_revision_hz_nominal_f64",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Input generation %{generation} · analysis revision %{analysis_revision} · %{nominal_sample_rate_hz} Hz nominal · f64",
+      "new_english": "Input generation %{generation} · analysis revision %{analysis_revision} · %{nominal_sample_rate_hz} Hz nominal · f64",
+      "variables": [
+        "analysis_revision",
+        "generation",
+        "nominal_sample_rate_hz"
+      ],
+      "translation": null,
+      "source_hash": "c50693963f23c73c41bb00bebaeb5ae587a6bde2f58d51d105c0531cff21e9ef",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.invalid_input_no_valid_comparison_is_available",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Invalid input · no valid comparison is available.",
+      "new_english": "Invalid input · no valid comparison is available.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9cadda887f9d413d19ab498004e166ba0ccf75f0accf4dfd4be087042d649e3e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.linear_hz",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Linear Hz",
+      "new_english": "Linear Hz",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d35293c5b6027d55300797c15a83bdd1c89c75b00947f5fa7afcb2fa92932fbf",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.log_hz",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Log Hz",
+      "new_english": "Log Hz",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7b91026010d597a53c425c595786148a71e5a567e1427bb7f5925143f270d734",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.min_coherence",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Min coherence ",
+      "new_english": "Min coherence ",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1d16eca5bca303648987a81a85bbd242d48051bf53ba8ee00aedd2170adbf392",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.min_ref",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Min REF ",
+      "new_english": "Min REF ",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f9847355d20c1fdf11caed7d373bfefedf729038bc887a146b22cf9cb01e44c3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Nominal Fs · CH phase/timing calibration unverified · delay wraps by 1/f",
+      "new_english": "Nominal Fs · CH phase/timing calibration unverified · delay wraps by 1/f",
+      "variables": [],
+      "translation": null,
+      "source_hash": "277ca326a6c092e2388f4979870d1fb2f49c4edd92e6413395f61563834affe9",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.phase",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Phase °",
+      "new_english": "Phase °",
+      "variables": [],
+      "translation": null,
+      "source_hash": "26305faffcd48209829558a71db6a7dc390fbde05877a9efe0d7c6f06a6c8166",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.phase_lead",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Phase lead",
+      "new_english": "Phase lead",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9bffba7a09a6995aaf857276ae7c9cc5539bced73ae247600cb0a92a716d898b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.phase_slope_needs_contiguous_excited_coherent_bins",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Phase slope: — · needs ≥8 contiguous excited, coherent bins",
+      "new_english": "Phase slope: — · needs ≥8 contiguous excited, coherent bins",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9f9b28fea91312f4033d371f10d3d72479126096051396975fab9da2dbc6ff58",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.phase_slope_s_hz_residual_rms",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Phase slope: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2} Hz · residual %{phase_residual_rms_degrees}° RMS",
+      "new_english": "Phase slope: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2} Hz · residual %{phase_residual_rms_degrees}° RMS",
+      "variables": [
+        "bin_width_hz",
+        "bin_width_hz_2",
+        "e6",
+        "phase_residual_rms_degrees"
+      ],
+      "translation": null,
+      "source_hash": "54ef18b4f14df9175edf4faa2cddfe9042e5bfb63a4e95a37b6b70f7a01b152e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.press_start_input_to_acquire_a_complete_average",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Press Start input to acquire a complete average.",
+      "new_english": "Press Start input to acquire a complete average.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "baf80dd07e31ccb4e21986ebce52eb0fdd176be4325cc58f010f01d166add7cc",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.read_at",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Read at",
+      "new_english": "Read at",
+      "variables": [],
+      "translation": null,
+      "source_hash": "a4874894d75434e94dde904dd97e3ce58a17ad621b1d9c50b79edce8f3421ce6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.ref",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "REF",
+      "new_english": "REF",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.ref_ch_sig_ch_n_f_hz",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{state} · REF CH %{reference_channel} / SIG CH %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz",
+      "new_english": "%{state} · REF CH %{reference_channel} / SIG CH %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz",
+      "variables": [
+        "averages",
+        "bin_width_hz",
+        "reference_channel",
+        "response_channel",
+        "size",
+        "state"
+      ],
+      "translation": null,
+      "source_hash": "5794389025b279a9e186a7412117ddb796674c462c6714d2b6a69cea0fca5760",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.samples",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{size} samples",
+      "new_english": "%{size} samples",
+      "variables": [
+        "size"
+      ],
+      "translation": null,
+      "source_hash": "26e308cd3e4ef1205e2d91e376b26401ed276a1c0b5a7f56fa4f5b371d2c6c3a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.samples_latest_input_end",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Samples %{start}..%{end} · latest %{start_2}..%{end_2} · input end %{input_end}",
+      "new_english": "Samples %{start}..%{end} · latest %{start_2}..%{end_2} · input end %{input_end}",
+      "variables": [
+        "end",
+        "end_2",
+        "input_end",
+        "start",
+        "start_2"
+      ],
+      "translation": null,
+      "source_hash": "c7b0aedcdeabdf1d92d865b65cc7a0413810c5ea817668a7e2f56927d74459c1",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.select_ref_sig_channels_then_press_start_analysis",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Select REF / SIG channels, then press Start analysis.",
+      "new_english": "Select REF / SIG channels, then press Start analysis.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6285b18b86c0a4bd8360b14ebead298cd3e90f5d53b9cfc1730418d1f6281cb3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.selected_frequency_is_outside_the_captured_result",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Selected frequency is outside the captured result.",
+      "new_english": "Selected frequency is outside the captured result.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "77d3ac91d539ca5110b135fe0d3c9ceef5545f5c6d56c086faa819145a5823d4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.sig",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "SIG",
+      "new_english": "SIG",
+      "variables": [],
+      "translation": null,
+      "source_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.slope_from",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Slope from ",
+      "new_english": "Slope from ",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ca79d068aa32c49467052ddc238d4a9822b78520c82ee48b25b401d7293df4ce",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.slope_to",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Slope to ",
+      "new_english": "Slope to ",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d08a0b06290a451205f42de4f96a7cd255307b581520960ce3c3b65c4e9b95f7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.start_analysis",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Start analysis",
+      "new_english": "Start analysis",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fd46355dd422d985735b936e6b8c43efce52da6a0aa54a7882c3f784f9feec98",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.state_names.averaging",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Averaging",
+      "new_english": "Averaging",
+      "variables": [],
+      "translation": null,
+      "source_hash": "687df0b852a36e61eaac0ff3ef6ad85a8d0c8c319e480ba0d6c9fd94cb74bdb7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.state_names.disabled",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Disabled",
+      "new_english": "Disabled",
+      "variables": [],
+      "translation": null,
+      "source_hash": "75081b593d15cf6e631971bc6768723f593b88b172477e40ae7d363e4829816d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.state_names.filling",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Filling",
+      "new_english": "Filling",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7fcb95a3a3dc4070b34692d1a70c316d0892655315b1f8bc48cc9fb68f03aaa6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.state_names.missing",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Missing",
+      "new_english": "Missing",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6be36ca49ee85210c5d1ad9c377d90a9859c66d889110a2a5b0dccd390d12e20",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.state_names.non_finite",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "NonFinite",
+      "new_english": "NonFinite",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5cc9c7200631482f91b1b5d48900c1fb069d49cc06004a2bb7421b0e3d9dc64c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.state_names.unavailable",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Unavailable",
+      "new_english": "Unavailable",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.state_names.valid",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Valid",
+      "new_english": "Valid",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.stop_analysis",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
@@ -886,68 +847,96 @@
       "translated_source_hash": null
     },
     {
-      "key": "lockin.time_constant_presets",
-      "group": "lockin",
+      "key": "comparison.synchronous_comparison",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "Time constant presets",
-      "new_english": "Time constant presets",
+      "old_english": "Synchronous comparison",
+      "new_english": "Synchronous comparison",
       "variables": [],
       "translation": null,
-      "source_hash": "c1014c9ccd408eea60e77dd472be968d33dab73a97cd99a2bfec28b2064bb687",
+      "source_hash": "7884d1c3c2e2d3681248eb45639ac4db3c12f32a67d3c6d8ae0af3ea2e1cb181",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.track_input_ref_hint",
-      "group": "lockin",
+      "key": "comparison.to",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "Track input REF (hint ±10%)",
-      "new_english": "Track input REF (hint ±10%)",
+      "old_english": "To ",
+      "new_english": "To ",
       "variables": [],
       "translation": null,
-      "source_hash": "5a8c1830108dfb05536a3ec69d04e8c54920c3833f57f09e536f16d58a5d1dee",
+      "source_hash": "81dcbe958121a9b1eceb8ab2bd605ab0dfaed3482e5e4266fdcba6ade2343086",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.track_ref",
-      "group": "lockin",
+      "key": "comparison.valid_band",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "TRACK REF",
-      "new_english": "TRACK REF",
+      "old_english": "Valid band",
+      "new_english": "Valid band",
       "variables": [],
       "translation": null,
-      "source_hash": "e8c226dde224bc8dd2eda8e0be867a36ac1ce0305b6d4c3a1ed5ad3c1425ea46",
+      "source_hash": "99e83a6ef2f9bddbf823b52ca67c24a82b5f6d2953e54e40c4b488e480e0f071",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.uncalibrated_fs",
-      "group": "lockin",
+      "key": "comparison.valid_transfer_bins_gaps_are_not_interpolated",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "UNCALIBRATED · FS",
-      "new_english": "UNCALIBRATED · FS",
-      "variables": [],
+      "old_english": "%{valid} valid transfer bins · gaps are not interpolated",
+      "new_english": "%{valid} valid transfer bins · gaps are not interpolated",
+      "variables": [
+        "valid"
+      ],
       "translation": null,
-      "source_hash": "8b681436a1153a9e2ca513af14cb4bced4306d06923cb0b301d0be830d33d5dd",
+      "source_hash": "a9aa769f0efeaff709f9345e4a52c2c797c5cf7640557abda0aa32ef34a14230",
       "translated_source_hash": null
     },
     {
-      "key": "lockin.waiting_for_a_complete_synchronous_input_window",
-      "group": "lockin",
+      "key": "comparison.waiting_for_a_complete_average",
+      "group": "comparison",
       "reasons": [
         "missing"
       ],
-      "old_english": "Waiting for a complete synchronous input window.",
-      "new_english": "Waiting for a complete synchronous input window.",
+      "old_english": "Waiting for a complete average.",
+      "new_english": "Waiting for a complete average.",
       "variables": [],
       "translation": null,
-      "source_hash": "38a13276b3f715c2d9794d7ae54824f20e09a3e659a08409c88fb391413305e8",
+      "source_hash": "b3b41682bda6afe169a2da8b70ddaa81239471effecf3e4166708cae018acd3c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.window_averaging",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "WINDOW / AVERAGING",
+      "new_english": "WINDOW / AVERAGING",
+      "variables": [],
+      "translation": null,
+      "source_hash": "551f916bcab6bae8ad5171d95f75ee8d7c45bdf6e73584ec32df5ec304564abf",
+      "translated_source_hash": null
+    },
+    {
+      "key": "comparison.wrapped_delay",
+      "group": "comparison",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Wrapped delay",
+      "new_english": "Wrapped delay",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4b36dc4d6910aef6d886b106dc560c2cc1c0c4630bd71bbf44fd4a741f4c43e5",
       "translated_source_hash": null
     }
   ]
