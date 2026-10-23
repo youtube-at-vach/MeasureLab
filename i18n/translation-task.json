@@ -1,573 +1,1222 @@
 {
   "version": 1,
-  "base_revision": "35c80f4e199d56f5317e068f9b0f4d99126601c6",
+  "base_revision": "5dbbd7d1493784a2c2804e1f614d5e2cb9e2faa6",
   "locale": "es",
   "groups": [
-    "xy"
+    "generator"
   ],
   "entries": [
     {
-      "key": "xy.amplitude_range",
-      "group": "xy",
+      "key": "generator.add_a_signal_in_the_generator_panel",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Amplitude range",
-      "new_english": "Amplitude range",
+      "old_english": "Add a signal in the Generator panel.",
+      "new_english": "Add a signal in the Generator panel.",
       "variables": [],
       "translation": null,
-      "source_hash": "beecc5f6b08fd81dd8172f523002aee6379c7418444511b3ab79a37257e30881",
+      "source_hash": "08d4ab181512fc611404795a35ae2547b08170050bbbb9d10ec98914e2122163",
       "translated_source_hash": null
     },
     {
-      "key": "xy.auto_no_crossing",
-      "group": "xy",
+      "key": "generator.add_signal",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": " · Auto (no crossing)",
-      "new_english": " · Auto (no crossing)",
+      "old_english": "+ Add signal",
+      "new_english": "+ Add signal",
       "variables": [],
       "translation": null,
-      "source_hash": "9ef79840bcf62ce4aac41b71331b3e8e25063767f8bb38f186bd7b14f213ff72",
+      "source_hash": "27f6249621d37556e0f5ab0c97c34022cb62f56080373392104b2026185bb8c8",
       "translated_source_hash": null
     },
     {
-      "key": "xy.b_a_x_y_fs",
-      "group": "xy",
+      "key": "generator.applied",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "B−A ΔX %{delta} · ΔY %{delta_2} FS",
-      "new_english": "B−A ΔX %{delta} · ΔY %{delta_2} FS",
+      "old_english": "APPLIED",
+      "new_english": "APPLIED",
+      "variables": [],
+      "translation": null,
+      "source_hash": "79dfd370bb43b580583faab3785ab434b1683578cb8b5649d5a3495ca987e1ac",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Applied Fs: %{nominal_sample_rate} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.",
+      "new_english": "Applied Fs: %{nominal_sample_rate} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.",
       "variables": [
-        "delta",
-        "delta_2"
+        "nominal_sample_rate"
       ],
       "translation": null,
-      "source_hash": "996c24bd2258840f72bb981a724f8847447e71db1e22517d8b69f5e5b2d58007",
+      "source_hash": "8087b2ecdb2d1959ec54d4fe3341718b24793c42546ea6f07746df0add7bc02f",
       "translated_source_hash": null
     },
     {
-      "key": "xy.cursors",
-      "group": "xy",
+      "key": "generator.applied_hz_dbfs_peak_lead",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "CURSORS",
-      "new_english": "CURSORS",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7cb53cbcf83d1021ed0a0793b5f34a186feef092dc6e8b1fa03ceff7c1aa05a1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.fix_x_y_amplitudes_independently_of_the_moving_trace",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.",
-      "new_english": "Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e014d371486e35a33b2e08343ab2509310d4a520c23c77f6feeb2131c82c29e7",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.follow_a_real_sample_at_a_fixed_time_offset",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.",
-      "new_english": "Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4e42e5ccdb79fe3f303f7bb289d683d6be7d1f9576228a254fecec1a2e805116",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.free",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Free",
-      "new_english": "Free",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f411a1fb62758b4c54690d0a702b4955b54dd22115416fa7b1ce51b4a084818d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.free_click_or_drag_to_fix_x_y_amplitudes",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
-      "new_english": "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "5aebd35717c7d369e4b9b7aea71a7c08d01281ede3add2d9cd81bb9a30be22a0",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.free_keeps_x_y_amplitudes_fixed_and_reads_x",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Cursor positions are retained when switching modes.",
-      "new_english": "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Cursor positions are retained when switching modes.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "996f5194449a730fa7e19013f7b3d6dc87a75d6e6d0dde1b8e6fb45b40103ccb",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.free_outside_plot",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Free · outside plot",
-      "new_english": "Free · outside plot",
-      "variables": [],
-      "translation": null,
-      "source_hash": "fdb7bffa64394387fa75119f0c5e955c74566d78f54671538d8fc8e21009dd3e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.free_run_moving_reference",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": " · Free run (moving reference)",
-      "new_english": " · Free run (moving reference)",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1f475bf331105a315d99576ac10f2ba5ed46f6f2fd577348d589cd0ee06b2d51",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.input_source",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Input source",
-      "new_english": "Input source",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.ms_samples",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{sample_rate} ms · samples %{start}..%{end}%{else}%{auto_no_crossing}",
-      "new_english": "%{sample_rate} ms · samples %{start}..%{end}%{else}%{auto_no_crossing}",
+      "old_english": "Applied: %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "new_english": "Applied: %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
       "variables": [
-        "auto_no_crossing",
-        "else",
-        "end",
-        "sample_rate",
-        "start"
+        "amplitude_dbfs",
+        "frequency_hz",
+        "phase_degrees"
       ],
       "translation": null,
-      "source_hash": "be2741feb19b80438d182b67c7a185c6ee25df76e3c2f35e6a89f52c1efbcba0",
+      "source_hash": "3a8c6668d0816701b2d2790157e9cdb1963fb20220b87bafe96272b6f9e6b81f",
       "translated_source_hash": null
     },
     {
-      "key": "xy.observation",
-      "group": "xy",
+      "key": "generator.applied_output",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "OBSERVATION",
-      "new_english": "OBSERVATION",
+      "old_english": "APPLIED OUTPUT",
+      "new_english": "APPLIED OUTPUT",
       "variables": [],
       "translation": null,
-      "source_hash": "4f89ca8b4090c7befb1fc3f0f965289f3347058482a4e34be84b8d2a266b3c19",
+      "source_hash": "c41174d4bb607fa123cb381f2fa9dfa6a6e7c8364c7fba9ca47184abab382e0e",
       "translated_source_hash": null
     },
     {
-      "key": "xy.observation_window",
-      "group": "xy",
+      "key": "generator.applied_sample",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Observation window",
-      "new_english": "Observation window",
-      "variables": [],
-      "translation": null,
-      "source_hash": "af347726c2412e1d009db868bcaf860a1ef18ce0765892abe0701cd67f1d2189",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.outside_xy_window_or_unavailable",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{index} · outside XY window or unavailable",
-      "new_english": "%{index} · outside XY window or unavailable",
+      "old_english": "Applied sample %{applied_sample}",
+      "new_english": "Applied sample %{applied_sample}",
       "variables": [
-        "index"
+        "applied_sample"
       ],
       "translation": null,
-      "source_hash": "40b8df6f144125a08f2ec6dbb52c56f79cd025e22dfd7b991742fc846cab1b72",
+      "source_hash": "ff3a3637f968e4c455d5669b0712c351d41f2bfdfc6f32ecd957e63a8b43ea7b",
       "translated_source_hash": null
     },
     {
-      "key": "xy.point_limit",
-      "group": "xy",
+      "key": "generator.applied_seed",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": " · point limit",
-      "new_english": " · point limit",
-      "variables": [],
-      "translation": null,
-      "source_hash": "139343470b31f9a375c61f78ce39aafaf333f804b83676a5d276d53480dcebe1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.reset_xy_scales",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Reset XY scales",
-      "new_english": "Reset XY scales",
-      "variables": [],
-      "translation": null,
-      "source_hash": "67527346be8d3569cc5ed892a56e70608e8454c7627bf0f978964e45e46cd2ef",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.shared_with_scope",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Shared with Scope",
-      "new_english": "Shared with Scope",
-      "variables": [],
-      "translation": null,
-      "source_hash": "9657cdff2b069736e36a842e869d574697235d18d89fd360d55cfeeade6aa294",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.source_changes_apply_on_start_held_xy_keeps_its",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Source changes apply on Start. Held XY keeps its channels.",
-      "new_english": "Source changes apply on Start. Held XY keeps its channels.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.t_ms",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "T%{sample_rate} ms · #%{sample}",
-      "new_english": "T%{sample_rate} ms · #%{sample}",
+      "old_english": "Applied seed %{noise_seed}",
+      "new_english": "Applied seed %{noise_seed}",
       "variables": [
-        "sample",
-        "sample_rate"
+        "noise_seed"
       ],
       "translation": null,
-      "source_hash": "62c5d2f748f07f2feb1bdb076ab476d479b8e383b35003f6bc8d6f886c47241b",
+      "source_hash": "e901e9c6eac08da85b644b8f451194848864d04b51df72b8ebfaa0151733a52b",
       "translated_source_hash": null
     },
     {
-      "key": "xy.trace_snap",
-      "group": "xy",
+      "key": "generator.buttons_up_down_use_this_step_in_hz_dbfs",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Trace Snap",
-      "new_english": "Trace Snap",
+      "old_english": "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
+      "new_english": "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
       "variables": [],
       "translation": null,
-      "source_hash": "53c33d64cadd72144a24ae9f05ba16c99de559ec7654ce096ee24ccc2f8ef927",
+      "source_hash": "74c8b24d55691e41a6ff601d57e00e608fcc0747528916f9cc4b0febe8f931fc",
       "translated_source_hash": null
     },
     {
-      "key": "xy.trace_snap_follows_a_trigger_relative_sample_auto_free",
-      "group": "xy",
+      "key": "generator.down",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Trace Snap follows a trigger-relative sample. Auto/free run may move the marker; Stop freezes it.",
-      "new_english": "Trace Snap follows a trigger-relative sample. Auto/free run may move the marker; Stop freezes it.",
+      "old_english": "Down",
+      "new_english": "Down",
       "variables": [],
       "translation": null,
-      "source_hash": "e1b5f34ffe4a7e139af32429fa6a5bd10f3126cee62624c7d09250f8c71b78b1",
+      "source_hash": "b86d11af79188e58af384b421f2799b08bfb151939b4404679d948aae2720b0b",
       "translated_source_hash": null
     },
     {
-      "key": "xy.trace_snap_selects_the_nearest_actual_pair_from_the",
-      "group": "xy",
+      "key": "generator.duplicate",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
-      "new_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+      "old_english": "Duplicate",
+      "new_english": "Duplicate",
       "variables": [],
       "translation": null,
-      "source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621",
+      "source_hash": "02cdaabfca805d6ab75d81043998bdc733451b9ea48958ebf8098022d102ba2e",
       "translated_source_hash": null
     },
     {
-      "key": "xy.trigger",
-      "group": "xy",
+      "key": "generator.edit_step",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "TRIGGER",
-      "new_english": "TRIGGER",
+      "old_english": "EDIT STEP",
+      "new_english": "EDIT STEP",
       "variables": [],
       "translation": null,
-      "source_hash": "f3bbca3a684e7f2d444140623724b2e48d741dcd44afeeae3ac4ee34f853c3f4",
+      "source_hash": "f0c22175d30f2c14737a686de7df055959770eb0b28eb34f25772de9050e12db",
       "translated_source_hash": null
     },
     {
-      "key": "xy.triggered",
-      "group": "xy",
+      "key": "generator.enter_a_finite_number_settings_were_not_applied",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": " · Triggered",
-      "new_english": " · Triggered",
+      "old_english": "Enter a finite number; settings were not applied",
+      "new_english": "Enter a finite number; settings were not applied",
       "variables": [],
       "translation": null,
-      "source_hash": "d819ec106235615ed868892b71c4a7ceaf98541191db9273daef5e2eb921ed6e",
+      "source_hash": "888779db32a39e675fcada643f227c0da1ab0926b6c216a2a5886004ed2878d8",
       "translated_source_hash": null
     },
     {
-      "key": "xy.up_to_real_sample_pairs_longer_windows_show_the",
-      "group": "xy",
+      "key": "generator.enter_focus_to_apply_esc_to_cancel_up_down",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Up to %{xy} real sample pairs; longer windows show the latest portion.",
-      "new_english": "Up to %{xy} real sample pairs; longer windows show the latest portion.",
+      "old_english": "Enter / focus to apply · Esc to cancel · Up / Down to step",
+      "new_english": "Enter / focus to apply · Esc to cancel · Up / Down to step",
+      "variables": [],
+      "translation": null,
+      "source_hash": "67121de8706ebf0cf8ce4468d3d39e922a1ac5f8069aa397da16e49d668fa5c4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "ERROR",
+      "new_english": "ERROR",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d98ee0e5f9399db9381014c9f890f896d3fcb272c2a7a521d0a13aa23085a284",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.already_active",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output is already active",
+      "new_english": "Output is already active",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9905ced78cf509bcd43ce5975d8ee295a1997570e33213869f4302ac43f4ce0d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.amplitude",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: amplitude must be finite and within -120–0 dBFS peak",
+      "new_english": "Card at position %{position}: amplitude must be finite and within -120–0 dBFS peak",
       "variables": [
-        "xy"
+        "position"
       ],
       "translation": null,
-      "source_hash": "a1052af357dbb358884f58c52aecd817bd5841b565af2cbfaa531d5c1d23abc3",
+      "source_hash": "27fa8a514b53646af1d054844176a7ba733c95f747d06d5e26afec059dd7cdd9",
       "translated_source_hash": null
     },
     {
-      "key": "xy.waiting_for_sample_pairs",
-      "group": "xy",
+      "key": "generator.error_reason.callback_stalled",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Waiting for sample pairs…",
-      "new_english": "Waiting for sample pairs…",
+      "old_english": "Audio output callback timed out; output released",
+      "new_english": "Audio output callback timed out; output released",
       "variables": [],
       "translation": null,
-      "source_hash": "81664c516200f18fbbaa4cb3bd592d286481f856d237ab098cc6068638f3d870",
+      "source_hash": "67cd9304695cb8c6aa0bbe805325ae2f1541c7ea67fb2dcf9d1a65198a66ce87",
       "translated_source_hash": null
     },
     {
-      "key": "xy.x_axis",
-      "group": "xy",
+      "key": "generator.error_reason.channel_count",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "X AXIS",
-      "new_english": "X AXIS",
+      "old_english": "Output requires 1–16 channels",
+      "new_english": "Output requires 1–16 channels",
       "variables": [],
       "translation": null,
-      "source_hash": "ae931d3ad62c92ca84318e0a276132e367dda9b5962545d6d1020748ef452717",
+      "source_hash": "3da960c1df55e6abb8d28fc386017c2b0926fd34e674f78097365bd8c7d4987f",
       "translated_source_hash": null
     },
     {
-      "key": "xy.x_fs_div_y_fs_div",
-      "group": "xy",
+      "key": "generator.error_reason.counter_exhausted",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2} · %{y_fs_per_div} FS/div",
-      "new_english": "X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2} · %{y_fs_per_div} FS/div",
+      "old_english": "Output sample, generation or control counter exhausted",
+      "new_english": "Output sample, generation or control counter exhausted",
+      "variables": [],
+      "translation": null,
+      "source_hash": "2cdf0228e3ef04524400fc0466790714a679924eed53631ac361d48e36d1c4e1",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.duplicate_routing",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Two signals cannot use the same output channel",
+      "new_english": "Two signals cannot use the same output channel",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1325bafda14f128eb6dc0b6843485e895d8fb526666d27ee83528d666e9ccff7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.frequency",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
+      "new_english": "Card at position %{position}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "66fd90c28021e61f191c94a86ddec9d10307d08a3c87b8b8eb9e167c7386b525",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.no_enabled_signals",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Select at least one signal before starting output",
+      "new_english": "Select at least one signal before starting output",
+      "variables": [],
+      "translation": null,
+      "source_hash": "429f5017d334fabd47b3914fb2cc383610feb193fc9ca2966c497bedd0140dfa",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.non_finite_output",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Nonfinite output; output stopped",
+      "new_english": "Nonfinite output; output stopped",
+      "variables": [],
+      "translation": null,
+      "source_hash": "12f6ea67aff3053b40d203bf70793af5a6e49dfe3800da3e9c9af1e3921e8cea",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.output_range",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output exceeds full scale; output stopped",
+      "new_english": "Output exceeds full scale; output stopped",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b44c7af6f781f2e8228b7fde173be88bd285190dd7735fc1fa94b2f254b72a52",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.output_stream",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Audio output failed; reset output before restarting",
+      "new_english": "Audio output failed; reset output before restarting",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b0b9ae3be8822a3753b1b28aac76d68a81cb0808eed59528d64399e9baf30f14",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.phase",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: phase must be finite and within -180–180°",
+      "new_english": "Card at position %{position}: phase must be finite and within -180–180°",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "2c3dd5cb69ea20a38d47e031e9378b1dc8191ae108e76e25957f075034526543",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.producer_suspended",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Internal generation was suspended for more than 250 ms; output stopped",
+      "new_english": "Internal generation was suspended for more than 250 ms; output stopped",
+      "variables": [],
+      "translation": null,
+      "source_hash": "dcbb7b5707de39f4d5908dcd2bdfaf8e6c6cf381d14c4aff7ccdb39e3b019e7b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.revision",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Settings revision must increase",
+      "new_english": "Settings revision must increase",
+      "variables": [],
+      "translation": null,
+      "source_hash": "2e79475c29168bbcbbf5ce70c8b9fd45166d0ab4e7d648737f1973888410749e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.routing",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: output channel is unavailable or unassigned",
+      "new_english": "Card at position %{position}: output channel is unavailable or unassigned",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "6790b280b283ce5ca60cf0de10f9e0da3de618b5bcf23f354d8414206bef8f07",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.routing_while_active",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stop output before changing cards, waveform details or channel assignments",
+      "new_english": "Stop output before changing cards, waveform details or channel assignments",
+      "variables": [],
+      "translation": null,
+      "source_hash": "8253aed910415ad77bd13d0c26971d4275eba3587559c78ee13527ccd55e16b8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.sample_rate",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Unsupported nominal output sample rate",
+      "new_english": "Unsupported nominal output sample rate",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5b058fe4a2b2d4aab80661563733e82922f2e4980018c5eb0e71e0a298158e09",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.signal_count",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Generator supports at most 16 cards",
+      "new_english": "Generator supports at most 16 cards",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ac19ffd2460b1d552fc5533bf5af9a0df40e47160b74565fa20a9eabf68d8c68",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.signal_identity",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Generator card IDs must be unique and precede the next ID",
+      "new_english": "Generator card IDs must be unique and precede the next ID",
+      "variables": [],
+      "translation": null,
+      "source_hash": "387946d821d93bc27bce9de6f57c0419b000c5b6478899cbd8e5e8d35e0311b3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.stopping",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Wait for the output fade to finish",
+      "new_english": "Wait for the output fade to finish",
+      "variables": [],
+      "translation": null,
+      "source_hash": "383a48e03869fcf5c17a6db60b7a05074f939b916e1bfe60a3b9fc5ad2cb4601",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.error_reason.waveform",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Card at position %{position}: noise seed must be nonzero",
+      "new_english": "Card at position %{position}: noise seed must be nonzero",
+      "variables": [
+        "position"
+      ],
+      "translation": null,
+      "source_hash": "9c7d29d10da9b5da381a3012a05a7c0b0a773825d1d44b05e472d7035914395a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.frequency",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Frequency",
+      "new_english": "Frequency",
+      "variables": [],
+      "translation": null,
+      "source_hash": "16b6668d9831a1b8d2d003496db6a62b7f525df6c556d7c04681fbed2251c845",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id}",
+      "new_english": "GEN %{id}",
+      "variables": [
+        "id"
+      ],
+      "translation": null,
+      "source_hash": "c4284625e30731b9381acb6245c2672eac4f288e4970616221bb370a3c615886",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_2",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{s} · %{off}",
+      "new_english": "GEN %{id} · %{s} · %{off}",
+      "variables": [
+        "id",
+        "off",
+        "s"
+      ],
+      "translation": null,
+      "source_hash": "bbc5148969a01f219040ed2fed536b4ad6904dbd61c0ec17e1bef8114f9f9596",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_3",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{label} · %{s} · %{off}",
+      "new_english": "GEN %{id} · %{label} · %{s} · %{off}",
+      "variables": [
+        "id",
+        "label",
+        "off",
+        "s"
+      ],
+      "translation": null,
+      "source_hash": "68674db9200d645fddd3a2fb1a4a82c23ed04fd0aebdbaa67bce6b31b4f29703",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_4",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{label}",
+      "new_english": "GEN %{id} · %{label}",
+      "variables": [
+        "id",
+        "label"
+      ],
+      "translation": null,
+      "source_hash": "c452767d90c8d103d6c5dbfa0e1f0ea85c49c49949bd0ecb34e90995089c0426",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.gen_hz_dbfs_peak",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°",
+      "new_english": "GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°",
+      "variables": [
+        "amplitude_dbfs",
+        "frequency_hz",
+        "id",
+        "label",
+        "off",
+        "phase_degrees",
+        "signal"
+      ],
+      "translation": null,
+      "source_hash": "9b82d78a59b44fad2fda4efa705552f7626b585ad8f9a981cdd00678656e9b10",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.generation_revision",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Generation %{output_generation} · revision %{revision}",
+      "new_english": "Generation %{output_generation} · revision %{revision}",
+      "variables": [
+        "output_generation",
+        "revision"
+      ],
+      "translation": null,
+      "source_hash": "04fc36488300d3b7f73bce794b912b5e415133c1475c8895e20cd642ae23e621",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.hide_signal_controls",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Hide signal controls",
+      "new_english": "Hide signal controls",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9204d7b2dc3f07874147b9448d12bae2fddfdf4f2cb64cd22505eac112ca8d51",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.hz_ch_input_stop_holds_the_measurement_output_continues",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{label} · %{rate} Hz · %{channels}ch. Input Stop holds the measurement; output continues.",
+      "new_english": "%{label} · %{rate} Hz · %{channels}ch. Input Stop holds the measurement; output continues.",
       "variables": [
         "channels",
-        "channels_2",
-        "x_fs_per_div",
-        "y_fs_per_div"
+        "label",
+        "rate"
       ],
       "translation": null,
-      "source_hash": "1fa29b100b8b5b30dd05a6641c6beddf2d2f5c5fb93a9ee14429b8030886d08a",
+      "source_hash": "7a8d86e98ccad5a001ef58e39ee1d998fe01ec07fd34f9b36a6a217bdaac903c",
       "translated_source_hash": null
     },
     {
-      "key": "xy.x_fs_y_fs",
-      "group": "xy",
+      "key": "generator.hz_ch_nominal_fs",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS",
-      "new_english": "X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS",
-      "variables": [
-        "x_fs_per_div",
-        "y_fs_per_div"
-      ],
-      "translation": null,
-      "source_hash": "ca7cba63a07c95a6f49ac3c72162c43a8957bb6323f9c7cb08664fe4d979ea14",
-      "translated_source_hash": null
-    },
-    {
-      "key": "xy.x_fs_y_fs_2",
-      "group": "xy",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS\n%{detail}",
-      "new_english": "%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS\n%{detail}",
+      "old_english": "%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label} · nominal Fs",
+      "new_english": "%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label} · nominal Fs",
       "variables": [
         "channels",
-        "channels_2",
-        "detail",
-        "index",
-        "point",
-        "point_2"
+        "nominal_sample_rate",
+        "pcm_label"
       ],
       "translation": null,
-      "source_hash": "b94fead5f1f653b7ccb5efc1f4582b77140181e3377a30261552800ae179a83d",
+      "source_hash": "cbd0ea6ed9b2d84097803c1cf072d05d00c35513982ecb55b370e510d695a09c",
       "translated_source_hash": null
     },
     {
-      "key": "xy.x_y_use_the_same_input_frame_equal_axis",
-      "group": "xy",
+      "key": "generator.hz_dbfs_peak_lead",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "X/Y use the same input frame. Equal axis scales preserve circles on the square plot.",
-      "new_english": "X/Y use the same input frame. Equal axis scales preserve circles on the square plot.",
-      "variables": [],
+      "old_english": "%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "new_english": "%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+      "variables": [
+        "amplitude_dbfs",
+        "frequency_hz",
+        "phase_degrees"
+      ],
       "translation": null,
-      "source_hash": "77ab5d275570e90fd6790f25b621a772c3f28a7df1400d5e3e6b003a2bf7b8ea",
+      "source_hash": "ab150ed72a13edd1f5acd0324a7ece78a73edad831ce43b0ea41335d5af8ce06",
       "translated_source_hash": null
     },
     {
-      "key": "xy.xy_free_cursor",
-      "group": "xy",
+      "key": "generator.in_use",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY · Free cursor",
-      "new_english": "XY · Free cursor",
+      "old_english": " · in use",
+      "new_english": " · in use",
       "variables": [],
       "translation": null,
-      "source_hash": "321138b5c172728f34f15c967c0b22ecde786ca1e38bbd033bf4f5e3cd7d867d",
+      "source_hash": "518f64ecd723183d9e08d09241450c48e7d954d882bb3d911b78a2c917eff5bf",
       "translated_source_hash": null
     },
     {
-      "key": "xy.xy_lissajous",
-      "group": "xy",
+      "key": "generator.ms_cycles",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY / Lissajous",
-      "new_english": "XY / Lissajous",
-      "variables": [],
+      "old_english": "%{frequency_hz} ms / 2 cycles",
+      "new_english": "%{frequency_hz} ms / 2 cycles",
+      "variables": [
+        "frequency_hz"
+      ],
       "translation": null,
-      "source_hash": "3ed5889089156b6001938edbc8b7d0800ac8e3a22237c24f9879aa7edfc3dfb4",
+      "source_hash": "2d1518c843062e29c0e320dd0de469c78782782fe53b17af72779cc13d76a9a4",
       "translated_source_hash": null
     },
     {
-      "key": "xy.xy_requires_at_least_two_input_channels",
-      "group": "xy",
+      "key": "generator.no_signals_add_a_signal_to_choose_its_waveform",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY requires at least two input channels.",
-      "new_english": "XY requires at least two input channels.",
+      "old_english": "No signals. Add a signal to choose its waveform and output.",
+      "new_english": "No signals. Add a signal to choose its waveform and output.",
       "variables": [],
       "translation": null,
-      "source_hash": "c942bb606fab6585b4e721f80677030e273187c3639f8ab7b0efbc22887172ca",
+      "source_hash": "48d0d86981b79b0d654d1d6e66103f369e13db04ee512636625b795fc2a4d03f",
       "translated_source_hash": null
     },
     {
-      "key": "xy.xy_requires_two_input_channels",
-      "group": "xy",
+      "key": "generator.off",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY requires two input channels",
-      "new_english": "XY requires two input channels",
+      "old_english": "OFF",
+      "new_english": "OFF",
       "variables": [],
       "translation": null,
-      "source_hash": "bf1c553ca24a41dfcb0125abf5c3b1c0cc4fb5d42c25b326af574a73966c68d8",
+      "source_hash": "38cca6bea010af8adaf4be7d270456fa9adef8c0252db91f2767c607d077319b",
       "translated_source_hash": null
     },
     {
-      "key": "xy.xy_trace_snap_cursor",
-      "group": "xy",
+      "key": "generator.on",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY · Trace Snap cursor",
-      "new_english": "XY · Trace Snap cursor",
+      "old_english": "ON",
+      "new_english": "ON",
       "variables": [],
       "translation": null,
-      "source_hash": "fb77622e43950f8db39d1c1835237ac29a9a1336a4eec5dfc56433f00e2899a7",
+      "source_hash": "e8a01133b1351e5fa434167135400d1998d3daa8ce74e3dd9bb57582fa4d7b97",
       "translated_source_hash": null
     },
     {
-      "key": "xy.xy_unavailable_assigned_channel_missing",
-      "group": "xy",
+      "key": "generator.out",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY unavailable: assigned channel missing",
-      "new_english": "XY unavailable: assigned channel missing",
-      "variables": [],
+      "old_english": "OUT %{ch}%{else}",
+      "new_english": "OUT %{ch}%{else}",
+      "variables": [
+        "ch",
+        "else"
+      ],
       "translation": null,
-      "source_hash": "fd05d69a74610f0946b1bfa27c3083fa2a4199f33fd32905e72631f9cbb5b596",
+      "source_hash": "2f957b96e0a4f3c8e8f1ee4f42782f7fd0f123e25b565eb4fc08fc9cd8f09b27",
       "translated_source_hash": null
     },
     {
-      "key": "xy.xy_unavailable_mono_input",
-      "group": "xy",
+      "key": "generator.out_2",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY unavailable: mono input",
-      "new_english": "XY unavailable: mono input",
-      "variables": [],
+      "old_english": "OUT %{c}",
+      "new_english": "OUT %{c}",
+      "variables": [
+        "c"
+      ],
       "translation": null,
-      "source_hash": "ec5b9419b93aafd1b8bee08c950dd3979abb080860ec11561d898f7f709afa0c",
+      "source_hash": "61fa404b3f1295cd107d52c19d212b1d31a9703244b5c2a47f80ff254336397b",
       "translated_source_hash": null
     },
     {
-      "key": "xy.y_axis",
-      "group": "xy",
+      "key": "generator.out_3",
+      "group": "generator",
       "reasons": [
         "missing"
       ],
-      "old_english": "Y AXIS",
-      "new_english": "Y AXIS",
+      "old_english": "OUT",
+      "new_english": "OUT",
       "variables": [],
       "translation": null,
-      "source_hash": "74022c1abdb3d772114e66a29bcb2dee7a2ea100bcaf5849fc4371616e2dc86b",
+      "source_hash": "c57929ed14088114883b23815775f37cb9f7d10c96f23b3cb2c1a3e375a6bbcc",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.output",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "OUTPUT",
+      "new_english": "OUTPUT",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5dbf351336f2e66ee89266f3853594ff717c7c5e05724ad4b0047bd31e78658c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.output_details",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output details",
+      "new_english": "Output details",
+      "variables": [],
+      "translation": null,
+      "source_hash": "81b0bd8db74fb271ee941a5f32dca26fb6277c83d5f230800614c6a2366694f9",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.peak_level",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Peak level",
+      "new_english": "Peak level",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5745a3b5118ae30bbeced4f0e6bfc0e3bfacd3775b1ba9168e22fd2b13080166",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.pending",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "PENDING",
+      "new_english": "PENDING",
+      "variables": [],
+      "translation": null,
+      "source_hash": "332011b91ccd9887592cd7072f12da38748e37ee1af81985f9c8e1f066aec6fb",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.phase_lead",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Phase lead",
+      "new_english": "Phase lead",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9bffba7a09a6995aaf857276ae7c9cc5539bced73ae247600cb0a92a716d898b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.remove",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Remove",
+      "new_english": "Remove",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c3812fc4acb861d5182fc2b8155f327f736fbe5e5eb86a7bd7afcb6dc5497282",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.reset_output_stays_off",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Reset output (stays OFF)",
+      "new_english": "Reset output (stays OFF)",
+      "variables": [],
+      "translation": null,
+      "source_hash": "56b489db5055689648eba13d52b2d9737eb03dba0c8579491513998c51db40c5",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.running",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "RUNNING",
+      "new_english": "RUNNING",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d80ffc8dc07953482a2f9f5fbff9a9cecea5d0022155f32af0b56e91d1bee7d3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.seed",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Seed",
+      "new_english": "Seed",
+      "variables": [],
+      "translation": null,
+      "source_hash": "367ef06b8fbf3aaaccd9cff1301628fae45901ccd9661b5a1b256c7cc5314d24",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.selected_transition_ends",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Selected transition ends %{i}",
+      "new_english": "Selected transition ends %{i}",
+      "variables": [
+        "i"
+      ],
+      "translation": null,
+      "source_hash": "620510f2f8e1c9efe37e66cf1b6a0f509cf3e3a72f9b233a99bf7315a561e7a2",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.settings_preview_fs_ceiling",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Settings preview · ±%{amplitude_peak} FS ceiling · %{frequency_hz}",
+      "new_english": "Settings preview · ±%{amplitude_peak} FS ceiling · %{frequency_hz}",
+      "variables": [
+        "amplitude_peak",
+        "frequency_hz"
+      ],
+      "translation": null,
+      "source_hash": "90d74a7d4f6d4faffac095b66e8f2a763fdf58f8ce8ab3e8cc5e37749c2adfb4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.show_signal_controls",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Show signal controls",
+      "new_english": "Show signal controls",
+      "variables": [],
+      "translation": null,
+      "source_hash": "07e5b7465e5120b326d9bf4807121aee94c21d62189ee20bfab177d5e958fabf",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.start_output",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "▶ Start output",
+      "new_english": "▶ Start output",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d7bd76b4b8685a1bdf5be8baa0687f81173f386a75b4126bb4ad24a2f50e5474",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.start_replays_the_seed_frequency_and_phase_do_not",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Start replays the seed. Frequency and phase do not affect noise.",
+      "new_english": "Start replays the seed. Frequency and phase do not affect noise.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b6341a0e8592cbc0bdf512ff1833f53b4aad9af6498198e35deb3a631d83b61a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.starting",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "STARTING",
+      "new_english": "STARTING",
+      "variables": [],
+      "translation": null,
+      "source_hash": "8a19079ce69d165aaa75c11932dbf4672b48cbdb6647b8ed5a5f40caacbabe7c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.starting_pending",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "STARTING · pending",
+      "new_english": "STARTING · pending",
+      "variables": [],
+      "translation": null,
+      "source_hash": "080a3fbbb191a8cfefa25a436bea70518a7efc621bd4a064436afc747a3e8906",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.stop_generator_output_independently_of_input_and_analysis",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stop Generator output independently of input and analysis",
+      "new_english": "Stop Generator output independently of input and analysis",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4b2558f0694bff9cf19594589c0da1211c25f35027bbb96b3151a587f7d5c843",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.stop_output",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "■ Stop output",
+      "new_english": "■ Stop output",
+      "variables": [],
+      "translation": null,
+      "source_hash": "06647c69fa33e881b5630ef931774d5b2ad94d1068884f2a5ccc43b9763f6763",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.stop_output_2",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stop output",
+      "new_english": "Stop output",
+      "variables": [],
+      "translation": null,
+      "source_hash": "514482acc7968df8cb1bcdcfe734a4259ecd3f849faf53ba0b383acdce3f22fe",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.stop_output_to_add_remove_duplicate_reorder_or_change",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
+      "new_english": "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "33629c3575f954dab2c9a7c0c48db71fbbbf2f1c5669c6542aabe6d49ed35794",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.stopped",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "STOPPED",
+      "new_english": "STOPPED",
+      "variables": [],
+      "translation": null,
+      "source_hash": "133c49456b6509109d9feb7f177f09ed2feca968952482454b134c7b49c4ff06",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.stopping",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "STOPPING",
+      "new_english": "STOPPING",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5444fbff498ad0e3a4021272831d26013c66dc21c5af98c08241e69443ecdccd",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.transition",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "TRANSITION",
+      "new_english": "TRANSITION",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9acdd42860905afad73201a889f2bcb27f8ea016ff24f6e482774623e5f67f29",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.unassigned",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Unassigned",
+      "new_english": "Unassigned",
+      "variables": [],
+      "translation": null,
+      "source_hash": "14d33bd014e6b4e7c3590a8a12e1ec4951d777593d6d6aef9ebe5faac9c8dac0",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.up",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Up",
+      "new_english": "Up",
+      "variables": [],
+      "translation": null,
+      "source_hash": "55490a4bf3a8e8cb5eed69720293a700ff01ef7da2bfc749f332f626cb584916",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.up_to_odd_harmonics_below_fs_peak_level_is",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.",
+      "new_english": "Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "a72dc9626af8dd55765d86717b1e44d143263db0a9c36870464b765ff4cceb52",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.waveform",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Waveform",
+      "new_english": "Waveform",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f274deed1b737eeb689cce76fe83eb166bc698f4a7523fe7259ce199eb6a6a93",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.waveform_names.noise",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Noise",
+      "new_english": "Noise",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9ada8e83c1186cd632fb2ac8195abc11596b4a6cea30900c55d23a44c2724770",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.waveform_names.sine",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Sine",
+      "new_english": "Sine",
+      "variables": [],
+      "translation": null,
+      "source_hash": "37573a14aab690d3814c933aa5024839d58f7ffd700eaf1b0075d1445f12d631",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.waveform_names.square",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Square",
+      "new_english": "Square",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c11092bc0861591e9ce5d9a97e83d4fae3c6954a318977865fa85f5b3eeafda8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.waveform_names.triangle",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Triangle",
+      "new_english": "Triangle",
+      "variables": [],
+      "translation": null,
+      "source_hash": "a0252691b5dc54b1d67f9d35a120e8c49187f20f0735574a61713c6317df6f72",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.white_noise",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "white noise",
+      "new_english": "white noise",
+      "variables": [],
+      "translation": null,
+      "source_hash": "46cfb0b609bd245ffb81a9190626f8c856f3eb594086e350d4707f47677ca2e8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "generator.white_noise_uniform_peak_bounded",
+      "group": "generator",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "White noise · uniform · peak bounded",
+      "new_english": "White noise · uniform · peak bounded",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1d10f26f7581a16bc01f54266a61f908f090b4e1feeb87373eaac8bf8d454bc2",
       "translated_source_hash": null
     }
   ]
