@@ -7505,6 +7505,386 @@
         "source": "WAITING FOR INPUT",
         "source_hash": "454e6b5b0dc6519b4e1cfaf909416026901a0d7573ee60b81598a4cb0b63ac9a",
         "translation_hash": "e1b4cb5ed16059ad692e44866c910f5421347509bf136a5b7b276eb8558471cd"
+      },
+      "io.amplitude": {
+        "source": "AMPLITUDE",
+        "source_hash": "fea6a3e0688f27ee70e47153be5c8da0581a86fc7dcbd61d14e7abf3fbcfab39",
+        "translation_hash": "ec01a9a0dc0406e620b7872b5353a26018410a7835dbbe0072c45b68a62a7421"
+      },
+      "io.applies_to_both_while_stopped_held_results_keep_their": {
+        "source": "Applies to both while stopped. Held results keep their rate.",
+        "source_hash": "aa11d59ef178309f869887eb3a30ee2acffc2fe7a4056e704377f70b9188ef79",
+        "translation_hash": "105672877869476c2ae7d1b3576e869917d12c8a908ac685c16d47aa6ff8d757"
+      },
+      "io.audio_input": {
+        "source": "Audio input",
+        "source_hash": "627d3bcf7c70c5352bb1efa8f8b075312ba3cb8fa710d302d9b6e062d47b5811",
+        "translation_hash": "2e3c6d40f9077fbf4793657ce8cf7803e3995b9cbe0c683e4c48e4ae6e81ccc8"
+      },
+      "io.audio_input_no_device_selected": {
+        "source": "Audio input · no device selected",
+        "source_hash": "93e2be7eda574dc3f20787587e6ac31ca95ffec2bd79b6fe9a51015efa32ecdb",
+        "translation_hash": "f21506f99242af7b3a9a81dbf3b14f920f7543af1a9d1156d01088233c3172ed"
+      },
+      "io.audio_stream_stopped_check_device_connection_and_microphone_permission": {
+        "source": "Audio stream stopped. Check device connection and microphone permission, then restart.",
+        "source_hash": "bbd7a74729f28493582956c88f06a3d20caeb9f1dc5cc167536aecf79981518e",
+        "translation_hash": "43694e9058f014561694b408920e88259a103265eac6deb28a1542f32fff0cdb"
+      },
+      "io.available_with_the_internal_loopback_output_device": {
+        "source": "Available with the Internal loopback output device.",
+        "source_hash": "a363b4329de0555846dfe6921764c85a9e86664441f1d614eb758baf4b3f4c1b",
+        "translation_hash": "6aa14cfd0fa421182249a3a8970da9ecbc20c9342377437f64f318a0ae3a524b"
+      },
+      "io.captured_readout_condition": {
+        "source": "CAPTURED READOUT CONDITION",
+        "source_hash": "d77feace93cdcc076b1f27ff96549ada2af89aca28351d4f9807de0339298d64",
+        "translation_hash": "bcf86a14186df4bb24697d6ea9ce96f6ec9cb41d7ee7143b4b66951fd0e37cab"
+      },
+      "io.ch": {
+        "source": "%{channels}ch · %{label}",
+        "source_hash": "687840fed99d4ecefeb3236fc69432af4dc6b90b072c96b1f6a7c91dd600af9a",
+        "translation_hash": "d82d3e4d5e501e598e0ed81e11e70f38807fbbdce7fb460a49a2ea9f13befdaa"
+      },
+      "io.ch_gain": {
+        "source": "CH 2 gain",
+        "source_hash": "d1fd5a10db8fb21235f45a23d6e44d2eed25a71a8c190990a63145a79120d1f8",
+        "translation_hash": "02ffe57f473c17eb22556acc70a733c1ec502ff416966a2d716daa3324428904"
+      },
+      "io.ch_phase_gain": {
+        "source": "CH 2 PHASE / GAIN",
+        "source_hash": "9e2bfa7b76dd0672ec34a9bffb6b2ed12144472de8caadb7c804d6dfe411186b",
+        "translation_hash": "c869fe6bdd3732d64eac499c7520ea15a7a75f49d04875fcdbea5825891dd186"
+      },
+      "io.channel_unavailable_in_the_current_input": {
+        "source": "Channel unavailable in the current input",
+        "source_hash": "ab31d6a01d0bce9f8c72825738dd86500bf33733b0c7093c9f1a0ada1f398dc0",
+        "translation_hash": "3bdd947d5514db4f2be6a4971ab75e404f19088c970527bd67cf6d5426f31903"
+      },
+      "io.channels_pcm": {
+        "source": "CHANNELS / PCM",
+        "source_hash": "b0f3b27322d23a0f0865b65e7003fe9053c8baa6f7c00a0e5926ad9e9b446fbb",
+        "translation_hash": "c75ed7a17afbded4c2f9cc3cf097bd3dbd7d1624f09fc578fd2cc7e670e89db5"
+      },
+      "io.default": {
+        "source": "%{name} (default)",
+        "source_hash": "615efcb976c44fb21b85907ddfb1a3c7739b1f1ffb3f8697050365b94f8ace77",
+        "translation_hash": "1af0a6213a0e7479309c39c4d462d871a00c0aad4007f01cc146edd3da9163fc"
+      },
+      "io.degrees": {
+        "source": "degrees",
+        "source_hash": "67e565733661bf1a7d36500840e4ecf4a844436fdebfd57eab8518b57a19ae0c",
+        "translation_hash": "e24a9725df827422266bd1e2b4562bad7ba91c9e5c16d72eeae5332a0953cf70"
+      },
+      "io.demo_harmonics": {
+        "source": "Sine + harmonics",
+        "source_hash": "e6e577f66f2e9a75d9d9868d4ec6b9f5e329aa143170241ab99c3ba21f7b5c22",
+        "translation_hash": "01e97369d43fe49b239f71f39b2e407db68bb2ee4a02afd994443631c6fbb45e"
+      },
+      "io.demo_signal_qa": {
+        "source": "Demo signal (QA)",
+        "source_hash": "fc3436546ba8dbc60b181221de75b51c3d60a550dd3f1640cc8b3aa5116db594",
+        "translation_hash": "8c54d665f0245a2374bb5cef0909387d4ffaae884b27a5a0098ae9529491235c"
+      },
+      "io.demo_square": {
+        "source": "Band-limited square",
+        "source_hash": "72548c449c7cc0605c3a6b97b1122708d6140206d371207b490e1c271d5658c8",
+        "translation_hash": "f85535e83e2bbcc838c30931c32a97c94e93987a321cc2dbbc681da8fce879ae"
+      },
+      "io.device": {
+        "source": "DEVICE",
+        "source_hash": "f92fc83b9b091613e91ecc85224bcb51bf5db2942d4114847725de79158366dd",
+        "translation_hash": "e1506406a5bd8f0225fbb27b4349faf7a8af6090960908c3b2b32b1275e38bc9"
+      },
+      "io.device_default": {
+        "source": "Device default",
+        "source_hash": "aa46c3735f0740e749e2aaa790ac6dd73024064e5fa22fb6bdf6618213f01edb",
+        "translation_hash": "9616cab7bfee574c9b725b0d1b369f98d4aad61aab90fd0b38e5565faeb96d1c"
+      },
+      "io.device_default_khz": {
+        "source": "Device default (%{sample_rate} kHz)",
+        "source_hash": "74083ae991dde7d11e1f7ec9ea1ec214d614a9043f303efe87ac43266a216712",
+        "translation_hash": "d0fc11e2e17645f5b810f6bd7ec512ab9d26531b75736ae0f663e57345d54007"
+      },
+      "io.equal_amplitude_noise_free_sine_signals_for_xy_in": {
+        "source": "Equal-amplitude, noise-free sine signals for XY: in-phase, quadrature or opposite phase.",
+        "source_hash": "b3491024884c6272fe33abf070e4340413e8c326dd644d735d37d06e355facf0",
+        "translation_hash": "475fb85948cd4eb1f72fcd6ce4bbbf61590b57d2a89b7796ba900b84c06c1e13"
+      },
+      "io.frequency": {
+        "source": "FREQUENCY",
+        "source_hash": "c77d231aa6d343b0ed6bf72e5df23b248708e5c9d063e568bd8634372702592d",
+        "translation_hash": "98cbdc5485571aacbaf57fd4ad804e4636cc595ea27c8b46847aa5dfe03cd996"
+      },
+      "io.fs_peak": {
+        "source": "FS peak",
+        "source_hash": "01b235bba7e50652d1ed8da638a700765826bc2d93e5e295878a9063d5c20674",
+        "translation_hash": "486ef64535bac427ef2fc6ac04b09d7074368ed932b8af1353bcb0a58a7bcf18"
+      },
+      "io.gain": {
+        "source": "Gain",
+        "source_hash": "4e125a3ef68a00b029459c9aa8aa94aa07e74cc54188ffef7f60f38f016e61ca",
+        "translation_hash": "76d70b2006e89544d860d02b3f988933043dbfe21e3f1853eda793651eeede94"
+      },
+      "io.generator_input_stopped_check_output_status_stop_input_and": {
+        "source": "Generator input stopped. Check output status, stop input and reset output before restarting.",
+        "source_hash": "34ddab5d2296a578934af2c220bdb7f90337ae5ee29cd0e1aed0e7500fa9a989",
+        "translation_hash": "1731417bbbe630c64b44f747de61bf4532ceab060f181be8e9f1deb0b5c433e8"
+      },
+      "io.generator_loopback": {
+        "source": "Generator loopback",
+        "source_hash": "dd792ce6ea80277040304b50213ed8d0170cb66e722637de9ab9e32e6091aa77",
+        "translation_hash": "5d03e4ab84a416437408c579d24a75d610170d2634ca6bfca364822f8530257c"
+      },
+      "io.generator_loopback_out": {
+        "source": "Generator loopback · OUT 1 / 2",
+        "source_hash": "2cb554a548ac054c3f337b26eb5e00836786bfd14fcd58b42622931aae00d653",
+        "translation_hash": "377192d43d6e7b54d0c38e6215011873355ce2a32d93ce9d43cc55033e493845"
+      },
+      "io.hz_2": {
+        "source": "%{r} Hz",
+        "source_hash": "34a9607478a566a17ce3f8b5334df350a3a0232be765be883eb1984b38ac9f9d",
+        "translation_hash": "34a9607478a566a17ce3f8b5334df350a3a0232be765be883eb1984b38ac9f9d"
+      },
+      "io.hz_3": {
+        "source": "%{rate} Hz",
+        "source_hash": "9a2852cf0c807d06c8c28a629b5579b6ad76962224c66c32fea476380e301800",
+        "translation_hash": "9a2852cf0c807d06c8c28a629b5579b6ad76962224c66c32fea476380e301800"
+      },
+      "io.hz_4": {
+        "source": "%{rate} Hz · %{format}",
+        "source_hash": "312a0311d310b7f38bc8ac343b80421b10b305f0e4c12402ae956cb77a8a11f6",
+        "translation_hash": "312a0311d310b7f38bc8ac343b80421b10b305f0e4c12402ae956cb77a8a11f6"
+      },
+      "io.input": {
+        "source": "Input",
+        "source_hash": "36ecb4f8669133ce744c21982ba4abe2ecd7086e1dc2226ccd6f266f3a5005f8",
+        "translation_hash": "2087c777c06fefe5b85ee362b7bfb5220c587191fa4b3bf1f713cc6ceb32ebd2"
+      },
+      "io.input_channel": {
+        "source": "INPUT CHANNEL",
+        "source_hash": "87454b78339b5c43e64c0665ad88a682e0cf008edbef5f722c5f7c4c061185d4",
+        "translation_hash": "069676d2d9ec534fd23e6be3923e4d98d47fc1e91184da3e31d5d13722747dd9"
+      },
+      "io.input_output_hz": {
+        "source": "Input: %{r} · Output: %{rate} Hz",
+        "source_hash": "103651c56125cbcc0da6a3322dce3593277d283e9aa35aedb5723c16865f4439",
+        "translation_hash": "21f3be691fa04b5085e237ca267dcc0da4c8f8176dd3a52a3c0e3b8cf97acf81"
+      },
+      "io.input_source": {
+        "source": "Input source: %{source}",
+        "source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b",
+        "translation_hash": "0e4fe73b64e7c8b7c45d8e122523df861c59fa81299e17c3dfe18fbe77850ce2"
+      },
+      "io.internal_loopback": {
+        "source": "Internal loopback",
+        "source_hash": "b9a87d921926df0d115b3fe524ad35bf23ee57e106ac1875574edd8d9a15bd14",
+        "translation_hash": "4422bf4cd87255a11a368f5972cda50155fb9773a8acfa3329fd5743770967d4"
+      },
+      "io.internal_source_no_audio_output": {
+        "source": "Internal source · no audio output",
+        "source_hash": "db16919adab43317836f80fd17edfa1346b6c3acd1f2c81fbcdd4c0ae45e6e3c",
+        "translation_hash": "ef31a3d843c38e2a80eeb652f4c0910080e2437327ea6acedacd14d3b7fa1a4a"
+      },
+      "io.khz": {
+        "source": "%{rate} kHz",
+        "source_hash": "208567bd66c992840649b9125f2654a63ec1405237345f46d8577bac768362ed",
+        "translation_hash": "208567bd66c992840649b9125f2654a63ec1405237345f46d8577bac768362ed"
+      },
+      "io.no_common_rate_for_these_devices_and_output_format": {
+        "source": "No common rate for these devices and output format. Use separate sample rates.",
+        "source_hash": "74a2e66883227dcaaa6158fe9e6143bbe519e21a52ef7cfea2afe60387f1db23",
+        "translation_hash": "0dbe38fa3725ad1344e9cb87aaf50f450fdad5e39cb85da23dbe6b5599ead771"
+      },
+      "io.no_input_device": {
+        "source": "No input device",
+        "source_hash": "bc9d3f9c177edaead524282306dcf075bcfc183a9c77782f03d8ad2b35441e4a",
+        "translation_hash": "7c93ec6dfd16deefef637853e43bc8e6c13bfb098b95c77d1ddd6d934104264d"
+      },
+      "io.noise": {
+        "source": "Noise",
+        "source_hash": "9ada8e83c1186cd632fb2ac8195abc11596b4a6cea30900c55d23a44c2724770",
+        "translation_hash": "cf4c983b79398ef47cd3bb9956b74afe07c588d4e488582ae86dc0fd0923e418"
+      },
+      "io.noise_2": {
+        "source": "NOISE",
+        "source_hash": "d331ebe20ee3073f359d76dd1f0268d365aa5e6d4c93b1946a749c2fb4f394c8",
+        "translation_hash": "cf4c983b79398ef47cd3bb9956b74afe07c588d4e488582ae86dc0fd0923e418"
+      },
+      "io.noise_amplitude_in_digital_full_scale_fs": {
+        "source": "Noise amplitude in digital full scale (FS).",
+        "source_hash": "6645baa344f7586ad2c529a052e597ee8e073e83f5979a2a56d62df946b5f027",
+        "translation_hash": "b791f431a27bff66e79781c3ea67a0e4c64f85cb4acdf6d6fb26cf4e0e8e9db2"
+      },
+      "io.offset": {
+        "source": "Offset",
+        "source_hash": "b1a1e8e3cf7c522ed8606c3c3c3f35d3299eca78cb664fec00d9787da111f418",
+        "translation_hash": "f905e85ff3b2fc58083d0713fc447ac9163f5db6e3d6dce1ddaddfb8731369ce"
+      },
+      "io.out_ch_out_ch_start_input_and_output_separately": {
+        "source": "OUT 1 → CH 1 · OUT 2 → CH 2 · Start input and output separately.",
+        "source_hash": "d2c21c8a21812df2c14054b209cc0d24d58a2f76be4ce0de0790b31b79c6f307",
+        "translation_hash": "197a0de0b5d70f604d352d1e18e51e5fb9d9e920628eec20e52b58469f43b4b6"
+      },
+      "io.output": {
+        "source": "Output",
+        "source_hash": "b2439bcb8dee14b685f137f294b0e0cb62f5aadf45143ce01d79777d435a93b4",
+        "translation_hash": "fb04addb4c2654f51feb55712992205a3c4a1a552f284f0a7534b2a712fea793"
+      },
+      "io.output_device": {
+        "source": "OUTPUT DEVICE",
+        "source_hash": "4072269aa3171ed233aafc5474ce4d1bd6be89a5ef4896d08230e9382f73ac73",
+        "translation_hash": "6538fe3f7e8275d089104514efdf769199e0458e485a6c79dc6d0d1a0a951366"
+      },
+      "io.physical_unit_e_g_v_a_pa": {
+        "source": "PHYSICAL UNIT (E.G. V, A, Pa)",
+        "source_hash": "12cffb5c555afdf1aa6ec7a38493951e77a2ab5ed38b9533fe39d40c3636e901",
+        "translation_hash": "7da86b4f80084dbf5caaae535aba84c907cfbc242176468209679d3ceeda732d"
+      },
+      "io.queue_calibration": {
+        "source": "Queue calibration",
+        "source_hash": "d3ca4f6e871290ac0b3251d1e535decf388cb4b1062737486bcaae2799eff42c",
+        "translation_hash": "262f6d881ccaeaddb4fb1868348553d9a340cf3d94a74e00388a2a65df196dee"
+      },
+      "io.queue_uncalibrated_fs": {
+        "source": "Queue uncalibrated FS",
+        "source_hash": "560689273504e25d413277279e525954941140ecf3c135f50b98be2aee2c8e43",
+        "translation_hash": "562858ada4a0b49ec103743864ff10e49c38f8fed692ace6bc8bc74ba9cb422c"
+      },
+      "io.queued_definitions_apply_on_the_next_start_source_device": {
+        "source": "Queued definitions apply on the next Start. Source/device selection or device refresh clears the queue. Coefficients are supplied by you; reference conditions describe their validity.",
+        "source_hash": "7e98075699f5de2610bd118e18bafd7b7b790aaa3ded0265d383bd84a5e4d6db",
+        "translation_hash": "92c9782fb7ab759606efd64bf27be8220e211a0de3a3a617acd5f1c6fd87c116"
+      },
+      "io.queued_for_next_start": {
+        "source": "QUEUED FOR NEXT START",
+        "source_hash": "af4a88d2d5dbc7047e4e6cf1af191b6930d2f3c3a167cf7f047bc81bc86a50a3",
+        "translation_hash": "d2fae37384872f5ba1e2b485445ea1b86d27b1e162a3e024971d7e6ecaf5b24f"
+      },
+      "io.rate_changes_apply_on_start_held_results_keep_their": {
+        "source": "Rate changes apply on Start. Held results keep their rate.",
+        "source_hash": "452cbb9f3212a33b74fa4155525adf28b3d7930a1138ea50811c20fadcb12dfe",
+        "translation_hash": "7dd7c98b98aa7c231ef6598cda3426177c4051f89ba33b061a6a8e424bd18f7e"
+      },
+      "io.reference_conditions": {
+        "source": "REFERENCE CONDITIONS",
+        "source_hash": "fdbc3c417b9e4ceb265203bf092432ba17b23c157dd6fe4ba6004fa37ec268d3",
+        "translation_hash": "e1f67610ea945cade2784ca8bb3239775a27b05a5a8f47500e0a81ae5283de88"
+      },
+      "io.reference_device_range_date_uncertainty": {
+        "source": "Reference, device/range, date, uncertainty",
+        "source_hash": "008df086ebe894f78d2bf32ef53291ed924f77ff0248a2fc7dd1e80a6db1058a",
+        "translation_hash": "0e087b8dda4535b6239ad8fb845d5c1eb8eec1ac626e4efbcd76dba96fc52d8f"
+      },
+      "io.refresh_devices": {
+        "source": "Refresh devices",
+        "source_hash": "67f9239ead4a9b054712087c80f88fd53290cb77295bd9c822871744f03e5db6",
+        "translation_hash": "dc54091453cc27fe5d90bd390b00fce8b2ce60600dc53bf682b4940905df8cc6"
+      },
+      "io.sample_rate": {
+        "source": "SAMPLE RATE",
+        "source_hash": "e200e8a2e608fb42ff48cdd21836ed04b1eb804348d82c4c6924dcf607efaf81",
+        "translation_hash": "0f549853799d6bde07019b47e994d82ec882146d54127ea420d00a9c5c6eb628"
+      },
+      "io.sample_rate_channels_pcm": {
+        "source": "SAMPLE RATE / CHANNELS / PCM",
+        "source_hash": "544013ac8e8c29b22328028c0d43014fc1f59bfe22a85540fed908120be07204",
+        "translation_hash": "9989a964cfb83590aaa50f851aa886849e6d3a9daca1cb4324b84d487c15ead5"
+      },
+      "io.sample_rate_input_output": {
+        "source": "SAMPLE RATE · INPUT + OUTPUT",
+        "source_hash": "32c5dde3f74817698d1773093e4c14552426a3095584cb2943ee7e11a2015f8e",
+        "translation_hash": "0a870951f5bcd1e3987462ac4f550e8322fe8328af9aa67210d337b4f02d360f"
+      },
+      "io.scope_readouts_and_spectrum_use_y_gain_fs_offset": {
+        "source": "Scope readouts and Spectrum use y = gain × FS + offset. Spectrum Remove DC cancels offset. Scope trace/trigger, Spectrogram and XY axes use FS.",
+        "source_hash": "fd8bd9b0fff4f440a553b500da73838e63263ceb343650c40f8f350c7068c6e5",
+        "translation_hash": "6e6944697c37173c0b4ab2131c0af970eb7ca8ae51b93ab9119b2752ed4c2a6d"
+      },
+      "io.select_common_rate": {
+        "source": "Select common rate",
+        "source_hash": "81f0e1b7665315cbf53d49c1fa7cf0b8e354f564dac7d441f2d3a6ce130eafd7",
+        "translation_hash": "5596cce986496800f042eafa9ead386c25a713dfbba0dd1f9f31e906325816d5"
+      },
+      "io.separate_sample_rates": {
+        "source": "Separate sample rates",
+        "source_hash": "33d6cf37687423dde845e5a16b56b16f03013bc7fd8d001fb6ea3f1c59c8f7d4",
+        "translation_hash": "f3793f354ba691246b6716b635f333995e9af1c87369e94d981318407ed26899"
+      },
+      "io.signal_changes_apply_when_input_restarts_captured_samples_stay": {
+        "source": "Signal changes apply when input restarts. Captured samples stay held.",
+        "source_hash": "48b7c66118bad4a0a08aaa268ad07ffede5e281cb85da9c7eedc90aac1f2217c",
+        "translation_hash": "b33a8fcc3dacdd52a95bf5b1149729732d2ecd6e318ac79adbd2ebcc1e51dca3"
+      },
+      "io.software_loopback": {
+        "source": "Software Loopback",
+        "source_hash": "c2333009468d498e94ada080c5edb9758aaef8c48d31eb132599cd9cafde9457",
+        "translation_hash": "65b762c166d3586975bd8b30b4d81f092a94badeea874e5d4716ae50903055fa"
+      },
+      "io.source": {
+        "source": "SOURCE",
+        "source_hash": "56ccd012fa61dd4b6697697b49cc06debf68c1876c2fa89750ba35dd2ae875d9",
+        "translation_hash": "f4e2ebc162b202b154a486914c8b6a89b18a058763f543daf4e67b92d0af6f28"
+      },
+      "io.start_input": {
+        "source": "▶  Start input",
+        "source_hash": "01511f203284f519f70278238a5df858b2fba01e58f5d620d89b5b538e15de85",
+        "translation_hash": "a6b5a9be14385a7d8463a72925155640ae5d53c7ddf5bff1b6ea517b7fcd9eb3"
+      },
+      "io.start_input_demo": {
+        "source": "▶  Start input (demo)",
+        "source_hash": "e448a779bd05a482b2de7fde7bb5fc3821dd097392b7911d83c1e6baeb364f01",
+        "translation_hash": "68fe11f1e711f2ca0d9f1197cc9d6c436c853c4d0f9ac1ab2b4a29b11664bfd0"
+      },
+      "io.start_or_stop_the_shared_input_for_all_instruments": {
+        "source": "Start or stop the shared input for all instruments; output is independent. Shortcut: Space",
+        "source_hash": "880cfde27bdce047ea67572987c7bc8138d8daba4f509522a99960da7b82e7c4",
+        "translation_hash": "5da5df1be2d4bc8912537609777930f41530ec1b47d58755293fd878295e3107"
+      },
+      "io.start_stop_is_always_in_the_top_bar": {
+        "source": "Start / stop is always in the top bar.",
+        "source_hash": "83abb54269435843fcee6ba4b6d1766728c5955422984167956ee47835c83ab1",
+        "translation_hash": "d8fa6508838ed699639d50dc4e32c9b728aabe5b9e247a8f00359b40ad9b60b2"
+      },
+      "io.stop_input": {
+        "source": "■  Stop input",
+        "source_hash": "eb2a908826c163e5ac733af620673f4e1e9447debf94aa433de1f6b654cfbb47",
+        "translation_hash": "4df16e9ac8ec63777ff4112b3570c3cf92b8e4e1cd75e5a88bdbc89046470bf0"
+      },
+      "io.stop_input_and_output_and_select_a_supported_common": {
+        "source": "Stop input and output and select a supported common rate.",
+        "source_hash": "8cb65970d99c76a2f7963eab10e3f52871bc97f387c4e152136a7eea881d4342",
+        "translation_hash": "d7bd3b1ea311db222d5bbd6e66cf695bb38563fcbeaa9a324cf88eb2da49fa77"
+      },
+      "io.stop_input_and_output_to_change_the_device_or": {
+        "source": "Stop input and output to change the device or format.",
+        "source_hash": "12dbdb4eba333cf1360fee0d37ae830c061b7139d046919609452809ff26f653",
+        "translation_hash": "77fb90ca455f0d25ca2969a28be3ee14f2a08d8caf6592ac0a360bd4a19febeb"
+      },
+      "io.supported_device_rates_up_to_khz": {
+        "source": "Supported device rates · up to 768 kHz",
+        "source_hash": "9fec62dc6c198fe466ad4ff2c96d601d4e29e886684cab6260f07754ae4e86af",
+        "translation_hash": "779b2a5e856ede27231ed789c4e5935917bf6b898f164848c2df384bc880635b"
+      },
+      "io.unavailable": {
+        "source": "Unavailable",
+        "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+        "translation_hash": "460b3574e4bdb8ca1d4605109904168e010d6a9b81d9bb6960b28fc14b046c83"
+      },
+      "io.unit": {
+        "source": "unit",
+        "source_hash": "385cfdbc00ec32031699460779c15099b2bba3cad0e440fffb08e10df0acb9e1",
+        "translation_hash": "80b19d68b1494dac82aa7f5433d676df3cd6ac45139a44b3790674b265dbae3f"
+      },
+      "io.unit_fs": {
+        "source": "unit/FS",
+        "source_hash": "c5651870d773261e2f52f37ce14fa50b2b2a69caa8bda8ae955db8ddc8f41368",
+        "translation_hash": "f66a55cbf5771f89ecac6549bb92d4f211e9d160d6daed5e264ead16a3f74cb2"
+      },
+      "io.waveform": {
+        "source": "WAVEFORM",
+        "source_hash": "745c4d27a2375ecadfb7da7138ae0235fdc018d90895dd8ae470c122188df924",
+        "translation_hash": "0a40ad0e8d8f5df2808d6b080b2dffb4276ce7bd9378f2aaa8ae31e50c18c348"
       }
     }
   }
