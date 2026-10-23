@@ -1,26 +1,40 @@
 {
   "version": 1,
-  "base_revision": "4058da6b89a685e3b4daf576cbc3267469a7a810",
-  "locale": "ru",
+  "base_revision": "36131b46b6a90202f976262796db16ed45b78aa1",
+  "locale": "fr",
   "groups": [
-    "spectrogram"
+    "oscilloscope"
   ],
   "review_keys": [
-    "spectrogram.gestures"
+    "oscilloscope.fit_amplitude",
+    "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre"
   ],
   "entries": [
     {
-      "key": "spectrogram.gestures",
-      "group": "spectrogram",
+      "key": "oscilloscope.fit_amplitude",
+      "group": "oscilloscope",
       "reasons": [
         "review"
       ],
-      "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
-      "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+      "old_english": "Fit amplitude",
+      "new_english": "Fit amplitude",
       "variables": [],
-      "translation": "Spectrogram: прокрутите колесо для масштабирования частоты; перетаскивайте для панорамирования частоты/времени; Shift+колесо или колесо на оси времени прокручивает историю; щёлкните, чтобы удержать и выбрать кадр; перетащите линию курсора; «Активно» отключает историю; двойной щелчок сбрасывает положение частоты/времени.",
-      "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
-      "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
+      "translation": "Ajuster l’amplitude",
+      "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+      "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+    },
+    {
+      "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Fit the selected channel's raw peak and centre its offset",
+      "new_english": "Fit the selected channel's raw peak and centre its offset",
+      "variables": [],
+      "translation": "Ajuster l’amplitude au pic brut du canal sélectionné et centrer son décalage",
+      "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+      "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
     }
   ]
 }
