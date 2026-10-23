@@ -16,7 +16,9 @@ from i18n import (
     check_calls,
     check_scope,
     changed_keys,
+    compact_task,
     digest,
+    expand_task,
     git,
     load_catalog,
     make_diff,
@@ -32,10 +34,18 @@ from i18n import (
 )
 
 ANSWERS = "dist/i18n/answers.json"
+DETAILS = "dist/i18n/translation-task.json"
 
 
 def json_text(value):
     return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
+
+
+def save_task(root: Path, task: dict) -> None:
+    for path, value in ((DETAILS, task), (TASK, compact_task(task))):
+        target = root / path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(json_text(value), encoding="utf-8")
 
 
 def prepare(root: Path, locale: str, group: str, review_keys: list[str] | None = None) -> dict:
@@ -61,16 +71,15 @@ def prepare(root: Path, locale: str, group: str, review_keys: list[str] | None =
             if entry["new_english"] is not None
         ],
     }
-    for path, value in ((TASK, task), (ANSWERS, answers)):
-        target = root / path
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(json_text(value), encoding="utf-8")
+    save_task(root, task)
+    target = root / ANSWERS
+    target.write_text(json_text(answers), encoding="utf-8")
     return task
 
 
 def apply(root: Path) -> int:
     task = read_json((root / TASK).read_text(encoding="utf-8"))
-    if task.get("version") == 2:
+    if task.get("version") == 2 or (task.get("version") == 3 and task.get("kind") == "visual_review"):
         raise InvalidCatalog("review bundles are read-only; prepare a locale/group task to revise translations")
     answers = read_json((root / ANSWERS).read_text(encoding="utf-8"))
     base = revision(root, "HEAD")
@@ -78,6 +87,7 @@ def apply(root: Path) -> int:
     old = load_catalog(old_files)
     files = snapshot(root)
     current = load_catalog(files)
+    task = expand_task(task, base, old, current)
     # Recompute the immutable task and reject unrelated edits before planning any writes.
     check_scope(root, base, old, current, task)
     if files != old_files:
@@ -152,8 +162,10 @@ def verify(root: Path) -> tuple[int, int]:
     base = revision(root, task["base_revision"])
     files = snapshot(root)
     current = load_catalog(files)
+    old = load_catalog(snapshot(root, base))
+    task = expand_task(task, base, old, current)
     check_calls(files, current)
-    check_scope(root, base, load_catalog(snapshot(root, base)), current, task)
+    check_scope(root, base, old, current, task)
     warnings(current)
     tasks = task["tasks"] if task.get("version") == 2 else [task]
     active = [
@@ -193,7 +205,7 @@ def bundle(root: Path, base: str) -> dict:
     check_calls(files, current)
     warnings(current)
     check_scope(root, base, original, current, task)
-    (root / TASK).write_text(json_text(task), encoding="utf-8")
+    save_task(root, task)
     return task
 
 
