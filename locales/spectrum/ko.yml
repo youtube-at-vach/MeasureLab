@@ -1,0 +1,170 @@
+_version: 1
+spectrum.advanced_analysis_diagnostics: 고급 분석 / 진단
+spectrum.amplitude: 진폭
+spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum: 입력을 다시
+  시작하면 분석 변경 사항이 적용됩니다. 캡처된 Spectrum은 고정 상태로 유지됩니다.
+spectrum.auto: 자동
+spectrum.average: 평균
+spectrum.averaging: 평균화 중
+spectrum.avg_off: 평균 끔
+spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum: 대역 전력을 사용할
+  수 없습니다 · 윈도우, 범위가 잘못되었거나 합계가 유한하지 않습니다
+spectrum.band_rms: 대역 RMS %{rms} %{unit}
+spectrum.before_input_began_no_stft_frame: 입력 시작 전 · STFT 프레임 없음
+spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin: 빈 진폭 · 0 dBFS = 빈 중심에서 1 FS 피크
+  정현파. 윈도우의 코히런트 이득을 보정하며 빈에서 벗어난 톤은 스캘로핑 손실이 발생합니다.
+spectrum.bottom: 아래
+spectrum.calibration_rev: 보정 %{id} · rev %{revision}
+spectrum.captured_fft_source_units_and_averaging_are_read_only: 캡처된 FFT, 소스, 단위 및
+  평균 설정은 읽기 전용입니다. 일반 Spectrum은 독립적으로 계속 동작합니다.
+spectrum.ch: CH%{index}
+spectrum.ch_input: CH%{shown_spectrum_index} · 입력 %{channel} · %{db_unit}
+spectrum.ch_input_select_for_peak_cursor_and_export_display: 'CH%{index} · 입력 %{source}
+  · %{db_unit}
+
+  피크/커서 및 내보내기에 사용할 채널을 선택하세요. 표시 켜기/끄기는 독립적입니다. 다시 켜면 새로운 평균을 시작합니다.'
+spectrum.choose_which_cursor_the_next_spectrum_click_or_drag: 다음 Spectrum 클릭 또는 드래그로
+  배치할 커서를 선택합니다. A 또는 B를 선택해도 커서는 배치되지 않습니다. 두 커서는 선택한 채널에서 가장 가까운 FFT 빈을 읽습니다.
+spectrum.clear_both_frequency_cursors_shared_by_spectrum_and_spectrogram: Spectrum과
+  Spectrogram이 공유하는 두 주파수 커서를 지웁니다. 시간 커서, Spectrogram 프레임 선택, XY Free 점 및 취득 데이터는
+  유지됩니다.
+spectrum.clear_frequency: 주파수 지우기
+spectrum.clear_hold: 고정 지우기
+spectrum.click_drag_the_plot_to_place_a_cursor: 플롯을 클릭하거나 드래그해 커서를 배치하세요
+spectrum.continuous_hop_ms: 연속 · 홉 %{sample_rate} ms
+spectrum.continuous_process_every_window: 연속 · 모든 윈도우 처리
+spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: '커서 %{index} ·
+  가장 가까운 빈: %{value} %{linear_unit}. 최신 윈도우: 샘플 %{start}..%{end} (끝 제외), CH %{channel},
+  %{sample_rate} Hz, %{size}개 포인트, %{name}, %{name_2}. EMA α = 1/%{averages}; 처리된
+  윈도우 %{updates}개, 기여 포락선 %{start_2}..%{end_2} (지수 가중치). 입력 세대 %{input_generation};
+  누락 윈도우 %{missing_windows}개.%{times}'
+spectrum.custom_frequency_range: 사용자 지정 주파수 범위
+spectrum.ema: EMA 1/%{averages}
+spectrum.ema_settling: EMA 안정화 중
+spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: 에너지 스펙트럼 밀도
+  · Hz당 에너지. ESD 프리셋을 선택하면 단일 과도 신호에 맞게 사각 윈도우, 평균 끔 및 DC 제거 끔을 설정합니다.
+spectrum.exponential_average_of_linear_power_off_uses_the_latest: 선형 전력의 지수 평균입니다.
+  끄면 가장 최근 처리된 윈도우를 사용합니다.
+spectrum.exponential_power_average_approximately_settled_after_weight_windows: 지수
+  전력 평균 · α = 1/%{averages}. 가중치 윈도우의 3배 후 약 95% 안정화됩니다.
+spectrum.export_reason: 이력 Spectrum 내보내기를 사용할 수 없습니다. 입력 중지 후에도 Scope만 JSON / CSV
+  / PNG로 내보낼 수 있습니다. 일반 Spectrum을 선택하면 통합 내보내기가 복원됩니다.
+spectrum.f_hz: Δf %{bin_hz} Hz
+spectrum.f_hz_l_db: Δf %{frequency_hz} Hz · ΔL %{delta_level} dB
+spectrum.f_hz_rbw_hz_window_ms_processed_windows: 'Δf %{bin_hz} Hz · RBW %{rbw_hz}
+  Hz
+
+  윈도우 %{sample_rate} ms · 처리된 윈도우 %{updates}개'
+spectrum.fft: FFT
+spectrum.fft_edits_apply_on_next_start_captured_results_retain: FFT 변경 사항은 다음 시작 시
+  적용됩니다. 캡처된 결과는 기존 조건을 유지합니다.
+spectrum.fft_end_acquired_end: 'FFT 끝 #%{end} · 취득 끝 #%{end_2}'
+spectrum.filling_window_samples: 윈도우 채우는 중 · %{filled_samples} / %{size}개 샘플
+spectrum.fit_the_entire_transient_inside_one_fft_window_trigger: 전체 과도 신호가 하나의 FFT
+  윈도우 안에 들어가도록 하세요. 트리거 캡처는 연동되지 않습니다.
+spectrum.frequency_scale: 주파수 / 축척
+spectrum.from: 시작
+spectrum.full_nyquist: 전체 / 나이퀴스트
+spectrum.history_read_only: 이력 · 읽기 전용
+spectrum.hz_ch_samples: '%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}
+
+  CH %{channel} · 샘플 %{start}..%{end}'
+spectrum.hz_no_complete_window: '%{index} %{frequency} Hz · 완전한 윈도우 없음'
+spectrum.hz_power: '%{first_hz}–%{last_hz} Hz · 전력 %{power} %{power_unit}'
+spectrum.input_source: 입력 소스
+spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power: 잘못된 FFT 윈도우 · 유한하지
+  않은 샘플 또는 보정된 전력
+spectrum.invalid_stft_window_nonfinite_input: 잘못된 STFT 윈도우 · 유한하지 않은 입력
+spectrum.json_csv_png_use_the_selected_trace: JSON / CSV / PNG는 선택한 트레이스를 사용합니다.
+spectrum.latest_observe_at_a_limited_rate: 최신 · 제한된 속도로 관찰
+spectrum.latest_target_ms: 최신 · 목표 %{observation_ms} ms
+spectrum.level_axis: 레벨 축
+spectrum.linear_hz: 선형 Hz
+spectrum.live_observe_newest_window: 실시간 · 최신 윈도우 관찰
+spectrum.live_target_ms: 실시간 · 목표 %{observation_ms} ms
+spectrum.live_up_to_updates_s: 실시간 · 최대 초당 60회 업데이트
+spectrum.log_hz: 로그 Hz
+spectrum.manual: 수동
+spectrum.measurement_ch: 측정 · CH%{index}
+spectrum.missing_input_invalid_windows_missed_observations: '%{cadence} · 입력 누락 %{input_missing}
+  · 잘못된 윈도우 %{invalid_windows} · 관찰 누락 %{missed_observations}'
+spectrum.mixed_level_references_units_shown_per_channel: 혼합 레벨 기준 · 채널별 단위 표시
+spectrum.mode_names.continuous: 연속
+spectrum.mode_names.latest: 최신
+spectrum.mode_names.live: 실시간
+spectrum.newest_complete_window_only_intermediate_windows_can_be_skipped: 가장 최신 완전한
+  윈도우만 사용하며 중간 윈도우는 건너뛸 수 있습니다. 작은 FFT는 최소 33 ms / N/4, 큰 FFT는 100 ms가 필요합니다. 과도 신호
+  캡처를 보장하지 않습니다.
+spectrum.no_input: 입력 없음
+spectrum.no_stft_frame_gap_unavailable_or_different_generation: STFT 프레임 없음 · 간격 발생,
+  사용할 수 없음 또는 세대가 다름
+spectrum.normal_spectrum: 일반 Spectrum
+spectrum.observe_the_newest_complete_window_with_a_processing_time: 처리 시간 예산 내에서 가장
+  최신의 완전한 윈도우를 관찰합니다. 평균과 고정은 그리기와 독립적으로 관찰된 각 윈도우에 따라 업데이트됩니다. 모든 N/4 윈도우를 처리하려면
+  연속을 사용하세요.
+spectrum.off: 끔
+spectrum.one_complete_window_s_continuous_step_s_n: '완전한 윈도우 하나: %{sample_rate} s
+  · 연속 단계: %{sample_rate_2} s (N/4)'
+spectrum.peak_bin_hz: 피크 빈 %{frequency} Hz
+spectrum.peak_hold: 피크 유지
+spectrum.peak_markers: 피크 마커
+spectrum.place_cursor: '커서 배치:'
+spectrum.place_frequency_cursor: '주파수 커서 배치:'
+spectrum.points: '%{size}개 포인트'
+spectrum.power_in_band: 대역 전력
+spectrum.power_spectral_density_power_per_hz_with_window_noise: 전력 스펙트럼 밀도 · 윈도우 잡음
+  대역폭 보정이 적용된 Hz당 전력
+spectrum.psd: PSD
+spectrum.pt_fs_hz_f_hz: '%{size} pt · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz}
+  Hz · %{averaging}'
+spectrum.quantity.amplitude: 빈 진폭
+spectrum.quantity.esd: 과도 신호 (ESD)
+spectrum.quantity.psd: 전력 스펙트럼 밀도
+spectrum.rectangular_recommended_other_windows_attenuate_energy_without_correction: 권장
+  윈도우는 사각형입니다. 다른 윈도우는 보정하지 않으면 에너지를 감쇠합니다.
+spectrum.remove_dc_offset: DC 오프셋 제거
+spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: 요청 %{requested_hz}–%{requested_hz_2}
+  Hz, 빈 중심 %{first_bin}..=%{last_bin} 포함. 모든 빈에 대해 f64 PSD × Δf를 합산하며 DC/Nyquist는
+  전체 가중치를 적용합니다. CH %{channel}, 세대 %{input_generation}, 처리된 윈도우 %{updates}개, 기여 포락선
+  %{start}..%{end}. 입력 손실 %{dropped}; 누락 윈도우 %{missing_windows}개. 선택적 DC 제거 후 윈도우
+  평균 제곱이며 Scope 관찰 구간과는 다릅니다.
+spectrum.reset: 초기화
+spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: 모든 Spectrum 트레이스의
+  평균화 및 피크 유지를 초기화합니다
+spectrum.select_a_time_frame_in_spectrogram: Spectrogram에서 시간 프레임 선택
+spectrum.show_ch_spectrum: CH%{index} Spectrum 표시
+spectrum.span: 범위 %{hz}
+spectrum.span_2: 범위 %{span_hz}
+spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated: Spectrogram
+  이력 · 빈 진폭 · FS / dBFS · 평균 끔 · 비보정
+spectrum.spectrum_analyzer: Spectrum 분석기
+spectrum.spectrum_and_scope_xy_have_independent_sample_intervals_fft: Spectrum과 Scope/XY는
+  서로 다른 샘플 구간을 사용합니다. FFT 처리 시간과 이 윈도우의 경과 시간은 별도 조건입니다.
+spectrum.stopping_finishing_spectrum_windows: 중지 중 · Spectrum 윈도우 마무리 중
+spectrum.subtracts_each_window_s_mean_before_windowing_in_esd: ESD에서 윈도우 함수 적용 전에
+  각 윈도우의 평균을 뺍니다. 이에 따라 과도 에너지와 윈도우 길이 의존성이 달라집니다.
+spectrum.sum_of_f64_esd_f_over_all_bins_including: 모든 빈(DC/Nyquist 포함)에 대한 f64 ESD
+  × Δf 합입니다. 선택적 DC 제거 후 윈도우 파형의 에너지입니다. 평균화는 누적 에너지가 아니라 윈도우 에너지의 EMA를 계산합니다. 공칭
+  입력 샘플 클록.
+spectrum.time: 시간 %{i}
+spectrum.time_2: 시간 %{i} · %{i_2}
+spectrum.time_a_b_from_spectrogram: Spectrogram의 시간 A/B
+spectrum.time_end_s_ch_samples_hz_pt_dc: 시간 %{i} · 끝 %{sample_rate} s · CH %{channel}
+  · 샘플 %{start}..%{end} · %{sample_rate_2} Hz · %{size} pt · %{name} · %{name_2} ·
+  DC %{retained}
+spectrum.time_nearest_bin_acquired_samples_hz_points_no_average: 시간 %{selected} ·
+  가장 가까운 빈 %{value} %{linear_unit} · 취득 샘플 %{start}..%{end} · %{sample_rate} Hz ·
+  %{size}개 포인트 · %{name} · %{name_2} · 평균 없음, 보정 없음
+spectrum.to: 끝
+spectrum.to_uses_nyquist_inclusive_bin_centres_whole_bins_band: 끝 = 0은 Nyquist를 사용합니다.
+  빈 중심을 포함하며 전체 빈 단위로 계산합니다. 대역을 변경해도 평균을 초기화하지 않고 고정된 PSD를 다시 읽습니다.
+spectrum.to_uses_nyquist_narrow_ranges_show_individual_bins: 끝 = 0은 Nyquist를 사용합니다.
+  좁은 범위에서는 개별 빈을 표시합니다.
+spectrum.top: 위
+spectrum.update_mode: 업데이트 모드
+spectrum.weight: 가중치 %{count}
+spectrum.weight_2: 가중치 %{average_weight}
+spectrum.window: ' · %{index} %{outside} 윈도우'
+spectrum.window_duration_available_after_input_starts: 입력이 시작된 뒤 윈도우 지속 시간을 사용할 수
+  있습니다
+spectrum.window_energy_s: 윈도우 에너지 %{spectrum_energy} %{power_unit}·s

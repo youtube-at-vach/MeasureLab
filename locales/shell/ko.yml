@@ -1,0 +1,118 @@
+_version: 1
+shell.add_an_instrument_to_edit_its_details: 세부 정보를 편집하려면 기기를 추가하세요.
+shell.add_instrument: 기기 추가…
+shell.add_instruments_to_observe_and_generate_signals_together_removing: 여러 기기를 추가해
+  신호를 함께 관찰하고 생성하세요. 창을 제거해도 해당 분석과 출력은 계속 실행됩니다.
+shell.analysis_and_output_continue: 분석과 출력이 계속됩니다
+shell.analysis_enabled_input_live: 분석 활성화 · 입력 실시간
+shell.analysis_enabled_waiting_for_input: 분석 활성화 · 입력 대기 중
+shell.analysis_on: 분석 켜짐
+shell.analysis_status: 분석 상태…
+shell.analysis_stopped: 분석 · 중지됨
+shell.audio_i_o: Audio I/O
+shell.audio_i_o_settings: Audio I/O 설정
+shell.back_to_instruments: 기기로 돌아가기
+shell.calibration: 보정
+shell.compact_sidebar: 사이드바 축소
+shell.ctrl_open_an_instrument_ctrl_left_right_select_a: 'Ctrl + 1…7: 기기 열기. Ctrl +
+  왼쪽 / 오른쪽: 콘솔 창 선택.'
+shell.details: 세부 정보
+shell.display_scale: 화면 배율
+shell.display_selection_does_not_start_or_stop_measurement: 화면 선택은 측정을 시작하거나 중지하지
+  않습니다.
+shell.error: '! 오류'
+shell.escape_cancel_editing_close_the_front_menu_window_then: 'Escape: 편집 취소, 앞쪽 메뉴/창
+  닫기, I/O 또는 좁은 세부 화면에서 돌아가기.'
+shell.expand_sidebar: 사이드바 펼치기
+shell.file_paths_status: 파일 경로 및 상태
+shell.find_an_instrument: 기기 찾기
+shell.finishing: … 마무리 중
+shell.finishing_2: 마무리 중
+shell.first_pane_share: 첫 창 비율
+shell.font_license: Noto Sans CJK 글꼴 라이선스
+shell.group.analysis: 분석
+shell.group.monitor: 모니터
+shell.group.signal: 신호
+shell.help: 도움말
+shell.in: 입력
+shell.input: 입력
+shell.input_finishing_analysis: 입력 · 분석 마무리 중
+shell.input_live: ▶ 입력 실시간
+shell.input_opening_device: 입력 · 장치 여는 중
+shell.input_output: 입력 / 출력
+shell.input_stopped: ■ 입력 중지됨
+shell.instrument: '기기: %{name}'
+shell.instrument_names.comparison: 동기 2채널
+shell.instrument_names.generator: Generator
+shell.instrument_names.lockin: Lock-in
+shell.instrument_names.scope: Scope
+shell.instrument_names.spectrogram: Spectrogram
+shell.instrument_names.spectrum: Spectrum
+shell.instrument_names.xy: XY
+shell.instruments: 기기
+shell.instruments_2: 기기
+shell.language: 언어
+shell.layout_names.columns: 좌우 배치
+shell.layout_names.grid: 2 × 2
+shell.layout_names.rows: 세로로 쌓기
+shell.layout_names.tabs: 탭
+shell.live: 실시간
+shell.live_held_waiting_describe_acquisition_validity_and_calibration_are: LIVE /
+  HELD / WAITING은 취득 상태를 나타내며, 유효성과 보정은 별도로 표시됩니다.
+shell.lock_in: Lock-in · %{enabled}
+shell.measurement: 측정
+shell.menu: 메뉴
+shell.multi_instrument_arrangement: 다중 기기 배치
+shell.multi_instrument_view: 다중 기기 보기
+shell.no_matching_instruments: 일치하는 기기가 없습니다
+shell.off: ■ 꺼짐
+shell.on: ▶ 켜짐
+shell.open_single: 단일 항목 열기
+shell.opening: … 여는 중
+shell.opening_2: 여는 중
+shell.output_error: 출력 · 오류
+shell.output_running: 출력 · 실행 중
+shell.output_start_pending: 출력 · 시작 대기 중
+shell.output_starting: 출력 · 시작 중
+shell.output_stopped: 출력 · 중지됨
+shell.output_stopping: 출력 · 중지 중
+shell.purpose.frequency_changes_over_time: 시간에 따른 주파수 변화
+shell.purpose.frequency_levels_and_power: 주파수 레벨과 전력
+shell.purpose.generate_signals_on_output_channels: 출력 채널에서 신호 생성
+shell.purpose.ref_sig_gain_phase_and_delay: REF / SIG 이득, 위상 및 지연
+shell.purpose.tone_amplitude_and_phase_vs_ref: REF 대비 톤 진폭 및 위상
+shell.purpose.two_channel_x_y_relationship: 2채널 X/Y 관계
+shell.purpose.waveform_over_time: 시간에 따른 파형
+shell.remove_from_view: 보기에서 제거
+shell.restoring_settings: 설정 복원 중…
+shell.running: ▶ 실행 중
+shell.scope_settings: Scope 설정
+shell.scope_spectrum_stft_xy_input_running: Scope / Spectrum / STFT / XY · 입력 실행 중
+shell.selected: '%{name} · 선택됨'
+shell.selected_instrument_details: 선택한 기기 세부 정보
+shell.shared_input: 공유 입력 · %{state}
+shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition: Scope, Spectrum,
+  Spectrogram 및 XY의 공유 입력입니다. 취득 상태와 고정된 결과는 각 기기 안에 표시됩니다.
+shell.shared_input_live: 공유 입력 · 실시간
+shell.shared_input_stopped: 공유 입력 · 중지됨
+shell.space_start_stop_shared_input_typing_in_an_editor: 'Space: 공유 입력 시작 / 중지. 편집기에
+  입력하면 입력 상태는 바뀌지 않습니다.'
+shell.split_view_with: 분할 보기…
+shell.starting: … 시작 중
+shell.stop_lock_in_analysis: Lock-in 분석 중지
+shell.stop_synchronous_analysis: 동기 분석 중지
+shell.stopped: ■ 중지됨
+shell.stopped_2: 중지됨
+shell.stopping: … 중지 중
+shell.synchronous_ch: 동기 2채널 · %{enabled}
+shell.tab_shift_tab_move_keyboard_focus_enter_space_activate: 'Tab / Shift + Tab:
+  키보드 포커스 이동. Enter / Space: 포커스된 컨트롤 활성화.'
+shell.tabs_keep_controls_and_readings_visible_at_this_size: 이 크기에서는 탭으로 컨트롤과 판독값을
+  계속 표시합니다. 공간이 허용되면 요청한 배치로 돌아갑니다.
+shell.this_replaces_the_saved_multi_instrument_view_use_undo: 저장된 다중 기기 보기가 대체됩니다.
+  이전 보기를 복원하려면 대체 실행 취소를 사용하세요.
+shell.ui_fps_cpu_fft_ms: '%{adapter} · UI %{fps} fps · CPU FFT %{fft_ms} ms'
+shell.undo_replacement: 대체 실행 취소
+shell.view: 보기
+shell.wait: … 대기
+shell.waiting_for_input: 입력 대기 중

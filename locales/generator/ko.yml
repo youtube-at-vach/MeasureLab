@@ -1,0 +1,105 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: Generator 패널에서 신호를 추가하세요.
+generator.add_signal: + 신호 추가
+generator.applied: 적용됨
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: '적용된 Fs: %{nominal_sample_rate}
+  Hz (공칭). 설정 미리보기는 FS 피크를 사용하며 측정된 샘플은 Scope에 표시됩니다.'
+generator.applied_hz_dbfs_peak_lead: '적용됨: %{frequency_hz} Hz · %{amplitude_dbfs}
+  dBFS 피크 · 위상 선행 %{phase_degrees}°'
+generator.applied_output: 적용된 출력
+generator.applied_sample: 적용된 샘플 %{applied_sample}
+generator.applied_seed: 적용된 시드 %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: ± 버튼 / 위 / 아래는 Hz, dBFS 또는 도 단위로
+  이 값을 사용합니다. Enter / 포커스로 적용하고 Esc로 취소합니다.
+generator.down: 아래
+generator.duplicate: 복제
+generator.edit_step: 단계 편집
+generator.enter_a_finite_number_settings_were_not_applied: 유한한 숫자를 입력하세요. 설정이 적용되지
+  않았습니다
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Enter / 포커스로 적용 · Esc로 취소 ·
+  위 / 아래로 단계 변경
+generator.error: 오류
+generator.error_reason.already_active: 출력이 이미 활성 상태입니다
+generator.error_reason.amplitude: '%{position} 위치 카드: 진폭은 유한해야 하며 -120–0 dBFS 피크 범위여야
+  합니다'
+generator.error_reason.callback_stalled: 오디오 출력 콜백 시간 초과; 출력이 해제되었습니다
+generator.error_reason.channel_count: 출력에는 1–16개 채널이 필요합니다
+generator.error_reason.counter_exhausted: 출력 샘플, 생성 또는 제어 카운터가 한도에 도달했습니다
+generator.error_reason.duplicate_routing: 두 신호가 동일한 출력 채널을 사용할 수 없습니다
+generator.error_reason.frequency: '%{position} 위치 카드: 주파수는 0.1 Hz 이상, 출력 Fs의 0.45배
+  미만이어야 합니다'
+generator.error_reason.no_enabled_signals: 출력을 시작하기 전에 신호를 하나 이상 선택하세요
+generator.error_reason.non_finite_output: 출력이 유한하지 않아 출력이 중지되었습니다
+generator.error_reason.output_range: 출력이 풀 스케일을 초과하여 중지되었습니다
+generator.error_reason.output_stream: 오디오 출력 실패; 다시 시작하기 전에 출력을 초기화하세요
+generator.error_reason.phase: '%{position} 위치 카드: 위상은 유한해야 하며 -180–180° 범위여야 합니다'
+generator.error_reason.producer_suspended: 내부 생성이 250 ms 넘게 중단되어 출력이 중지되었습니다
+generator.error_reason.revision: 설정 리비전은 증가해야 합니다
+generator.error_reason.routing: '%{position} 위치 카드: 출력 채널을 사용할 수 없거나 할당되지 않았습니다'
+generator.error_reason.routing_while_active: 카드, 파형 세부 정보 또는 채널 할당을 변경하기 전에 출력을 중지하세요
+generator.error_reason.sample_rate: 지원되지 않는 공칭 출력 샘플 레이트입니다
+generator.error_reason.signal_count: Generator는 최대 16개 카드까지 지원합니다
+generator.error_reason.signal_identity: Generator 카드 ID는 고유해야 하며 다음 ID보다 앞서야 합니다
+generator.error_reason.stopping: 출력 페이드가 끝날 때까지 기다리세요
+generator.error_reason.waveform: '%{position} 위치 카드: 잡음 시드는 0이 아니어야 합니다'
+generator.frequency: 주파수
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS 피크 · %{phase_degrees}°
+generator.generation_revision: 생성 %{output_generation} · 리비전 %{revision}
+generator.hide_signal_controls: 신호 컨트롤 숨기기
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · %{channels}채널. 입력 중지를 눌러도 측정은 고정되고 출력은 계속됩니다.'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels}채널 · %{pcm_label}
+  · 공칭 Fs'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS 피크 · 위상
+  선행 %{phase_degrees}°'
+generator.in_use: ' · 사용 중'
+generator.ms_cycles: '%{frequency_hz} ms / 2주기'
+generator.no_signals_add_a_signal_to_choose_its_waveform: 신호가 없습니다. 신호를 추가해 파형과 출력을
+  선택하세요.
+generator.off: 끔
+generator.on: 켬
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: 출력
+generator.output_details: 출력 세부 정보
+generator.peak_level: 피크 레벨
+generator.pending: 대기 중
+generator.phase_lead: 위상 선행
+generator.remove: 제거
+generator.reset_output_stays_off: 출력 초기화 (끔 상태 유지)
+generator.running: 실행 중
+generator.seed: 시드
+generator.selected_transition_ends: 선택된 전이 종료 %{i}
+generator.settings_preview_fs_ceiling: 설정 미리보기 · ±%{amplitude_peak} FS 상한 · %{frequency_hz}
+generator.show_signal_controls: 신호 컨트롤 표시
+generator.start_output: ▶ 출력 시작
+generator.start_replays_the_seed_frequency_and_phase_do_not: 시작할 때 시드를 다시 재생합니다. 주파수와
+  위상은 잡음에 영향을 주지 않습니다.
+generator.starting: 시작 중
+generator.starting_pending: 시작 중 · 대기
+generator.stop_generator_output_independently_of_input_and_analysis: 입력 및 분석과 별개로
+  Generator 출력을 중지합니다
+generator.stop_output: ■ 출력 중지
+generator.stop_output_2: 출력 중지
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: 파형/라우팅을 추가, 제거, 복제,
+  재정렬 또는 변경하려면 출력을 중지하세요.
+generator.stopped: 중지됨
+generator.stopping: 중지 중
+generator.transition: 전이
+generator.unassigned: 할당되지 않음
+generator.up: 위
+generator.up_to_odd_harmonics_below_fs_peak_level_is: Fs의 0.45배 미만인 홀수 고조파를 최대 16개까지
+  사용할 수 있습니다. 피크 레벨은 풀 스케일 상한이며 RMS는 주파수에 따라 달라집니다.
+generator.waveform: 파형
+generator.waveform_names.noise: 잡음
+generator.waveform_names.sine: 정현파
+generator.waveform_names.square: 사각파
+generator.waveform_names.triangle: 삼각파
+generator.white_noise: 백색 잡음
+generator.white_noise_uniform_peak_bounded: 백색 잡음 · 균등 분포 · 피크 제한

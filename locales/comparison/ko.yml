@@ -1,0 +1,88 @@
+_version: 1
+comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags: AC 비교 · 양의
+  위상은 REF보다 앞서고 양의 지연은 REF보다 늦습니다. 중지 상태에서 변경한 항목은 다음 시작 시 적용됩니다.
+comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs: '%{name} · AC
+  평균 제거 · 겹치지 않는 산술 배치 · REF 하한 %{reference_min_psd_fs2_hz} FS²/Hz · 코히런스 ≥%{minimum_coherence}'
+comparison.around_reading: 판독값 주변
+comparison.average_windows: '평균 윈도우 '
+comparison.averaged_windows_processed_missing_invalid_samples: 평균 윈도우 %{averaged_windows}개
+  · 처리 %{processed_windows}개 · 누락 %{missing_samples}개 · 유효하지 않은 샘플 %{invalid_samples}개
+comparison.bin_hz: 빈 %{k} · %{bin_width_hz} Hz · %{state}
+comparison.bin_states.averaging: 평균화 중
+comparison.bin_states.incoherent: 비코히런트
+comparison.bin_states.reference_lost: 기준 손실
+comparison.bin_states.response_lost: 응답 손실
+comparison.bin_states.valid: 유효
+comparison.captured_conditions: 캡처 조건
+comparison.ch_revision_fs: 'CH %{ch}: %{id} / 리비전 %{revision} · %{gain} %{unit} /
+  FS'
+comparison.check_ref_sig_channels_fft_and_nominal_fs_settings: REF / SIG 채널, FFT 및
+  공칭 Fs 설정을 확인하세요.
+comparison.coherence: 코히런스 γ²
+comparison.custom: 사용자 지정
+comparison.display_only_captured_analysis_validity_thresholds_and_the_phase: 화면 표시만
+  변경됩니다. 캡처된 분석, 유효성 기준 및 위상 기울기 대역은 그대로입니다. 로그 Hz 축에서는 DC를 제외합니다.
+comparison.display_range: 표시 범위
+comparison.finishing_analysis_before_holding_the_result: 결과를 고정하기 전에 분석을 마무리합니다.
+comparison.from: '시작 '
+comparison.fs_hz: ' FS²/Hz'
+comparison.full_nyquist: 전체 / 나이퀴스트
+comparison.gain: 이득
+comparison.gain_db: 이득 dB
+comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain: H1 = Pxy/Pxx. Scope,
+  Spectrum 및 comparison은 각각 별도의 구간을 유지합니다. 기울기 피팅은 인접 위상 단계가 π 미만이라고 가정합니다. 주기/래핑된
+  데이터에서는 절대 지연을 확인할 수 없습니다.
+comparison.held_conditions_retained_queued_analysis_settings_apply_on_next: HELD 조건이
+  유지됩니다 · 대기 중인 분석 설정은 다음 시작 시 적용됩니다
+comparison.hz: '%{selected_hz} Hz'
+comparison.hz_2: '%{fraction} Hz'
+comparison.input_gap_press_start_input_to_acquire_again: 입력 간격 · 다시 취득하려면 입력 시작을 누르세요.
+comparison.input_gap_waiting_for_a_new_complete_average: 입력 간격 · 새로운 완전한 평균을 기다리는
+  중입니다.
+comparison.input_generation_analysis_revision_hz_nominal_f64: 입력 세대 %{generation}
+  · 분석 리비전 %{analysis_revision} · 공칭 %{nominal_sample_rate_hz} Hz · f64
+comparison.invalid_input_no_valid_comparison_is_available: 유효하지 않은 입력 · 유효한 비교 결과가
+  없습니다.
+comparison.linear_hz: 선형 Hz
+comparison.log_hz: 로그 Hz
+comparison.min_coherence: '최소 코히런스 '
+comparison.min_ref: '최소 REF '
+comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps: 공칭 Fs ·
+  CH 위상/타이밍 보정이 검증되지 않음 · 지연은 1/f 주기로 래핑됩니다
+comparison.phase: 위상 °
+comparison.phase_lead: 위상 선행
+comparison.phase_slope_needs_contiguous_excited_coherent_bins: '위상 기울기: — · 여기되고 코히런트한
+  연속 빈이 8개 이상 필요합니다'
+comparison.phase_slope_s_hz_residual_rms: '위상 기울기: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2}
+  Hz · 잔차 %{phase_residual_rms_degrees}° RMS'
+comparison.press_start_input_to_acquire_a_complete_average: 완전한 평균을 취득하려면 입력 시작을 누르세요.
+comparison.read_at: 판독 위치
+comparison.ref: REF
+comparison.ref_ch_sig_ch_n_f_hz: '%{state} · REF CH %{reference_channel} / SIG CH
+  %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz'
+comparison.samples: '%{size}개 샘플'
+comparison.samples_latest_input_end: 샘플 %{start}..%{end} · 최신 %{start_2}..%{end_2}
+  · 입력 종료 %{input_end}
+comparison.select_ref_sig_channels_then_press_start_analysis: REF / SIG 채널을 선택한 다음
+  분석 시작을 누르세요.
+comparison.selected_frequency_is_outside_the_captured_result: 선택한 주파수가 캡처된 결과 범위 밖입니다.
+comparison.sig: SIG
+comparison.slope_from: '기울기 시작 '
+comparison.slope_to: '기울기 끝 '
+comparison.start_analysis: 분석 시작
+comparison.state_names.averaging: 평균화 중
+comparison.state_names.disabled: 비활성화됨
+comparison.state_names.filling: 채우는 중
+comparison.state_names.missing: 누락
+comparison.state_names.non_finite: 유한하지 않음
+comparison.state_names.unavailable: 사용 불가
+comparison.state_names.valid: 유효
+comparison.stop_analysis: 분석 중지
+comparison.synchronous_comparison: 동기 비교
+comparison.to: '끝 '
+comparison.valid_band: 유효 대역
+comparison.valid_transfer_bins_gaps_are_not_interpolated: 유효한 전달 빈 %{valid}개 · 간격은
+  보간하지 않습니다
+comparison.waiting_for_a_complete_average: 완전한 평균을 기다리는 중입니다.
+comparison.window_averaging: 윈도우 / 평균화
+comparison.wrapped_delay: 래핑된 지연
