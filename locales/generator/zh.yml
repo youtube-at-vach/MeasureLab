@@ -1,0 +1,99 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: 在 Generator 面板中添加信号。
+generator.add_signal: + 添加信号
+generator.applied: 已应用
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: 已应用 Fs：%{nominal_sample_rate}
+  Hz（标称）。设置预览使用 FS 峰值；测得的样本显示在 Scope 中。
+generator.applied_hz_dbfs_peak_lead: 已应用：%{frequency_hz} Hz · %{amplitude_dbfs} dBFS
+  峰值 · %{phase_degrees}° 超前
+generator.applied_output: 输出已应用
+generator.applied_sample: 已应用样本 %{applied_sample}
+generator.applied_seed: 已应用种子 %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: ± 按钮 / 上 / 下在 Hz、dBFS 或度数中使用此步长。Enter
+  / 聚焦时应用；Esc 取消。
+generator.down: 下
+generator.duplicate: 复制
+generator.edit_step: 编辑步长
+generator.enter_a_finite_number_settings_were_not_applied: 请输入有限数值；设置未应用
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Enter / 聚焦以应用 · Esc 取消 · 上 /
+  下调整步长
+generator.error: 错误
+generator.error_reason.already_active: 输出已处于活动状态
+generator.error_reason.amplitude: 位置 %{position} 的卡片：幅度必须为有限值且在 −120–0 dBFS 峰值范围内
+generator.error_reason.callback_stalled: 音频输出回调超时；输出资源已释放
+generator.error_reason.channel_count: 输出需要 1–16 个通道
+generator.error_reason.counter_exhausted: 输出样本、代次或控制计数器已耗尽
+generator.error_reason.duplicate_routing: 两个信号不能使用同一个输出通道
+generator.error_reason.frequency: 位置 %{position} 的卡片：频率必须 ≥ 0.1 Hz 且 < 0.45 × 输出 Fs
+generator.error_reason.no_enabled_signals: 启动输出前至少选择一个信号
+generator.error_reason.non_finite_output: 输出值非有限；输出已停止
+generator.error_reason.output_range: 输出超出满量程；输出已停止
+generator.error_reason.output_stream: 音频输出失败；重新启动前请重置输出
+generator.error_reason.phase: 位置 %{position} 的卡片：相位必须为有限值且在 −180–180° 范围内
+generator.error_reason.producer_suspended: 内部生成暂停超过 250 ms；输出已停止
+generator.error_reason.revision: 设置修订号必须递增
+generator.error_reason.routing: 位置 %{position} 的卡片：输出通道不可用或未分配
+generator.error_reason.routing_while_active: 更改卡片、波形详细信息或通道分配前请停止输出
+generator.error_reason.sample_rate: 不支持的标称输出采样率
+generator.error_reason.signal_count: Generator 最多支持 16 张卡片
+generator.error_reason.signal_identity: Generator 卡片 ID 必须唯一且小于下一个 ID
+generator.error_reason.stopping: 等待输出淡出完成
+generator.error_reason.waveform: 位置 %{position} 的卡片：噪声种子不能为零
+generator.frequency: 频率
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS 峰值 · %{phase_degrees}°
+generator.generation_revision: 代次 %{output_generation} · 修订 %{revision}
+generator.hide_signal_controls: 隐藏信号控件
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · %{channels} 通道。停止输入会保持测量；输出继续运行。'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} 通道 · %{pcm_label}
+  · 标称 Fs'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS 峰值 · %{phase_degrees}°
+  超前'
+generator.in_use: ' · 使用中'
+generator.ms_cycles: '%{frequency_hz} ms / 2 个周期'
+generator.no_signals_add_a_signal_to_choose_its_waveform: 没有信号。添加信号以选择波形和输出。
+generator.off: 关闭
+generator.on: 开启
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: 输出
+generator.output_details: 输出详细信息
+generator.peak_level: 峰值电平
+generator.pending: 待处理
+generator.phase_lead: 相位超前
+generator.remove: 移除
+generator.reset_output_stays_off: 重置输出（保持关闭）
+generator.running: 运行中
+generator.seed: 种子
+generator.selected_transition_ends: 所选过渡结束于 %{i}
+generator.settings_preview_fs_ceiling: 设置预览 · ±%{amplitude_peak} FS 上限 · %{frequency_hz}
+generator.show_signal_controls: 显示信号控件
+generator.start_output: ▶ 启动输出
+generator.start_replays_the_seed_frequency_and_phase_do_not: 启动时会重放种子。频率和相位不会影响噪声。
+generator.starting: 正在启动
+generator.starting_pending: 正在启动 · 待处理
+generator.stop_generator_output_independently_of_input_and_analysis: 独立于输入和分析停止 Generator
+  输出
+generator.stop_output: ■ 停止输出
+generator.stop_output_2: 停止输出
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: 添加、移除、复制、重新排序或更改波形/路由前请停止输出。
+generator.stopped: 已停止
+generator.stopping: 正在停止
+generator.transition: 过渡
+generator.unassigned: 未分配
+generator.up: 上
+generator.up_to_odd_harmonics_below_fs_peak_level_is: 最多 16 个低于 0.45 Fs 的奇次谐波。峰值电平是满量程上限；RMS
+  取决于频率。
+generator.waveform: 波形
+generator.waveform_names.noise: 噪声
+generator.waveform_names.sine: 正弦波
+generator.waveform_names.square: 方波
+generator.waveform_names.triangle: 三角波
+generator.white_noise: 白噪声
+generator.white_noise_uniform_peak_bounded: 白噪声 · 均匀分布 · 峰值受限

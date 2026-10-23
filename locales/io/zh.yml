@@ -1,0 +1,79 @@
+_version: 1
+io.amplitude: 幅度
+io.applies_to_both_while_stopped_held_results_keep_their: 停止时对两者都生效。保留结果会保留其采样率。
+io.audio_input: 音频输入
+io.audio_input_no_device_selected: 音频输入 · 未选择设备
+io.audio_stream_stopped_check_device_connection_and_microphone_permission: 音频流已停止。检查设备连接和麦克风权限，然后重新启动。
+io.available_with_the_internal_loopback_output_device: 可与内部回环输出设备一起使用。
+io.captured_readout_condition: 捕获读数条件
+io.ch: '%{channels} 通道 · %{label}'
+io.ch_gain: CH 2 增益
+io.ch_phase_gain: CH 2 相位 / 增益
+io.channel_unavailable_in_the_current_input: 当前输入中通道不可用
+io.channels_pcm: 通道 / PCM
+io.default: '%{name}（默认）'
+io.degrees: 度
+io.demo_harmonics: 正弦 + 谐波
+io.demo_signal_qa: 演示信号（QA）
+io.demo_square: 带限方波
+io.device: 设备
+io.device_default: 设备默认值
+io.device_default_khz: 设备默认值（%{sample_rate} kHz）
+io.equal_amplitude_noise_free_sine_signals_for_xy_in: 用于 XY 的等幅、无噪声正弦信号：同相、正交相位或反相。
+io.frequency: 频率
+io.fs_peak: FS 峰值
+io.gain: 增益
+io.generator_input_stopped_check_output_status_stop_input_and: Generator 输入已停止。检查输出状态，停止输入并重置输出后再重启。
+io.generator_loopback: Generator 回环
+io.generator_loopback_out: Generator 回环 · OUT 1 / 2
+io.hz_2: '%{r} Hz'
+io.hz_3: '%{rate} Hz'
+io.hz_4: '%{rate} Hz · %{format}'
+io.input: 输入
+io.input_channel: 输入通道
+io.input_output_hz: 输入：%{r} · 输出：%{rate} Hz
+io.input_source: 输入源：%{source}
+io.internal_loopback: 内部回环
+io.internal_source_no_audio_output: 内部源 · 无音频输出
+io.khz: '%{rate} kHz'
+io.no_common_rate_for_these_devices_and_output_format: 这些设备和输出格式没有共同采样率。请使用不同的采样率。
+io.no_input_device: 没有输入设备
+io.noise: 噪声
+io.noise_2: 噪声
+io.noise_amplitude_in_digital_full_scale_fs: 数字满量程 (FS) 中的噪声幅度。
+io.offset: 偏移
+io.out_ch_out_ch_start_input_and_output_separately: OUT 1 → CH 1 · OUT 2 → CH 2 ·
+  分别启动输入和输出。
+io.output: 输出
+io.output_device: 输出设备
+io.physical_unit_e_g_v_a_pa: 物理单位（例如 V、A、Pa）
+io.queue_calibration: 将校准加入队列
+io.queue_uncalibrated_fs: 将未校准 FS 加入队列
+io.queued_definitions_apply_on_the_next_start_source_device: 排队的定义在下次启动时应用。选择/刷新源或设备会清空队列。系数由你提供；参考条件说明其有效范围。
+io.queued_for_next_start: 已排队，等待下次启动
+io.rate_changes_apply_on_start_held_results_keep_their: 采样率更改在启动时应用。保留结果会保留其采样率。
+io.reference_conditions: 参考条件
+io.reference_device_range_date_uncertainty: 参考值、设备/量程、日期、不确定度
+io.refresh_devices: 刷新设备
+io.sample_rate: 采样率
+io.sample_rate_channels_pcm: 采样率 / 通道 / PCM
+io.sample_rate_input_output: 采样率 · 输入 + 输出
+io.scope_readouts_and_spectrum_use_y_gain_fs_offset: Scope 读数和 Spectrum 使用 y = 增益
+  × FS + 偏移。Spectrum 的“移除 DC”会抵消偏移。Scope 轨迹/触发、Spectrogram 和 XY 轴使用 FS。
+io.select_common_rate: 选择共同采样率
+io.separate_sample_rates: 不同采样率
+io.signal_changes_apply_when_input_restarts_captured_samples_stay: 信号更改在输入重新启动时应用。捕获的样本会保留。
+io.software_loopback: 软件回环
+io.source: 源
+io.start_input: ▶  启动输入
+io.start_input_demo: ▶  启动输入（演示）
+io.start_or_stop_the_shared_input_for_all_instruments: 为所有仪器启动或停止共享输入；输出独立运行。快捷键：Space
+io.start_stop_is_always_in_the_top_bar: 启动 / 停止按钮始终位于顶部栏。
+io.stop_input: ■  停止输入
+io.stop_input_and_output_and_select_a_supported_common: 停止输入和输出，并选择受支持的共同采样率。
+io.stop_input_and_output_to_change_the_device_or: 停止输入和输出以更改设备或格式。
+io.supported_device_rates_up_to_khz: 支持的设备采样率 · 最高 768 kHz
+io.unavailable: 不可用
+io.unit: 单位
+io.unit_fs: 单位/FS
+io.waveform: 波形

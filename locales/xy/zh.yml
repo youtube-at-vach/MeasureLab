@@ -1,0 +1,49 @@
+_version: 1
+xy.amplitude_range: 幅度范围
+xy.auto_no_crossing: ' · 自动（无交叉）'
+xy.b_a_x_y_fs: B−A ΔX %{delta} · ΔY %{delta_2} FS
+xy.cursors: 光标
+xy.fix_x_y_amplitudes_independently_of_the_moving_trace: 固定 X/Y 幅度，使其不随移动中的轨迹变化。测量
+  ΔX 和 ΔY。
+xy.follow_a_real_sample_at_a_fixed_time_offset: 跟随相对于 XY 触发点具有固定时间偏移的真实样本。使用 Scope
+  触发设置。
+xy.free: 自由
+xy.free_click_or_drag_to_fix_x_y_amplitudes: 自由：单击或拖动以固定 X/Y 幅度。A/B 独立于移动中的轨迹测量 ΔX
+  和 ΔY。切换到 Trace Snap 时保留自由位置。
+xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: 自由模式固定 X/Y 幅度并读取 ΔX/ΔY。切换模式时保留光标位置。
+xy.free_outside_plot: 自由 · 图表外
+xy.free_run_moving_reference: ' · 自由运行（移动的参考点）'
+xy.input_source: 输入源
+xy.ms_samples: '%{sample_rate} ms · 样本 %{start}..%{end}%{else}%{auto_no_crossing}'
+xy.observation: 观察
+xy.observation_window: 观察窗口
+xy.outside_xy_window_or_unavailable: '%{index} · 超出 XY 窗口或不可用'
+xy.point_limit: ' · 点数上限'
+xy.reset_xy_scales: 重置 XY 刻度
+xy.shared_with_scope: 与 Scope 共享
+xy.source_changes_apply_on_start_held_xy_keeps_its: 源更改将在启动时应用。保留的 XY 会保留其通道。
+xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
+xy.trace_snap: Trace Snap
+xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Trace Snap 跟随相对于触发点的样本。自动/自由运行可能会移动标记；停止会冻结标记。
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: Trace Snap：选择指定 X/Y 通道的最近真实样本对，并保持其相对于
+  XY 触发点的样本偏移。使用 Scope 的触发源、边沿和电平。没有交叉点时，参考点随最新窗口移动。重叠点选择最新样本；停止会冻结捕获。
+xy.trigger: 触发
+xy.triggered: ' · 已触发'
+xy.up_to_real_sample_pairs_longer_windows_show_the: 最多 %{xy} 对真实样本；较长窗口显示最新部分。
+xy.waiting_for_sample_pairs: 正在等待样本对…
+xy.x_axis: X 轴
+xy.x_fs_div_y_fs_div: X：%{channels} · %{x_fs_per_div} FS/div   Y：%{channels_2} · %{y_fs_per_div}
+  FS/div
+xy.x_fs_y_fs: X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS
+xy.x_fs_y_fs_2: '%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS
+
+  %{detail}'
+xy.x_y_use_the_same_input_frame_equal_axis: X/Y 使用同一个输入帧。相等的轴刻度可在方形图表中保持圆形。
+xy.xy_free_cursor: XY · 自由光标
+xy.xy_lissajous: XY / Lissajous
+xy.xy_requires_at_least_two_input_channels: XY 至少需要两个输入通道。
+xy.xy_requires_two_input_channels: XY 需要两个输入通道
+xy.xy_trace_snap_cursor: XY · Trace Snap 光标
+xy.xy_unavailable_assigned_channel_missing: XY 不可用：指定通道缺失
+xy.xy_unavailable_mono_input: XY 不可用：单声道输入
+xy.y_axis: Y 轴
