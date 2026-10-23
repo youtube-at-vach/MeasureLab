@@ -9405,6 +9405,446 @@
         "source": "Y AXIS",
         "source_hash": "74022c1abdb3d772114e66a29bcb2dee7a2ea100bcaf5849fc4371616e2dc86b",
         "translation_hash": "45288dc68d42cc3b36e3aa6a97f9694a5fa2e29d1577554a543477d666f70f27"
+      },
+      "generator.add_a_signal_in_the_generator_panel": {
+        "source": "Add a signal in the Generator panel.",
+        "source_hash": "08d4ab181512fc611404795a35ae2547b08170050bbbb9d10ec98914e2122163",
+        "translation_hash": "636bf15f4f060eddaf70de2d56e888be9652eae17ec166a7ce030bd2fb4abe9a"
+      },
+      "generator.add_signal": {
+        "source": "+ Add signal",
+        "source_hash": "27f6249621d37556e0f5ab0c97c34022cb62f56080373392104b2026185bb8c8",
+        "translation_hash": "f7cc3ffc66c21865d8ce40f8500bce4a2641502cb614cdecfda5e2762e3480ba"
+      },
+      "generator.applied": {
+        "source": "APPLIED",
+        "source_hash": "79dfd370bb43b580583faab3785ab434b1683578cb8b5649d5a3495ca987e1ac",
+        "translation_hash": "95dcaffa37e3be71a5cc24a658bfd97587bc8b0ee86ffbb7ffa7847e3f3a7be6"
+      },
+      "generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak": {
+        "source": "Applied Fs: %{nominal_sample_rate} Hz (nominal). Settings preview uses FS peak; measured samples are shown in Scope.",
+        "source_hash": "8087b2ecdb2d1959ec54d4fe3341718b24793c42546ea6f07746df0add7bc02f",
+        "translation_hash": "927c36dc5447bf578faeb45526177fb66a0af1be69877a480fbf51988d4a6253"
+      },
+      "generator.applied_hz_dbfs_peak_lead": {
+        "source": "Applied: %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+        "source_hash": "3a8c6668d0816701b2d2790157e9cdb1963fb20220b87bafe96272b6f9e6b81f",
+        "translation_hash": "bf9ae610f463f32b28a5b6dcda3864bcd98476b8fdeef32aee8ccaa655e9f4ef"
+      },
+      "generator.applied_output": {
+        "source": "APPLIED OUTPUT",
+        "source_hash": "c41174d4bb607fa123cb381f2fa9dfa6a6e7c8364c7fba9ca47184abab382e0e",
+        "translation_hash": "3a1b6bb8e19364ea3f2c3f725c5dfc945be6defdac9c349f179a745ee9673c08"
+      },
+      "generator.applied_sample": {
+        "source": "Applied sample %{applied_sample}",
+        "source_hash": "ff3a3637f968e4c455d5669b0712c351d41f2bfdfc6f32ecd957e63a8b43ea7b",
+        "translation_hash": "6d44b63b924bf1d1d8753c0728b984863af5fa924eabf3aa66a7a38b921db98f"
+      },
+      "generator.applied_seed": {
+        "source": "Applied seed %{noise_seed}",
+        "source_hash": "e901e9c6eac08da85b644b8f451194848864d04b51df72b8ebfaa0151733a52b",
+        "translation_hash": "acc684907a109081d5fdf60cf0d275c5b62e8cfebc424669379345757cbadced"
+      },
+      "generator.buttons_up_down_use_this_step_in_hz_dbfs": {
+        "source": "± buttons / Up / Down use this step in Hz, dBFS or degrees. Enter / focus applies; Esc cancels.",
+        "source_hash": "74c8b24d55691e41a6ff601d57e00e608fcc0747528916f9cc4b0febe8f931fc",
+        "translation_hash": "8f007b110bc2ce55e45438eb7acfebc7fd5e9744f51307cb037206fbc18684fa"
+      },
+      "generator.down": {
+        "source": "Down",
+        "source_hash": "b86d11af79188e58af384b421f2799b08bfb151939b4404679d948aae2720b0b",
+        "translation_hash": "0ab592e07dee1c7a9fdfec3f69fb46327faaacce6f34da05055cf53df55a9545"
+      },
+      "generator.duplicate": {
+        "source": "Duplicate",
+        "source_hash": "02cdaabfca805d6ab75d81043998bdc733451b9ea48958ebf8098022d102ba2e",
+        "translation_hash": "00fea8a656bd30e23f1681b1f3a23a5ffde88f9d80120add90bd1aac316f472f"
+      },
+      "generator.edit_step": {
+        "source": "EDIT STEP",
+        "source_hash": "f0c22175d30f2c14737a686de7df055959770eb0b28eb34f25772de9050e12db",
+        "translation_hash": "9a832f30356ef237c1d7866693af96d3c9688a179408f8f607570f50447f51a4"
+      },
+      "generator.enter_a_finite_number_settings_were_not_applied": {
+        "source": "Enter a finite number; settings were not applied",
+        "source_hash": "888779db32a39e675fcada643f227c0da1ab0926b6c216a2a5886004ed2878d8",
+        "translation_hash": "55d3e94a5d7b2c9e922382540601d9c1454c1408c27deb7f806eeae051081a31"
+      },
+      "generator.enter_focus_to_apply_esc_to_cancel_up_down": {
+        "source": "Enter / focus to apply · Esc to cancel · Up / Down to step",
+        "source_hash": "67121de8706ebf0cf8ce4468d3d39e922a1ac5f8069aa397da16e49d668fa5c4",
+        "translation_hash": "30f2200b98b415a6ec1d38d4528e39544e402050e9b6c3185e3522795989894f"
+      },
+      "generator.error": {
+        "source": "ERROR",
+        "source_hash": "d98ee0e5f9399db9381014c9f890f896d3fcb272c2a7a521d0a13aa23085a284",
+        "translation_hash": "1bcf13cd76f0b6af85f6fb184313331112c37eb93501434a562c033b57e17e22"
+      },
+      "generator.error_reason.already_active": {
+        "source": "Output is already active",
+        "source_hash": "9905ced78cf509bcd43ce5975d8ee295a1997570e33213869f4302ac43f4ce0d",
+        "translation_hash": "aeee205d7aa273cff8016001c9c74947e5a7f4ee80ac48a3be59228c69c2cf1b"
+      },
+      "generator.error_reason.amplitude": {
+        "source": "Card at position %{position}: amplitude must be finite and within -120–0 dBFS peak",
+        "source_hash": "27fa8a514b53646af1d054844176a7ba733c95f747d06d5e26afec059dd7cdd9",
+        "translation_hash": "3fee6a463b54897cd5642a124171a9c8306ad79a8179a5b7fc87046d5cf13b36"
+      },
+      "generator.error_reason.callback_stalled": {
+        "source": "Audio output callback timed out; output released",
+        "source_hash": "67cd9304695cb8c6aa0bbe805325ae2f1541c7ea67fb2dcf9d1a65198a66ce87",
+        "translation_hash": "cba1fad6c8eeb5bead6accf0ab4eb4475d12dd4b01547d501b4e4bb57d3b3804"
+      },
+      "generator.error_reason.channel_count": {
+        "source": "Output requires 1–16 channels",
+        "source_hash": "3da960c1df55e6abb8d28fc386017c2b0926fd34e674f78097365bd8c7d4987f",
+        "translation_hash": "7121859258717944b3353fc37bea2428caf5d2ae8fa453a2f965bfabed21b9af"
+      },
+      "generator.error_reason.counter_exhausted": {
+        "source": "Output sample, generation or control counter exhausted",
+        "source_hash": "2cdf0228e3ef04524400fc0466790714a679924eed53631ac361d48e36d1c4e1",
+        "translation_hash": "4e8542ab312434ecb1e71e32dbe37f629a714b590eb72c2ecd44adb9e699f7eb"
+      },
+      "generator.error_reason.duplicate_routing": {
+        "source": "Two signals cannot use the same output channel",
+        "source_hash": "1325bafda14f128eb6dc0b6843485e895d8fb526666d27ee83528d666e9ccff7",
+        "translation_hash": "81d0e7709491f9287284e2a6585a6af18fc0f5dcaaf26cf66d19cf7e91857f17"
+      },
+      "generator.error_reason.frequency": {
+        "source": "Card at position %{position}: frequency must be >= 0.1 Hz and < 0.45 × output Fs",
+        "source_hash": "66fd90c28021e61f191c94a86ddec9d10307d08a3c87b8b8eb9e167c7386b525",
+        "translation_hash": "7c9f732d769349079ffeda22c5014f1140581b4e0178f6755517ed79f8138870"
+      },
+      "generator.error_reason.no_enabled_signals": {
+        "source": "Select at least one signal before starting output",
+        "source_hash": "429f5017d334fabd47b3914fb2cc383610feb193fc9ca2966c497bedd0140dfa",
+        "translation_hash": "0c7dd787d35d4f7669981b89264809cf3c944b67d96d25256048129b6314b8a5"
+      },
+      "generator.error_reason.non_finite_output": {
+        "source": "Nonfinite output; output stopped",
+        "source_hash": "12f6ea67aff3053b40d203bf70793af5a6e49dfe3800da3e9c9af1e3921e8cea",
+        "translation_hash": "591c3a60eb6834bb439510a2d9d7b64ca6459a77b032d2294e23f5e095954dee"
+      },
+      "generator.error_reason.output_range": {
+        "source": "Output exceeds full scale; output stopped",
+        "source_hash": "b44c7af6f781f2e8228b7fde173be88bd285190dd7735fc1fa94b2f254b72a52",
+        "translation_hash": "f4b4e739688f4becbcd46a57d782b9c048f444f145c73c708f6c90c240a87847"
+      },
+      "generator.error_reason.output_stream": {
+        "source": "Audio output failed; reset output before restarting",
+        "source_hash": "b0b9ae3be8822a3753b1b28aac76d68a81cb0808eed59528d64399e9baf30f14",
+        "translation_hash": "a78019699da007d1cfb4670f85a8a9009b553d36d83b1386005fbba3a5dbb390"
+      },
+      "generator.error_reason.phase": {
+        "source": "Card at position %{position}: phase must be finite and within -180–180°",
+        "source_hash": "2c3dd5cb69ea20a38d47e031e9378b1dc8191ae108e76e25957f075034526543",
+        "translation_hash": "c97249862e050f5e1d3f9c5f5408ba33f528dcb9e2f21a0b6a77de0d3dd0b270"
+      },
+      "generator.error_reason.producer_suspended": {
+        "source": "Internal generation was suspended for more than 250 ms; output stopped",
+        "source_hash": "dcbb7b5707de39f4d5908dcd2bdfaf8e6c6cf381d14c4aff7ccdb39e3b019e7b",
+        "translation_hash": "75535ab8a158b171837a19ceecf281ab6e1731dcb54195bd30d4074d3b1317a0"
+      },
+      "generator.error_reason.revision": {
+        "source": "Settings revision must increase",
+        "source_hash": "2e79475c29168bbcbbf5ce70c8b9fd45166d0ab4e7d648737f1973888410749e",
+        "translation_hash": "c4465ba129bcb45686fcd9e20d9ae02d2687f3253650822f69e1bae7ce87c866"
+      },
+      "generator.error_reason.routing": {
+        "source": "Card at position %{position}: output channel is unavailable or unassigned",
+        "source_hash": "6790b280b283ce5ca60cf0de10f9e0da3de618b5bcf23f354d8414206bef8f07",
+        "translation_hash": "fd9e567f6caf82f6bd989da576ce9b3ddac990aa7e777624fbb5d6bb9aa8e4c0"
+      },
+      "generator.error_reason.routing_while_active": {
+        "source": "Stop output before changing cards, waveform details or channel assignments",
+        "source_hash": "8253aed910415ad77bd13d0c26971d4275eba3587559c78ee13527ccd55e16b8",
+        "translation_hash": "058fd08f2169b8ab2ed584388edf3597c8e88a8509e0b2f9a7cf83539e5a2ffe"
+      },
+      "generator.error_reason.sample_rate": {
+        "source": "Unsupported nominal output sample rate",
+        "source_hash": "5b058fe4a2b2d4aab80661563733e82922f2e4980018c5eb0e71e0a298158e09",
+        "translation_hash": "4f6fde5821fd4adc47e4890ae950f6095f97ea25520678667a69936866d0d2b1"
+      },
+      "generator.error_reason.signal_count": {
+        "source": "Generator supports at most 16 cards",
+        "source_hash": "ac19ffd2460b1d552fc5533bf5af9a0df40e47160b74565fa20a9eabf68d8c68",
+        "translation_hash": "c2d3a24a23bb5f7c587020aade7107903af3374a23a70752d17efa4eba3dd896"
+      },
+      "generator.error_reason.signal_identity": {
+        "source": "Generator card IDs must be unique and precede the next ID",
+        "source_hash": "387946d821d93bc27bce9de6f57c0419b000c5b6478899cbd8e5e8d35e0311b3",
+        "translation_hash": "b5a1783c5422d59870bbca861d3fdd9d6ce2cf4a36e4238523df2684cebceaed"
+      },
+      "generator.error_reason.stopping": {
+        "source": "Wait for the output fade to finish",
+        "source_hash": "383a48e03869fcf5c17a6db60b7a05074f939b916e1bfe60a3b9fc5ad2cb4601",
+        "translation_hash": "bfd06c3137f6668c76816bd8afe0096ff248e9b36cf76036491119e5c7bbae8a"
+      },
+      "generator.error_reason.waveform": {
+        "source": "Card at position %{position}: noise seed must be nonzero",
+        "source_hash": "9c7d29d10da9b5da381a3012a05a7c0b0a773825d1d44b05e472d7035914395a",
+        "translation_hash": "2f6ab0e7ee21635413b0ea923f03e2d1e49f4ae2825fa2df148e4c1fe71a1fa8"
+      },
+      "generator.frequency": {
+        "source": "Frequency",
+        "source_hash": "16b6668d9831a1b8d2d003496db6a62b7f525df6c556d7c04681fbed2251c845",
+        "translation_hash": "913df43be10dea3413d43b3eb6e7dc46ff2368d83db05cfba13d97de289344bd"
+      },
+      "generator.gen": {
+        "source": "GEN %{id}",
+        "source_hash": "c4284625e30731b9381acb6245c2672eac4f288e4970616221bb370a3c615886",
+        "translation_hash": "c4284625e30731b9381acb6245c2672eac4f288e4970616221bb370a3c615886"
+      },
+      "generator.gen_2": {
+        "source": "GEN %{id} · %{s} · %{off}",
+        "source_hash": "bbc5148969a01f219040ed2fed536b4ad6904dbd61c0ec17e1bef8114f9f9596",
+        "translation_hash": "bbc5148969a01f219040ed2fed536b4ad6904dbd61c0ec17e1bef8114f9f9596"
+      },
+      "generator.gen_3": {
+        "source": "GEN %{id} · %{label} · %{s} · %{off}",
+        "source_hash": "68674db9200d645fddd3a2fb1a4a82c23ed04fd0aebdbaa67bce6b31b4f29703",
+        "translation_hash": "68674db9200d645fddd3a2fb1a4a82c23ed04fd0aebdbaa67bce6b31b4f29703"
+      },
+      "generator.gen_4": {
+        "source": "GEN %{id} · %{label}",
+        "source_hash": "c452767d90c8d103d6c5dbfa0e1f0ea85c49c49949bd0ecb34e90995089c0426",
+        "translation_hash": "c452767d90c8d103d6c5dbfa0e1f0ea85c49c49949bd0ecb34e90995089c0426"
+      },
+      "generator.gen_hz_dbfs_peak": {
+        "source": "GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°",
+        "source_hash": "9b82d78a59b44fad2fda4efa705552f7626b585ad8f9a981cdd00678656e9b10",
+        "translation_hash": "66681138ddd668b94de9015e84c07a421e8b33ba4715470fae0895600b262351"
+      },
+      "generator.generation_revision": {
+        "source": "Generation %{output_generation} · revision %{revision}",
+        "source_hash": "04fc36488300d3b7f73bce794b912b5e415133c1475c8895e20cd642ae23e621",
+        "translation_hash": "f2063c595fbbaa19791a7c63fe86c5632838705670577b8e037f17f5516affc8"
+      },
+      "generator.hide_signal_controls": {
+        "source": "Hide signal controls",
+        "source_hash": "9204d7b2dc3f07874147b9448d12bae2fddfdf4f2cb64cd22505eac112ca8d51",
+        "translation_hash": "9f856c7047fbe11106d1560a296365262a3663c277a2ddda081709e122082b56"
+      },
+      "generator.hz_ch_input_stop_holds_the_measurement_output_continues": {
+        "source": "%{label} · %{rate} Hz · %{channels}ch. Input Stop holds the measurement; output continues.",
+        "source_hash": "7a8d86e98ccad5a001ef58e39ee1d998fe01ec07fd34f9b36a6a217bdaac903c",
+        "translation_hash": "41572bed976997517cd3cb052b2dc0c56e75e9e38d2f9a3f5fbe0ff4b0a0023c"
+      },
+      "generator.hz_ch_nominal_fs": {
+        "source": "%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label} · nominal Fs",
+        "source_hash": "cbd0ea6ed9b2d84097803c1cf072d05d00c35513982ecb55b370e510d695a09c",
+        "translation_hash": "6fa24e4ccca191368f5c2db03dc2ea6ae94fc0b5fe4563c184d5108bed51bf95"
+      },
+      "generator.hz_dbfs_peak_lead": {
+        "source": "%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}° lead",
+        "source_hash": "ab150ed72a13edd1f5acd0324a7ece78a73edad831ce43b0ea41335d5af8ce06",
+        "translation_hash": "2457d607173cd5af0db6e4ce948860bf2f1c670aea1c6c4eff3cb14ff3a92af0"
+      },
+      "generator.in_use": {
+        "source": " · in use",
+        "source_hash": "518f64ecd723183d9e08d09241450c48e7d954d882bb3d911b78a2c917eff5bf",
+        "translation_hash": "997c1fb5d93d29187d5894ac58951f1e708fa6e89255b5e6d4be063242319652"
+      },
+      "generator.ms_cycles": {
+        "source": "%{frequency_hz} ms / 2 cycles",
+        "source_hash": "2d1518c843062e29c0e320dd0de469c78782782fe53b17af72779cc13d76a9a4",
+        "translation_hash": "e35b4bf9b9c0bb22fd3d2621322102573b06012b1694ec4c5ce33971ed8f729d"
+      },
+      "generator.no_signals_add_a_signal_to_choose_its_waveform": {
+        "source": "No signals. Add a signal to choose its waveform and output.",
+        "source_hash": "48d0d86981b79b0d654d1d6e66103f369e13db04ee512636625b795fc2a4d03f",
+        "translation_hash": "35d9d5da4f14b4887840f3a9b6fb26b59c2c3e4e1163e697aa4cbf61330d0362"
+      },
+      "generator.off": {
+        "source": "OFF",
+        "source_hash": "38cca6bea010af8adaf4be7d270456fa9adef8c0252db91f2767c607d077319b",
+        "translation_hash": "0a71fb6d43801d5e1b8e7726f5fde327cd58f10be127759c50e468bbb5d43325"
+      },
+      "generator.on": {
+        "source": "ON",
+        "source_hash": "e8a01133b1351e5fa434167135400d1998d3daa8ce74e3dd9bb57582fa4d7b97",
+        "translation_hash": "2eddab276ec35270d896dc5a8db20f154e6dfd93d078d5044d12035650638627"
+      },
+      "generator.out": {
+        "source": "OUT %{ch}%{else}",
+        "source_hash": "2f957b96e0a4f3c8e8f1ee4f42782f7fd0f123e25b565eb4fc08fc9cd8f09b27",
+        "translation_hash": "2f957b96e0a4f3c8e8f1ee4f42782f7fd0f123e25b565eb4fc08fc9cd8f09b27"
+      },
+      "generator.out_2": {
+        "source": "OUT %{c}",
+        "source_hash": "61fa404b3f1295cd107d52c19d212b1d31a9703244b5c2a47f80ff254336397b",
+        "translation_hash": "61fa404b3f1295cd107d52c19d212b1d31a9703244b5c2a47f80ff254336397b"
+      },
+      "generator.out_3": {
+        "source": "OUT",
+        "source_hash": "c57929ed14088114883b23815775f37cb9f7d10c96f23b3cb2c1a3e375a6bbcc",
+        "translation_hash": "c57929ed14088114883b23815775f37cb9f7d10c96f23b3cb2c1a3e375a6bbcc"
+      },
+      "generator.output": {
+        "source": "OUTPUT",
+        "source_hash": "5dbf351336f2e66ee89266f3853594ff717c7c5e05724ad4b0047bd31e78658c",
+        "translation_hash": "0ea00e0781a02e9a491888d02767ecc888dd3dbde6c8c305af1c131d1c489218"
+      },
+      "generator.output_details": {
+        "source": "Output details",
+        "source_hash": "81b0bd8db74fb271ee941a5f32dca26fb6277c83d5f230800614c6a2366694f9",
+        "translation_hash": "bedf2f8d95bc77bbdec8ac14666cdb6fe5e9be30f46a29b24a0163e4ef457190"
+      },
+      "generator.peak_level": {
+        "source": "Peak level",
+        "source_hash": "5745a3b5118ae30bbeced4f0e6bfc0e3bfacd3775b1ba9168e22fd2b13080166",
+        "translation_hash": "739b3eedb75d8683a80aa6e879ff83d1e01375777941652ef30d095007d7be4c"
+      },
+      "generator.pending": {
+        "source": "PENDING",
+        "source_hash": "332011b91ccd9887592cd7072f12da38748e37ee1af81985f9c8e1f066aec6fb",
+        "translation_hash": "530003ca1e0bb8e3b92a48dceb876ab86d91b70ccf7224ce0871ee9446d9b4be"
+      },
+      "generator.phase_lead": {
+        "source": "Phase lead",
+        "source_hash": "9bffba7a09a6995aaf857276ae7c9cc5539bced73ae247600cb0a92a716d898b",
+        "translation_hash": "e2cfbf2eaf9e8639769c0aa7cb8b3bf84b678293cf439151af23e23d8bb68a82"
+      },
+      "generator.remove": {
+        "source": "Remove",
+        "source_hash": "c3812fc4acb861d5182fc2b8155f327f736fbe5e5eb86a7bd7afcb6dc5497282",
+        "translation_hash": "be99b13612015a48305ed2eddee74aa89288783185407708cd30157daf7942c2"
+      },
+      "generator.reset_output_stays_off": {
+        "source": "Reset output (stays OFF)",
+        "source_hash": "56b489db5055689648eba13d52b2d9737eb03dba0c8579491513998c51db40c5",
+        "translation_hash": "28ae9fdfc430ec3cd20469c8e0b4bbd0d15e74782d9e134a7be6ab63997745d9"
+      },
+      "generator.running": {
+        "source": "RUNNING",
+        "source_hash": "d80ffc8dc07953482a2f9f5fbff9a9cecea5d0022155f32af0b56e91d1bee7d3",
+        "translation_hash": "a87e768d48e756a71427f3109691fbc9e9e329d5aa3359856db4f2a41ea5761c"
+      },
+      "generator.seed": {
+        "source": "Seed",
+        "source_hash": "367ef06b8fbf3aaaccd9cff1301628fae45901ccd9661b5a1b256c7cc5314d24",
+        "translation_hash": "8ead905c00c69676f657fb6d349426082430dff109df9ded074a37105f257d13"
+      },
+      "generator.selected_transition_ends": {
+        "source": "Selected transition ends %{i}",
+        "source_hash": "620510f2f8e1c9efe37e66cf1b6a0f509cf3e3a72f9b233a99bf7315a561e7a2",
+        "translation_hash": "41a1e4368a2501f1d886a30b8bbc5aff3604454f4cebb15bcc907189fb186ed5"
+      },
+      "generator.settings_preview_fs_ceiling": {
+        "source": "Settings preview · ±%{amplitude_peak} FS ceiling · %{frequency_hz}",
+        "source_hash": "90d74a7d4f6d4faffac095b66e8f2a763fdf58f8ce8ab3e8cc5e37749c2adfb4",
+        "translation_hash": "0871ec0f21aa188dacd4baf8f49f2991931e3256018b3c5e14b4a21b2cbbf97c"
+      },
+      "generator.show_signal_controls": {
+        "source": "Show signal controls",
+        "source_hash": "07e5b7465e5120b326d9bf4807121aee94c21d62189ee20bfab177d5e958fabf",
+        "translation_hash": "6e3e1bae01c6a7532651f313c6694c8a56020b54186ed9e2490922b9c7aa7370"
+      },
+      "generator.start_output": {
+        "source": "▶ Start output",
+        "source_hash": "d7bd76b4b8685a1bdf5be8baa0687f81173f386a75b4126bb4ad24a2f50e5474",
+        "translation_hash": "f11f42a4d2931f8bca1433631c85594f43359277f5c6a6eeabf4d08fcf8d3d55"
+      },
+      "generator.start_replays_the_seed_frequency_and_phase_do_not": {
+        "source": "Start replays the seed. Frequency and phase do not affect noise.",
+        "source_hash": "b6341a0e8592cbc0bdf512ff1833f53b4aad9af6498198e35deb3a631d83b61a",
+        "translation_hash": "abae1daf283328fcc31985e3fb8c7dc5cd9d618869cad99b93ad7bf7777ee977"
+      },
+      "generator.starting": {
+        "source": "STARTING",
+        "source_hash": "8a19079ce69d165aaa75c11932dbf4672b48cbdb6647b8ed5a5f40caacbabe7c",
+        "translation_hash": "45139e09aa3228715db34032c7a1144fbf9b6945dc95cb7aac43198a2862bea2"
+      },
+      "generator.starting_pending": {
+        "source": "STARTING · pending",
+        "source_hash": "080a3fbbb191a8cfefa25a436bea70518a7efc621bd4a064436afc747a3e8906",
+        "translation_hash": "4ff69c91d3e3ec0f5023d1a7166f5d6b69ea54e233a8916a14cce189213c6294"
+      },
+      "generator.stop_generator_output_independently_of_input_and_analysis": {
+        "source": "Stop Generator output independently of input and analysis",
+        "source_hash": "4b2558f0694bff9cf19594589c0da1211c25f35027bbb96b3151a587f7d5c843",
+        "translation_hash": "f43ae0e5f3825d8d4faefed32f4e70c994020c52ab2e142283806fd4f0d0ade3"
+      },
+      "generator.stop_output": {
+        "source": "■ Stop output",
+        "source_hash": "06647c69fa33e881b5630ef931774d5b2ad94d1068884f2a5ccc43b9763f6763",
+        "translation_hash": "27a1efc9e31fda5e54785215166e725e5e38363f3b3980f305daf8f0e44598e0"
+      },
+      "generator.stop_output_2": {
+        "source": "Stop output",
+        "source_hash": "514482acc7968df8cb1bcdcfe734a4259ecd3f849faf53ba0b383acdce3f22fe",
+        "translation_hash": "5f3bbe5bf8ccc068dc0579c3632f4d558846136e4bb99b0854703e7228a070f3"
+      },
+      "generator.stop_output_to_add_remove_duplicate_reorder_or_change": {
+        "source": "Stop output to add, remove, duplicate, reorder or change waveform / routing.",
+        "source_hash": "33629c3575f954dab2c9a7c0c48db71fbbbf2f1c5669c6542aabe6d49ed35794",
+        "translation_hash": "07013ed31b95ada05602a47ca1c4e4b887420669f9455724443c836eb60b4582"
+      },
+      "generator.stopped": {
+        "source": "STOPPED",
+        "source_hash": "133c49456b6509109d9feb7f177f09ed2feca968952482454b134c7b49c4ff06",
+        "translation_hash": "ca6949a4f4c51a1cbd35163c9dc7eb0c0d6da3eb57d44f65b792f5ef04dc9946"
+      },
+      "generator.stopping": {
+        "source": "STOPPING",
+        "source_hash": "5444fbff498ad0e3a4021272831d26013c66dc21c5af98c08241e69443ecdccd",
+        "translation_hash": "d556861ca754aa7e5cc1e569020fd8510bbbc519ff8ad4f78b1606bd019b6f28"
+      },
+      "generator.transition": {
+        "source": "TRANSITION",
+        "source_hash": "9acdd42860905afad73201a889f2bcb27f8ea016ff24f6e482774623e5f67f29",
+        "translation_hash": "910a292eaa7585eb5d446797efe8e72bd0f43f5cb61c22a759b1ee56a0f1a650"
+      },
+      "generator.unassigned": {
+        "source": "Unassigned",
+        "source_hash": "14d33bd014e6b4e7c3590a8a12e1ec4951d777593d6d6aef9ebe5faac9c8dac0",
+        "translation_hash": "a517cfaefef490e72db17cae467ab8e8315d8d3f5389a28476f3670504adcaae"
+      },
+      "generator.up": {
+        "source": "Up",
+        "source_hash": "55490a4bf3a8e8cb5eed69720293a700ff01ef7da2bfc749f332f626cb584916",
+        "translation_hash": "3f151d97646a03ff74aeaa771c51a7745c6f70c4ac3cd294dc2415fbaba5486b"
+      },
+      "generator.up_to_odd_harmonics_below_fs_peak_level_is": {
+        "source": "Up to 16 odd harmonics below 0.45 Fs. Peak level is the full-scale ceiling; RMS depends on frequency.",
+        "source_hash": "a72dc9626af8dd55765d86717b1e44d143263db0a9c36870464b765ff4cceb52",
+        "translation_hash": "6411b4e90419c20ce5d882202e20f40f5fc95ba72f1af9b16df37d95c425057a"
+      },
+      "generator.waveform": {
+        "source": "Waveform",
+        "source_hash": "f274deed1b737eeb689cce76fe83eb166bc698f4a7523fe7259ce199eb6a6a93",
+        "translation_hash": "78b65638c5063b72a9d1868d6a920bd5a12fa1cb2d4ee195d433e97f82e6b8c3"
+      },
+      "generator.waveform_names.noise": {
+        "source": "Noise",
+        "source_hash": "9ada8e83c1186cd632fb2ac8195abc11596b4a6cea30900c55d23a44c2724770",
+        "translation_hash": "f35f73f2d167be0122f9239df4d150eecfc16305d91fad223c8ca080c16b0bc9"
+      },
+      "generator.waveform_names.sine": {
+        "source": "Sine",
+        "source_hash": "37573a14aab690d3814c933aa5024839d58f7ffd700eaf1b0075d1445f12d631",
+        "translation_hash": "b38e5a7b59d350f27b94a19367baec47bd389610e5da129b0d530bbdcb71a9e6"
+      },
+      "generator.waveform_names.square": {
+        "source": "Square",
+        "source_hash": "c11092bc0861591e9ce5d9a97e83d4fae3c6954a318977865fa85f5b3eeafda8",
+        "translation_hash": "0c8d214a5735acc5f042159fa33c37348cf4a7f1b2c8994af3dfc53c1e767b27"
+      },
+      "generator.waveform_names.triangle": {
+        "source": "Triangle",
+        "source_hash": "a0252691b5dc54b1d67f9d35a120e8c49187f20f0735574a61713c6317df6f72",
+        "translation_hash": "72434061c0ebd1ed608b6fdecf5c5da87bcafaff5c67ed0f1a0baf488b25459f"
+      },
+      "generator.white_noise": {
+        "source": "white noise",
+        "source_hash": "46cfb0b609bd245ffb81a9190626f8c856f3eb594086e350d4707f47677ca2e8",
+        "translation_hash": "2de7412849b4b7f6daac7b8ab1769627b9fcf838c4f729b267961a9f3c8b20c5"
+      },
+      "generator.white_noise_uniform_peak_bounded": {
+        "source": "White noise · uniform · peak bounded",
+        "source_hash": "1d10f26f7581a16bc01f54266a61f908f090b4e1feeb87373eaac8bf8d454bc2",
+        "translation_hash": "00be31516a8cebf59cb3cd96d6b11b188ee89f3d5b685a3ffb408785bdf19e1b"
       }
     }
   }
