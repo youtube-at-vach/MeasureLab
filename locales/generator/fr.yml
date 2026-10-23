@@ -1,0 +1,125 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: Ajoutez un signal dans le panneau du
+  générateur.
+generator.add_signal: + Ajouter un signal
+generator.applied: APPLIQUÉ
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: 'Fs appliquée : %{nominal_sample_rate}
+  Hz (nominal). L’aperçu des paramètres utilise le FS de crête ; les échantillons
+  mesurés sont affichés dans l’oscilloscope.'
+generator.applied_hz_dbfs_peak_lead: 'Appliqué : %{frequency_hz} Hz · %{amplitude_dbfs}
+  dBFS crête · avance de phase %{phase_degrees}°'
+generator.applied_output: SORTIE APPLIQUÉE
+generator.applied_sample: Échantillon appliqué %{applied_sample}
+generator.applied_seed: Graine appliquée %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: Les boutons ± et Haut / Bas utilisent
+  ce pas en Hz, dBFS ou degrés. Entrée ou perte du focus applique ; Échap annule.
+generator.down: Bas
+generator.duplicate: Dupliquer
+generator.edit_step: MODIFIER LE PAS
+generator.enter_a_finite_number_settings_were_not_applied: Saisissez un nombre fini
+  ; les paramètres n’ont pas été appliqués
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Entrée / perte du focus pour
+  appliquer · Échap pour annuler · Haut / Bas pour modifier par pas
+generator.error: ERREUR
+generator.error_reason.already_active: La sortie est déjà active
+generator.error_reason.amplitude: 'Carte à la position %{position} : l’amplitude doit
+  être finie et comprise entre −120 et 0 dBFS crête'
+generator.error_reason.callback_stalled: Expiration du callback de sortie audio ;
+  la sortie a été libérée
+generator.error_reason.channel_count: La sortie nécessite de 1 à 16 canaux
+generator.error_reason.counter_exhausted: Compteur d’échantillons de sortie, de génération
+  ou de commande épuisé
+generator.error_reason.duplicate_routing: Deux signaux ne peuvent pas utiliser le
+  même canal de sortie
+generator.error_reason.frequency: 'Carte à la position %{position} : la fréquence
+  doit être ≥ 0,1 Hz et < 0,45 × Fs de sortie'
+generator.error_reason.no_enabled_signals: Sélectionnez au moins un signal avant de
+  démarrer la sortie
+generator.error_reason.non_finite_output: Sortie non finie ; sortie arrêtée
+generator.error_reason.output_range: La sortie dépasse la pleine échelle ; sortie
+  arrêtée
+generator.error_reason.output_stream: Échec de la sortie audio ; réinitialisez la
+  sortie avant de redémarrer
+generator.error_reason.phase: 'Carte à la position %{position} : la phase doit être
+  finie et comprise entre −180 et 180°'
+generator.error_reason.producer_suspended: La génération interne a été suspendue pendant
+  plus de 250 ms ; sortie arrêtée
+generator.error_reason.revision: La révision des paramètres doit augmenter
+generator.error_reason.routing: 'Carte à la position %{position} : canal de sortie
+  indisponible ou non attribué'
+generator.error_reason.routing_while_active: Arrêtez la sortie avant de modifier les
+  cartes, les détails de forme d’onde ou les attributions de canaux
+generator.error_reason.sample_rate: Fréquence d’échantillonnage de sortie nominale
+  non prise en charge
+generator.error_reason.signal_count: Le générateur accepte au maximum 16 cartes
+generator.error_reason.signal_identity: Les ID des cartes du générateur doivent être
+  uniques et inférieurs au prochain ID
+generator.error_reason.stopping: Attendez la fin du fondu de sortie
+generator.error_reason.waveform: 'Carte à la position %{position} : la graine aléatoire
+  du bruit doit être non nulle'
+generator.frequency: Fréquence
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS crête · %{phase_degrees}°
+generator.generation_revision: Génération %{output_generation} · révision %{revision}
+generator.hide_signal_controls: Masquer les commandes du signal
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · %{channels}ch. L’arrêt de l’entrée maintient la mesure ; la sortie continue.'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels}ch · %{pcm_label}
+  · Fs nominal'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS crête ·
+  avance de phase %{phase_degrees}°'
+generator.in_use: ' · utilisé'
+generator.ms_cycles: '%{frequency_hz} ms / 2 cycles'
+generator.no_signals_add_a_signal_to_choose_its_waveform: Aucun signal. Ajoutez un
+  signal pour choisir sa forme d’onde et sa sortie.
+generator.off: DÉSACTIVÉ
+generator.on: ACTIVÉ
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: SORTIE
+generator.output_details: Détails de la sortie
+generator.peak_level: Niveau de crête
+generator.pending: EN ATTENTE
+generator.phase_lead: Avance de phase
+generator.remove: Supprimer
+generator.reset_output_stays_off: Réinitialiser la sortie (reste désactivée)
+generator.running: EN COURS
+generator.seed: Graine aléatoire
+generator.selected_transition_ends: La transition sélectionnée se termine à l’échantillon
+  %{i}
+generator.settings_preview_fs_ceiling: Aperçu des paramètres · plafond ±%{amplitude_peak}
+  FS · %{frequency_hz}
+generator.show_signal_controls: Afficher les commandes du signal
+generator.start_output: ▶ Démarrer la sortie
+generator.start_replays_the_seed_frequency_and_phase_do_not: Chaque démarrage rejoue
+  la graine. La fréquence et la phase n’affectent pas le bruit.
+generator.starting: DÉMARRAGE
+generator.starting_pending: DÉMARRAGE · en attente
+generator.stop_generator_output_independently_of_input_and_analysis: Arrêter la sortie
+  du générateur indépendamment de l’entrée et de l’analyse
+generator.stop_output: ■ Arrêter la sortie
+generator.stop_output_2: Arrêter la sortie
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: Arrêtez la sortie
+  pour ajouter, supprimer, dupliquer, réorganiser ou modifier la forme d’onde / le
+  routage.
+generator.stopped: ARRÊTÉ
+generator.stopping: ARRÊT EN COURS
+generator.transition: TRANSITION
+generator.unassigned: Non attribué
+generator.up: Haut
+generator.up_to_odd_harmonics_below_fs_peak_level_is: Jusqu’à 16 harmoniques impaires
+  sous 0,45 Fs. Le niveau de crête est le plafond de pleine échelle ; le RMS dépend
+  de la fréquence.
+generator.waveform: Forme d’onde
+generator.waveform_names.noise: Bruit
+generator.waveform_names.sine: Sinusoïde
+generator.waveform_names.square: Carré
+generator.waveform_names.triangle: Triangle
+generator.white_noise: Bruit blanc
+generator.white_noise_uniform_peak_bounded: Bruit blanc · uniforme · amplitude de
+  crête limitée

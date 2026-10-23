@@ -1,0 +1,128 @@
+_version: 1
+shell.add_an_instrument_to_edit_its_details: Ajoutez un appareil pour modifier ses
+  détails.
+shell.add_instrument: Ajouter un appareil…
+shell.add_instruments_to_observe_and_generate_signals_together_removing: Ajoutez des
+  appareils pour observer et générer des signaux simultanément. La suppression d’un
+  volet laisse son analyse et sa sortie en cours.
+shell.analysis_and_output_continue: L’analyse et la sortie continuent
+shell.analysis_enabled_input_live: Analyse activée · entrée en direct
+shell.analysis_enabled_waiting_for_input: Analyse activée · en attente d’entrée
+shell.analysis_on: ANALYSE ACTIVÉE
+shell.analysis_status: État de l’analyse…
+shell.analysis_stopped: Analyse · arrêtée
+shell.audio_i_o: Entrée / sortie audio
+shell.audio_i_o_settings: Paramètres d’entrée / sortie audio
+shell.back_to_instruments: Retour aux appareils
+shell.calibration: Étalonnage
+shell.compact_sidebar: Réduire la barre latérale
+shell.ctrl_open_an_instrument_ctrl_left_right_select_a: 'Ctrl + 1…7 : ouvrir un appareil.
+  Ctrl + Gauche / Droite : sélectionner un volet de la console.'
+shell.details: Détails
+shell.display_scale: Échelle d’affichage
+shell.display_selection_does_not_start_or_stop_measurement: La sélection de l’affichage
+  ne démarre ni n’arrête la mesure.
+shell.error: '! Erreur'
+shell.escape_cancel_editing_close_the_front_menu_window_then: 'Échap : annuler la
+  modification, fermer le menu ou la fenêtre au premier plan, puis revenir de l’écran
+  d’entrée / sortie ou des détails en mode étroit.'
+shell.expand_sidebar: Développer la barre latérale
+shell.file_paths_status: Chemins des fichiers et état
+shell.find_an_instrument: Rechercher un appareil
+shell.finishing: … Finalisation
+shell.finishing_2: FINALISATION
+shell.first_pane_share: Part de largeur du premier volet
+shell.font_license: Licence de la police Noto Sans CJK
+shell.group.analysis: ANALYSE
+shell.group.monitor: MONITEUR
+shell.group.signal: SIGNAL
+shell.help: Aide
+shell.in: ENTRÉE
+shell.input: ENTRÉE
+shell.input_finishing_analysis: Entrée · finalisation de l’analyse
+shell.input_live: ▶ Entrée en direct
+shell.input_opening_device: Entrée · ouverture du périphérique
+shell.input_output: Entrée / sortie
+shell.input_stopped: ■ Entrée arrêtée
+shell.instrument: 'Appareil : %{name}'
+shell.instrument_names.comparison: 2 voies synchrones
+shell.instrument_names.generator: Générateur
+shell.instrument_names.lockin: Lock-in
+shell.instrument_names.scope: Oscilloscope
+shell.instrument_names.spectrogram: Spectrogramme
+shell.instrument_names.spectrum: Spectre
+shell.instrument_names.xy: XY
+shell.instruments: Appareils
+shell.instruments_2: APPAREILS
+shell.language: Langue
+shell.layout_names.columns: Côte à côte
+shell.layout_names.grid: 2 × 2
+shell.layout_names.rows: Empilés
+shell.layout_names.tabs: Onglets
+shell.live: EN DIRECT
+shell.live_held_waiting_describe_acquisition_validity_and_calibration_are: EN DIRECT
+  / MAINTENU / EN ATTENTE décrivent l’acquisition ; la validité et l’étalonnage sont
+  indiqués séparément.
+shell.lock_in: Lock-in · %{enabled}
+shell.measurement: Mesure
+shell.menu: Menu
+shell.multi_instrument_arrangement: Disposition multi-appareils
+shell.multi_instrument_view: Vue multi-appareils
+shell.no_matching_instruments: Aucun appareil correspondant
+shell.off: ■ Désactivé
+shell.on: ▶ Activé
+shell.open_single: Ouvrir seul
+shell.opening: … Ouverture
+shell.opening_2: OUVERTURE
+shell.output_error: Sortie · erreur
+shell.output_running: Sortie · en cours
+shell.output_start_pending: Sortie · démarrage en attente
+shell.output_starting: Sortie · démarrage
+shell.output_stopped: Sortie · arrêtée
+shell.output_stopping: Sortie · arrêt en cours
+shell.purpose.frequency_changes_over_time: Évolution de la fréquence dans le temps
+shell.purpose.frequency_levels_and_power: Niveaux et puissance par fréquence
+shell.purpose.generate_signals_on_output_channels: Générer des signaux sur les canaux
+  de sortie
+shell.purpose.ref_sig_gain_phase_and_delay: Gain, phase et retard REF / SIG
+shell.purpose.tone_amplitude_and_phase_vs_ref: Amplitude et phase de la tonalité par
+  rapport à REF
+shell.purpose.two_channel_x_y_relationship: Relation X/Y entre deux canaux
+shell.purpose.waveform_over_time: Forme d’onde dans le temps
+shell.remove_from_view: Retirer de la vue
+shell.restoring_settings: Restauration des paramètres…
+shell.running: ▶ En cours
+shell.scope_settings: Paramètres de l’oscilloscope
+shell.scope_spectrum_stft_xy_input_running: Oscilloscope / spectre / STFT / XY · entrée
+  en cours
+shell.selected: '%{name} · Sélectionné'
+shell.selected_instrument_details: Détails de l’appareil sélectionné
+shell.shared_input: Entrée partagée · %{state}
+shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition: Entrée partagée
+  par l’oscilloscope, le spectre, le spectrogramme et XY. L’acquisition et les résultats
+  maintenus sont affichés dans chaque appareil.
+shell.shared_input_live: Entrée partagée · en direct
+shell.shared_input_stopped: Entrée partagée · arrêtée
+shell.space_start_stop_shared_input_typing_in_an_editor: 'Espace : démarrer / arrêter
+  l’entrée partagée. La saisie dans un éditeur ne modifie pas l’entrée.'
+shell.split_view_with: Partager la vue avec…
+shell.starting: … Démarrage
+shell.stop_lock_in_analysis: Arrêter l’analyse Lock-in
+shell.stop_synchronous_analysis: Arrêter l’analyse synchrone
+shell.stopped: ■ Arrêté
+shell.stopped_2: ARRÊTÉ
+shell.stopping: … Arrêt en cours
+shell.synchronous_ch: 2 voies synchrones · %{enabled}
+shell.tab_shift_tab_move_keyboard_focus_enter_space_activate: 'Tab / Maj + Tab : déplacer
+  le focus clavier. Entrée / Espace : activer la commande sélectionnée.'
+shell.tabs_keep_controls_and_readings_visible_at_this_size: Les onglets gardent les
+  commandes et les mesures visibles à cette largeur. La disposition demandée revient
+  lorsque l’espace le permet.
+shell.this_replaces_the_saved_multi_instrument_view_use_undo: Cette action remplace
+  la vue multi-appareils enregistrée. Utilisez « Annuler le remplacement » dans cette
+  vue pour la restaurer.
+shell.ui_fps_cpu_fft_ms: '%{adapter} · UI %{fps} fps · FFT CPU %{fft_ms} ms'
+shell.undo_replacement: Annuler le remplacement
+shell.view: Affichage
+shell.wait: … Attente
+shell.waiting_for_input: EN ATTENTE D’ENTRÉE
