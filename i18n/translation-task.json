@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "base_revision": "a873a111fcccd1aca0c8328f9abcfae55bed0f46",
-  "locale": "pt",
+  "base_revision": "4058da6b89a685e3b4daf576cbc3267469a7a810",
+  "locale": "ru",
   "groups": [
     "spectrogram"
   ],
@@ -18,7 +18,7 @@
       "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
       "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
       "variables": [],
-      "translation": "Spectrogram: use a roda para ampliar a frequência; arraste para deslocar frequência/tempo; Shift+roda ou roda no eixo de tempo para percorrer o histórico; clique para reter e selecionar um quadro; arraste uma linha de cursor para movê-la; Ao vivo libera o histórico; clique duplo redefine a posição de frequência/tempo.",
+      "translation": "Spectrogram: прокрутите колесо для масштабирования частоты; перетаскивайте для панорамирования частоты/времени; Shift+колесо или колесо на оси времени прокручивает историю; щёлкните, чтобы удержать и выбрать кадр; перетащите линию курсора; «Активно» отключает историю; двойной щелчок сбрасывает положение частоты/времени.",
       "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
       "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
     }
