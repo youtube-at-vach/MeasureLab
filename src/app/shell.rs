@@ -173,36 +173,43 @@ impl ScopeApp {
                 } else {
                     self.shell_menus(ui, false);
                 }
-                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    self.transport(ui);
-                    let state = if self.pending_stop.is_some() {
-                        i18n::text("shell.finishing_2")
-                    } else if self.busy {
-                        i18n::text("shell.opening_2")
-                    } else if self.running() {
-                        i18n::text("shell.live")
-                    } else {
-                        i18n::text("shell.stopped_2")
-                    };
-                    ui.label(
-                        RichText::new(format!(
-                            "{} · {state}",
-                            if compact {
-                                i18n::text("shell.in")
+                ui.with_layout(
+                    egui::Layout::right_to_left(egui::Align::Center).with_main_wrap(true),
+                    |ui| {
+                        self.transport(ui);
+                        let state = if self.pending_stop.is_some() {
+                            i18n::text("shell.finishing_2")
+                        } else if self.busy {
+                            i18n::text("shell.opening_2")
+                        } else if self.running() {
+                            i18n::text("shell.live")
+                        } else {
+                            i18n::text("shell.stopped_2")
+                        };
+                        ui.label(
+                            RichText::new(format!(
+                                "{} · {state}",
+                                if compact {
+                                    i18n::text("shell.in")
+                                } else {
+                                    i18n::text("shell.input")
+                                }
+                            ))
+                            .small()
+                            .monospace()
+                            .color(if self.running() {
+                                GREEN
                             } else {
-                                i18n::text("shell.input")
-                            }
-                        ))
-                        .small()
-                        .monospace()
-                        .color(if self.running() { GREEN } else { MUTED }),
-                    )
-                    .on_hover_text(
-                        i18n::format("shell.shared_input", &[("state", (state))]).as_ref(),
-                    );
-                    ui.separator();
-                    self.generator_transport(ui, compact);
-                });
+                                MUTED
+                            }),
+                        )
+                        .on_hover_text(
+                            i18n::format("shell.shared_input", &[("state", (state))]).as_ref(),
+                        );
+                        ui.separator();
+                        self.generator_transport(ui, compact);
+                    },
+                );
             });
         });
     }

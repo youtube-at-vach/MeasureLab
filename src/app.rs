@@ -3324,7 +3324,8 @@ impl ScopeApp {
                 let (outer, response) =
                     ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
                 let rect = egui::Rect::from_min_max(
-                    outer.min + vec2(42.0, 4.0),
+                    // Keep the color-bar unit and top tick below wrapped controls.
+                    outer.min + vec2(42.0, 16.0),
                     outer.max - vec2(70.0, 18.0),
                 );
                 self.spectrogram_interaction(ui, &response, rect);

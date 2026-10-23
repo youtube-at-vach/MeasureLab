@@ -48,7 +48,15 @@ impl ScopeApp {
                 assert_eq!(after.comparison, conditions.comparison);
                 assert_eq!(after.calibrations, conditions.calibrations);
                 assert!(!egui::Popup::is_any_open(&driver.ctx));
-                driver.text_position(i18n::text("generator.stop_output_2"))?;
+                driver.visible_text_rect(i18n::text("generator.stop_output_2"))?;
+                let input_action = if self.running() {
+                    i18n::text("io.stop_input")
+                } else if self.source.is_demo() {
+                    i18n::text("io.start_input_demo")
+                } else {
+                    i18n::text("io.start_input")
+                };
+                driver.visible_text_rect(input_action)?;
                 // Warm glyph/layout caches before comparing ordinary frame CPU time.
                 for _ in 0..2 {
                     driver.frame(self, vec![]);
