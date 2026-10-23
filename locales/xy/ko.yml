@@ -1,0 +1,55 @@
+_version: 1
+xy.amplitude_range: 진폭 범위
+xy.auto_no_crossing: ' · 자동 (교차점 없음)'
+xy.b_a_x_y_fs: B−A ΔX %{delta} · ΔY %{delta_2} FS
+xy.cursors: 커서
+xy.fix_x_y_amplitudes_independently_of_the_moving_trace: 움직이는 트레이스와 독립적으로 X/Y 진폭을
+  고정합니다. ΔX와 ΔY를 측정합니다.
+xy.follow_a_real_sample_at_a_fixed_time_offset: XY 트리거 기준 고정 시간 오프셋의 실제 샘플을 따릅니다.
+  Scope 트리거 설정을 사용합니다.
+xy.free: 자유
+xy.free_click_or_drag_to_fix_x_y_amplitudes: '자유: 클릭하거나 드래그해 X/Y 진폭을 고정합니다. A/B는 움직이는
+  트레이스와 독립적으로 ΔX와 ΔY를 측정합니다. Trace Snap으로 전환할 때 자유 위치를 유지합니다.'
+xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: 자유 모드는 X/Y 진폭을 고정하고 ΔX/ΔY를 읽습니다. 모드를
+  전환해도 커서 위치는 유지됩니다.
+xy.free_outside_plot: 자유 · 플롯 범위 밖
+xy.free_run_moving_reference: ' · 자유 실행 (움직이는 기준)'
+xy.input_source: 입력 소스
+xy.ms_samples: '%{sample_rate} ms · 샘플 %{start}..%{end}%{else}%{auto_no_crossing}'
+xy.observation: 관찰
+xy.observation_window: 관찰 구간
+xy.outside_xy_window_or_unavailable: '%{index} · XY 구간 밖이거나 사용할 수 없음'
+xy.point_limit: ' · 포인트 한도'
+xy.reset_xy_scales: XY 축척 초기화
+xy.shared_with_scope: Scope와 공유
+xy.source_changes_apply_on_start_held_xy_keeps_its: 소스 변경은 시작 시 적용됩니다. 고정된 XY는 채널을
+  유지합니다.
+xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
+xy.trace_snap: Trace Snap
+xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Trace Snap은 트리거 기준 샘플을
+  따릅니다. 자동/자유 실행에서는 마커가 이동할 수 있으며 중지를 누르면 고정됩니다.
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: 'Trace Snap: 지정된 X/Y 채널에서
+  가장 가까운 실제 샘플 쌍을 선택하고 XY 트리거에서 해당 샘플 오프셋을 유지합니다. Scope의 트리거 소스, 에지 및 레벨을 사용합니다. 교차점이
+  없으면 기준은 최신 구간을 따라 이동합니다. 겹치는 점에서는 최신 샘플을 선택하며 중지를 누르면 캡처가 고정됩니다.'
+xy.trigger: 트리거
+xy.triggered: ' · 트리거됨'
+xy.up_to_real_sample_pairs_longer_windows_show_the: 실제 샘플 쌍 최대 %{xy}개; 더 긴 구간에서는 최신
+  부분을 표시합니다.
+xy.waiting_for_sample_pairs: 샘플 쌍 대기 중…
+xy.x_axis: X축
+xy.x_fs_div_y_fs_div: 'X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2}
+  · %{y_fs_per_div} FS/div'
+xy.x_fs_y_fs: X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS
+xy.x_fs_y_fs_2: '%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS
+
+  %{detail}'
+xy.x_y_use_the_same_input_frame_equal_axis: X/Y는 같은 입력 프레임을 사용합니다. 정사각형 플롯에서 축척을 같게
+  하면 원이 원형으로 표시됩니다.
+xy.xy_free_cursor: XY · 자유 커서
+xy.xy_lissajous: XY / 리사주
+xy.xy_requires_at_least_two_input_channels: XY에는 입력 채널이 두 개 이상 필요합니다.
+xy.xy_requires_two_input_channels: XY에는 입력 채널 두 개가 필요합니다
+xy.xy_trace_snap_cursor: XY · Trace Snap 커서
+xy.xy_unavailable_assigned_channel_missing: 'XY 사용 불가: 지정된 채널이 없습니다'
+xy.xy_unavailable_mono_input: 'XY 사용 불가: 모노 입력'
+xy.y_axis: Y축

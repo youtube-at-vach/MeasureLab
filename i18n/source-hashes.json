@@ -9200,6 +9200,211 @@
         "source": "WINDOW",
         "source_hash": "2480270a05636e58c46f923aae9a125cc9bd241e95ac869979cc934c49e92886",
         "translation_hash": "4c6ff7d5fa8f9f09c02207179e9f6476059bb53d0853cfa50819ebee35292717"
+      },
+      "xy.amplitude_range": {
+        "source": "Amplitude range",
+        "source_hash": "beecc5f6b08fd81dd8172f523002aee6379c7418444511b3ab79a37257e30881",
+        "translation_hash": "97e91db1b01a780af01c6fb7fe36f0c99c925473ee8a1aa7c36ec2a281cb9e8e"
+      },
+      "xy.auto_no_crossing": {
+        "source": " · Auto (no crossing)",
+        "source_hash": "9ef79840bcf62ce4aac41b71331b3e8e25063767f8bb38f186bd7b14f213ff72",
+        "translation_hash": "7232023d1ea434dd70af1b0a4b7f0edd9f703fedbbdbc5729ea651439cd410e6"
+      },
+      "xy.b_a_x_y_fs": {
+        "source": "B−A ΔX %{delta} · ΔY %{delta_2} FS",
+        "source_hash": "996c24bd2258840f72bb981a724f8847447e71db1e22517d8b69f5e5b2d58007",
+        "translation_hash": "996c24bd2258840f72bb981a724f8847447e71db1e22517d8b69f5e5b2d58007"
+      },
+      "xy.cursors": {
+        "source": "CURSORS",
+        "source_hash": "7cb53cbcf83d1021ed0a0793b5f34a186feef092dc6e8b1fa03ceff7c1aa05a1",
+        "translation_hash": "04ee3e2083318326b251102ce8397645edc51aaebd3b3ea9a3b3c508551b687f"
+      },
+      "xy.fix_x_y_amplitudes_independently_of_the_moving_trace": {
+        "source": "Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.",
+        "source_hash": "e014d371486e35a33b2e08343ab2509310d4a520c23c77f6feeb2131c82c29e7",
+        "translation_hash": "3ed3b9d9fc082c411b33a1470fb68502891aacd8583c1b6621d7c4562d1e1632"
+      },
+      "xy.follow_a_real_sample_at_a_fixed_time_offset": {
+        "source": "Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.",
+        "source_hash": "4e42e5ccdb79fe3f303f7bb289d683d6be7d1f9576228a254fecec1a2e805116",
+        "translation_hash": "e550f2d105123b18594aaf5602f25dd99682a2c4d164edc9dada80851fad1368"
+      },
+      "xy.free": {
+        "source": "Free",
+        "source_hash": "f411a1fb62758b4c54690d0a702b4955b54dd22115416fa7b1ce51b4a084818d",
+        "translation_hash": "9a0c92b2f4c9f8a125ec02ddfde8751c0dfa4bbe7ebc51104e362ef38da987e9"
+      },
+      "xy.free_click_or_drag_to_fix_x_y_amplitudes": {
+        "source": "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
+        "source_hash": "5aebd35717c7d369e4b9b7aea71a7c08d01281ede3add2d9cd81bb9a30be22a0",
+        "translation_hash": "f0b6e846b77e29ae60f355ba2c2b0fa64fe72bd732c7f002a584d6b9b6429c81"
+      },
+      "xy.free_keeps_x_y_amplitudes_fixed_and_reads_x": {
+        "source": "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Cursor positions are retained when switching modes.",
+        "source_hash": "996f5194449a730fa7e19013f7b3d6dc87a75d6e6d0dde1b8e6fb45b40103ccb",
+        "translation_hash": "5fb1e035c7996d856823069d258a6f1b89d4b40844959c24b4d939160376a592"
+      },
+      "xy.free_outside_plot": {
+        "source": "Free · outside plot",
+        "source_hash": "fdb7bffa64394387fa75119f0c5e955c74566d78f54671538d8fc8e21009dd3e",
+        "translation_hash": "981d5cf91f44ec6d1d377722fb1a9a9ed0b81ff917ba5bdbfbec2b5ae08357cb"
+      },
+      "xy.free_run_moving_reference": {
+        "source": " · Free run (moving reference)",
+        "source_hash": "1f475bf331105a315d99576ac10f2ba5ed46f6f2fd577348d589cd0ee06b2d51",
+        "translation_hash": "b5d08c543f41fd95d89d17759a6b4f09598a1e6ebac19c078df5f828d67a8542"
+      },
+      "xy.input_source": {
+        "source": "Input source",
+        "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+        "translation_hash": "b82fd02506c56e46d63aa45b34a105d3634e7375b626815fe73a6be1af63811c"
+      },
+      "xy.ms_samples": {
+        "source": "%{sample_rate} ms · samples %{start}..%{end}%{else}%{auto_no_crossing}",
+        "source_hash": "be2741feb19b80438d182b67c7a185c6ee25df76e3c2f35e6a89f52c1efbcba0",
+        "translation_hash": "89aef2ff773364de92a044a5fd5c5b11975ab971ca666dba1820f6654f7403f3"
+      },
+      "xy.observation": {
+        "source": "OBSERVATION",
+        "source_hash": "4f89ca8b4090c7befb1fc3f0f965289f3347058482a4e34be84b8d2a266b3c19",
+        "translation_hash": "74ce91c9756e4fb24225653ca0b96c2c0656d02372cdbc37982e9a6591e434a1"
+      },
+      "xy.observation_window": {
+        "source": "Observation window",
+        "source_hash": "af347726c2412e1d009db868bcaf860a1ef18ce0765892abe0701cd67f1d2189",
+        "translation_hash": "50059616fc654af717b8eb4b044daeba8b2b585c8c9130052af8d17d1b659120"
+      },
+      "xy.outside_xy_window_or_unavailable": {
+        "source": "%{index} · outside XY window or unavailable",
+        "source_hash": "40b8df6f144125a08f2ec6dbb52c56f79cd025e22dfd7b991742fc846cab1b72",
+        "translation_hash": "3faffa41911d96a74143c942d4822f5a69463c59be2d6276249b2e952ea81db1"
+      },
+      "xy.point_limit": {
+        "source": " · point limit",
+        "source_hash": "139343470b31f9a375c61f78ce39aafaf333f804b83676a5d276d53480dcebe1",
+        "translation_hash": "ad725d80036ab3e6327539563bae981d2892a37e2cf757e8fd31615719aa799b"
+      },
+      "xy.reset_xy_scales": {
+        "source": "Reset XY scales",
+        "source_hash": "67527346be8d3569cc5ed892a56e70608e8454c7627bf0f978964e45e46cd2ef",
+        "translation_hash": "90d0a447c07e6e679c55a6f032c970bca869682329c76435cf7b1e358cea4557"
+      },
+      "xy.shared_with_scope": {
+        "source": "Shared with Scope",
+        "source_hash": "9657cdff2b069736e36a842e869d574697235d18d89fd360d55cfeeade6aa294",
+        "translation_hash": "dd8e7f7040bbd222a42bcf603a857385edbff0dce1f8425343682d9d274c1ee0"
+      },
+      "xy.source_changes_apply_on_start_held_xy_keeps_its": {
+        "source": "Source changes apply on Start. Held XY keeps its channels.",
+        "source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89",
+        "translation_hash": "ffd9083a501bb2e5cb5e7794a6d69c67a061e737de02479b0750b5c2989d3b29"
+      },
+      "xy.t_ms": {
+        "source": "T%{sample_rate} ms · #%{sample}",
+        "source_hash": "62c5d2f748f07f2feb1bdb076ab476d479b8e383b35003f6bc8d6f886c47241b",
+        "translation_hash": "62c5d2f748f07f2feb1bdb076ab476d479b8e383b35003f6bc8d6f886c47241b"
+      },
+      "xy.trace_snap": {
+        "source": "Trace Snap",
+        "source_hash": "53c33d64cadd72144a24ae9f05ba16c99de559ec7654ce096ee24ccc2f8ef927",
+        "translation_hash": "53c33d64cadd72144a24ae9f05ba16c99de559ec7654ce096ee24ccc2f8ef927"
+      },
+      "xy.trace_snap_follows_a_trigger_relative_sample_auto_free": {
+        "source": "Trace Snap follows a trigger-relative sample. Auto/free run may move the marker; Stop freezes it.",
+        "source_hash": "e1b5f34ffe4a7e139af32429fa6a5bd10f3126cee62624c7d09250f8c71b78b1",
+        "translation_hash": "0c6a41ba34bac513f65e2e9bd007f964df7d8d4ab2d3ae1fb0a6ccf335424bde"
+      },
+      "xy.trace_snap_selects_the_nearest_actual_pair_from_the": {
+        "source": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+        "source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621",
+        "translation_hash": "ae9cf6d2841da712f922702628341eb9a2f1b80e842d3c6cc8dcd958987f5c62"
+      },
+      "xy.trigger": {
+        "source": "TRIGGER",
+        "source_hash": "f3bbca3a684e7f2d444140623724b2e48d741dcd44afeeae3ac4ee34f853c3f4",
+        "translation_hash": "1c2c82689d775d52191e9e429ba9e905998bca5b924672b557a7b8bbc4e81e9b"
+      },
+      "xy.triggered": {
+        "source": " · Triggered",
+        "source_hash": "d819ec106235615ed868892b71c4a7ceaf98541191db9273daef5e2eb921ed6e",
+        "translation_hash": "bd5f994f059b0cfb7ec937ae68179bf390221008471cbe035c25dbd25eeb9a01"
+      },
+      "xy.up_to_real_sample_pairs_longer_windows_show_the": {
+        "source": "Up to %{xy} real sample pairs; longer windows show the latest portion.",
+        "source_hash": "a1052af357dbb358884f58c52aecd817bd5841b565af2cbfaa531d5c1d23abc3",
+        "translation_hash": "d09be4decd207f022708d8297372cbb9a60b5cb8e2dea2fe2e25fe2a46a9b770"
+      },
+      "xy.waiting_for_sample_pairs": {
+        "source": "Waiting for sample pairs…",
+        "source_hash": "81664c516200f18fbbaa4cb3bd592d286481f856d237ab098cc6068638f3d870",
+        "translation_hash": "0afbe205d0374848336f60de8db7fcfbedbc2d14873e076f30f8228e215b99a9"
+      },
+      "xy.x_axis": {
+        "source": "X AXIS",
+        "source_hash": "ae931d3ad62c92ca84318e0a276132e367dda9b5962545d6d1020748ef452717",
+        "translation_hash": "f875e0c2076fc727d4254977d7f92bc457b031dd928e8d02c49040f035a38a2a"
+      },
+      "xy.x_fs_div_y_fs_div": {
+        "source": "X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2} · %{y_fs_per_div} FS/div",
+        "source_hash": "1fa29b100b8b5b30dd05a6641c6beddf2d2f5c5fb93a9ee14429b8030886d08a",
+        "translation_hash": "1fa29b100b8b5b30dd05a6641c6beddf2d2f5c5fb93a9ee14429b8030886d08a"
+      },
+      "xy.x_fs_y_fs": {
+        "source": "X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS",
+        "source_hash": "ca7cba63a07c95a6f49ac3c72162c43a8957bb6323f9c7cb08664fe4d979ea14",
+        "translation_hash": "ca7cba63a07c95a6f49ac3c72162c43a8957bb6323f9c7cb08664fe4d979ea14"
+      },
+      "xy.x_fs_y_fs_2": {
+        "source": "%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS\n%{detail}",
+        "source_hash": "b94fead5f1f653b7ccb5efc1f4582b77140181e3377a30261552800ae179a83d",
+        "translation_hash": "b94fead5f1f653b7ccb5efc1f4582b77140181e3377a30261552800ae179a83d"
+      },
+      "xy.x_y_use_the_same_input_frame_equal_axis": {
+        "source": "X/Y use the same input frame. Equal axis scales preserve circles on the square plot.",
+        "source_hash": "77ab5d275570e90fd6790f25b621a772c3f28a7df1400d5e3e6b003a2bf7b8ea",
+        "translation_hash": "30fbedd3e968d8c2a5e688c3e690c0874d6d559b4da883ee504e566d3bd5e8ba"
+      },
+      "xy.xy_free_cursor": {
+        "source": "XY · Free cursor",
+        "source_hash": "321138b5c172728f34f15c967c0b22ecde786ca1e38bbd033bf4f5e3cd7d867d",
+        "translation_hash": "ce95ce87a14486c097983ae7c804f4308ef8a1c9f91c811ed4e9a215a3e17cd7"
+      },
+      "xy.xy_lissajous": {
+        "source": "XY / Lissajous",
+        "source_hash": "3ed5889089156b6001938edbc8b7d0800ac8e3a22237c24f9879aa7edfc3dfb4",
+        "translation_hash": "690404df1b39550039aaaf9357549e01d83fbee1520f0dae3942ed34658688d1"
+      },
+      "xy.xy_requires_at_least_two_input_channels": {
+        "source": "XY requires at least two input channels.",
+        "source_hash": "c942bb606fab6585b4e721f80677030e273187c3639f8ab7b0efbc22887172ca",
+        "translation_hash": "a94bde96462fe1d5732f966fd8017d9d2b09df894eebba91c540c492343949a9"
+      },
+      "xy.xy_requires_two_input_channels": {
+        "source": "XY requires two input channels",
+        "source_hash": "bf1c553ca24a41dfcb0125abf5c3b1c0cc4fb5d42c25b326af574a73966c68d8",
+        "translation_hash": "7140782c0b640228880e3eade1dae1d8eba95eee2ac9a765a5a2d6aef86dbf6f"
+      },
+      "xy.xy_trace_snap_cursor": {
+        "source": "XY · Trace Snap cursor",
+        "source_hash": "fb77622e43950f8db39d1c1835237ac29a9a1336a4eec5dfc56433f00e2899a7",
+        "translation_hash": "82237538f960034db4143ba0ac38c0d6fd47ab25664381972904835790abb1c9"
+      },
+      "xy.xy_unavailable_assigned_channel_missing": {
+        "source": "XY unavailable: assigned channel missing",
+        "source_hash": "fd05d69a74610f0946b1bfa27c3083fa2a4199f33fd32905e72631f9cbb5b596",
+        "translation_hash": "c7a89a3d3cd0ebf5422676e3234b79a38d786a9dfac2cb23df45fbc7a508d3ca"
+      },
+      "xy.xy_unavailable_mono_input": {
+        "source": "XY unavailable: mono input",
+        "source_hash": "ec5b9419b93aafd1b8bee08c950dd3979abb080860ec11561d898f7f709afa0c",
+        "translation_hash": "ba094dd31080d01406c4a9996457f21a3b29bcb668429d891aa7409cd6d04a75"
+      },
+      "xy.y_axis": {
+        "source": "Y AXIS",
+        "source_hash": "74022c1abdb3d772114e66a29bcb2dee7a2ea100bcaf5849fc4371616e2dc86b",
+        "translation_hash": "ff401e1edf2cee8a480f219d8d2b5b12ad4b12ddedd547850c53b315a511cac3"
       }
     }
   }
