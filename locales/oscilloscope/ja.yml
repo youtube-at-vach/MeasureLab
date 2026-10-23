@@ -79,7 +79,7 @@ oscilloscope.source: トリガー元
 oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
 
   %{scope_trigger_marker_status} · トリガー元 %{channel} · レベル %{level} 生FS。レベルはトリガー元チャンネルの縦軸レンジに従います。選択中のチャンネルの軸とは異なる場合があります。'
-oscilloscope.spectrogram_time_hz_cursor: スペクトログラム · 時間／周波数カーソル
+oscilloscope.spectrogram_time_hz_cursor: 時間／周波数カーソル
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 入力を開始して、トリガーで1回捕捉するまで待ちます
 oscilloscope.start_single_capture: シングル捕捉を開始
 oscilloscope.t_markers_captured: Tマーカー：捕捉済み
