@@ -1,0 +1,113 @@
+_version: 1
+shell.add_an_instrument_to_edit_its_details: 添加仪器以编辑其详细信息。
+shell.add_instrument: 添加仪器…
+shell.add_instruments_to_observe_and_generate_signals_together_removing: 添加仪器以同时观察和生成信号。移除窗格后，其分析和输出仍会继续运行。
+shell.analysis_and_output_continue: 分析和输出仍在继续
+shell.analysis_enabled_input_live: 分析已启用 · 输入运行中
+shell.analysis_enabled_waiting_for_input: 分析已启用 · 等待输入
+shell.analysis_on: 分析已开启
+shell.analysis_status: 分析状态…
+shell.analysis_stopped: 分析 · 已停止
+shell.audio_i_o: Audio I/O
+shell.audio_i_o_settings: Audio I/O 设置
+shell.back_to_instruments: 返回仪器
+shell.calibration: 校准
+shell.compact_sidebar: 紧凑侧边栏
+shell.ctrl_open_an_instrument_ctrl_left_right_select_a: Ctrl + 1…7：打开仪器。Ctrl + 左 /
+  右：选择控制台窗格。
+shell.details: 详细信息
+shell.display_scale: 显示比例
+shell.display_selection_does_not_start_or_stop_measurement: 切换显示不会启动或停止测量。
+shell.error: '! 错误'
+shell.escape_cancel_editing_close_the_front_menu_window_then: Escape：取消编辑，关闭最前面的菜单/窗口，然后从
+  I/O 或窄版详细信息返回。
+shell.expand_sidebar: 展开侧边栏
+shell.file_paths_status: 文件路径和状态
+shell.find_an_instrument: 查找仪器
+shell.finishing: … 正在结束
+shell.finishing_2: 正在结束
+shell.first_pane_share: 拆分第一个窗格
+shell.font_license: Noto Sans CJK 字体许可证
+shell.group.analysis: 分析
+shell.group.monitor: 监视
+shell.group.signal: 信号
+shell.help: 帮助
+shell.in: 输入
+shell.input: 输入
+shell.input_finishing_analysis: 输入 · 正在结束分析
+shell.input_live: ▶ 输入运行中
+shell.input_opening_device: 输入 · 正在打开设备
+shell.input_output: 输入 / 输出
+shell.input_stopped: ■ 输入已停止
+shell.instrument: 仪器：%{name}
+shell.instrument_names.comparison: 同步双通道
+shell.instrument_names.generator: Generator
+shell.instrument_names.lockin: Lock-in
+shell.instrument_names.scope: Scope
+shell.instrument_names.spectrogram: Spectrogram
+shell.instrument_names.spectrum: Spectrum
+shell.instrument_names.xy: XY
+shell.instruments: 仪器
+shell.instruments_2: 仪器
+shell.language: 语言
+shell.layout_names.columns: 并排
+shell.layout_names.grid: 2 × 2
+shell.layout_names.rows: 堆叠
+shell.layout_names.tabs: 标签页
+shell.live: 实时
+shell.live_held_waiting_describe_acquisition_validity_and_calibration_are: 实时 / 保留
+  / 等待表示采集状态；有效性和校准状态单独显示。
+shell.lock_in: Lock-in · %{enabled}
+shell.measurement: 测量
+shell.menu: 菜单
+shell.multi_instrument_arrangement: 多仪器布局
+shell.multi_instrument_view: 多仪器视图
+shell.no_matching_instruments: 没有匹配的仪器
+shell.off: ■ 关闭
+shell.on: ▶ 开启
+shell.open_single: 打开单视图
+shell.opening: … 正在打开
+shell.opening_2: 正在打开
+shell.output_error: 输出 · 错误
+shell.output_running: 输出 · 运行中
+shell.output_start_pending: 输出 · 等待启动
+shell.output_starting: 输出 · 正在启动
+shell.output_stopped: 输出 · 已停止
+shell.output_stopping: 输出 · 正在停止
+shell.purpose.frequency_changes_over_time: 频率随时间变化
+shell.purpose.frequency_levels_and_power: 频率电平和功率
+shell.purpose.generate_signals_on_output_channels: 在输出通道上生成信号
+shell.purpose.ref_sig_gain_phase_and_delay: REF / SIG 增益、相位和延迟
+shell.purpose.tone_amplitude_and_phase_vs_ref: 相对于 REF 的音调幅度和相位
+shell.purpose.two_channel_x_y_relationship: 双通道 X/Y 关系
+shell.purpose.waveform_over_time: 波形随时间变化
+shell.remove_from_view: 从视图中移除
+shell.restoring_settings: 正在恢复设置…
+shell.running: ▶ 运行中
+shell.scope_settings: Scope 设置
+shell.scope_spectrum_stft_xy_input_running: Scope / Spectrum / STFT / XY · 输入运行中
+shell.selected: '%{name} · 已选择'
+shell.selected_instrument_details: 所选仪器的详细信息
+shell.shared_input: 共享输入 · %{state}
+shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition: Scope、Spectrum、Spectrogram
+  和 XY 共用输入。每个仪器中显示采集状态和保留结果。
+shell.shared_input_live: 共享输入 · 运行中
+shell.shared_input_stopped: 共享输入 · 已停止
+shell.space_start_stop_shared_input_typing_in_an_editor: 空格：启动 / 停止共享输入。在编辑器中输入内容不会更改输入状态。
+shell.split_view_with: 与…拆分视图
+shell.starting: … 正在启动
+shell.stop_lock_in_analysis: 停止 Lock-in 分析
+shell.stop_synchronous_analysis: 停止同步分析
+shell.stopped: ■ 已停止
+shell.stopped_2: 已停止
+shell.stopping: … 正在停止
+shell.synchronous_ch: 同步双通道 · %{enabled}
+shell.tab_shift_tab_move_keyboard_focus_enter_space_activate: Tab / Shift + Tab：移动键盘焦点。Enter
+  / Space：激活获得焦点的控件。
+shell.tabs_keep_controls_and_readings_visible_at_this_size: 此尺寸下，标签页可让控件和读数保持可见。空间充足时会恢复所请求的布局。
+shell.this_replaces_the_saved_multi_instrument_view_use_undo: 这会替换已保存的多仪器视图。请在该视图中使用“撤销替换”以恢复。
+shell.ui_fps_cpu_fft_ms: '%{adapter} · UI %{fps} fps · CPU FFT %{fft_ms} ms'
+shell.undo_replacement: 撤销替换
+shell.view: 视图
+shell.wait: … 等待
+shell.waiting_for_input: 正在等待输入
