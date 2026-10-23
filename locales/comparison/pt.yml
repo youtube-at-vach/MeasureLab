@@ -1,0 +1,99 @@
+_version: 1
+comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags: Comparação
+  CA · fase positiva adianta REF; atraso positivo fica atrás de REF. Alterações parado
+  se aplicam no próximo início.
+comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs: '%{name} · média
+  CA removida · lotes aritméticos disjuntos · limite REF %{reference_min_psd_fs2_hz}
+  FS²/Hz · coerência ≥%{minimum_coherence}'
+comparison.around_reading: Em torno da leitura
+comparison.average_windows: 'Média de janelas '
+comparison.averaged_windows_processed_missing_invalid_samples: '%{averaged_windows}
+  janelas calculadas · %{processed_windows} processadas · %{missing_samples} ausentes
+  · %{invalid_samples} amostras inválidas'
+comparison.bin_hz: Bin %{k} · %{bin_width_hz} Hz · %{state}
+comparison.bin_states.averaging: Média
+comparison.bin_states.incoherent: Incoerente
+comparison.bin_states.reference_lost: Referência perdida
+comparison.bin_states.response_lost: Resposta perdida
+comparison.bin_states.valid: Válido
+comparison.captured_conditions: Condições capturadas
+comparison.ch_revision_fs: 'CH %{ch}: %{id} / revisão %{revision} · %{gain} %{unit}
+  / FS'
+comparison.check_ref_sig_channels_fft_and_nominal_fs_settings: Verifique os canais
+  REF / SIG, a FFT e as configurações de Fs nominal.
+comparison.coherence: Coerência γ²
+comparison.custom: Personalizado
+comparison.display_only_captured_analysis_validity_thresholds_and_the_phase: 'Somente
+  tela: análise capturada, limites de validade e banda da inclinação de fase permanecem
+  inalterados. Hz logarítmico omite CC.'
+comparison.display_range: Faixa da tela
+comparison.finishing_analysis_before_holding_the_result: Finalizando a análise antes
+  de manter o resultado.
+comparison.from: 'De '
+comparison.fs_hz: ' FS²/Hz'
+comparison.full_nyquist: Completo / Nyquist
+comparison.gain: Ganho
+comparison.gain_db: Ganho dB
+comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain: H1 = Pxy/Pxx. Scope,
+  Spectrum e comparação mantêm seus próprios intervalos. O ajuste de inclinação presume
+  passos de fase adjacentes menores que π; dados periódicos/envolvidos não determinam
+  latência absoluta.
+comparison.held_conditions_retained_queued_analysis_settings_apply_on_next: CONDIÇÕES
+  RETIDAS PRESERVADAS · configurações de análise enfileiradas se aplicam no próximo
+  início
+comparison.hz: '%{selected_hz} Hz'
+comparison.hz_2: '%{fraction} Hz'
+comparison.input_gap_press_start_input_to_acquire_again: Intervalo na entrada · pressione
+  Iniciar entrada para adquirir novamente.
+comparison.input_gap_waiting_for_a_new_complete_average: Intervalo na entrada · aguardando
+  uma nova média completa.
+comparison.input_generation_analysis_revision_hz_nominal_f64: Geração da entrada %{generation}
+  · revisão da análise %{analysis_revision} · %{nominal_sample_rate_hz} Hz nominal
+  · f64
+comparison.invalid_input_no_valid_comparison_is_available: Entrada inválida · nenhuma
+  comparação válida disponível.
+comparison.linear_hz: Hz linear
+comparison.log_hz: Hz logarítmico
+comparison.min_coherence: 'Coerência mín. '
+comparison.min_ref: 'Mín. REF '
+comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps: Fs nominal
+  · calibração de fase/tempo CH não verificada · atraso envolve em 1/f
+comparison.phase: Fase °
+comparison.phase_lead: Avanço de fase
+comparison.phase_slope_needs_contiguous_excited_coherent_bins: 'Inclinação de fase:
+  — · requer ≥8 bins contíguos excitados e coerentes'
+comparison.phase_slope_s_hz_residual_rms: 'Inclinação de fase: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2}
+  Hz · resíduo %{phase_residual_rms_degrees}° RMS'
+comparison.press_start_input_to_acquire_a_complete_average: Pressione Iniciar entrada
+  para adquirir uma média completa.
+comparison.read_at: Leitura em
+comparison.ref: REF
+comparison.ref_ch_sig_ch_n_f_hz: '%{state} · REF CH %{reference_channel} / SIG CH
+  %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz'
+comparison.samples: '%{size} amostras'
+comparison.samples_latest_input_end: Amostras %{start}..%{end} · mais recentes %{start_2}..%{end_2}
+  · fim da entrada %{input_end}
+comparison.select_ref_sig_channels_then_press_start_analysis: Selecione os canais
+  REF / SIG e pressione Iniciar análise.
+comparison.selected_frequency_is_outside_the_captured_result: A frequência selecionada
+  está fora do resultado capturado.
+comparison.sig: SIG
+comparison.slope_from: 'Inclinação de '
+comparison.slope_to: 'Inclinação até '
+comparison.start_analysis: Iniciar análise
+comparison.state_names.averaging: Média
+comparison.state_names.disabled: Desativado
+comparison.state_names.filling: Preenchendo
+comparison.state_names.missing: Ausente
+comparison.state_names.non_finite: Não finito
+comparison.state_names.unavailable: Indisponível
+comparison.state_names.valid: Válido
+comparison.stop_analysis: Parar análise
+comparison.synchronous_comparison: Comparação síncrona
+comparison.to: 'Até '
+comparison.valid_band: Banda válida
+comparison.valid_transfer_bins_gaps_are_not_interpolated: '%{valid} bins de transferência
+  válidos · lacunas não são interpoladas'
+comparison.waiting_for_a_complete_average: Aguardando uma média completa.
+comparison.window_averaging: JANELA / MÉDIA
+comparison.wrapped_delay: Atraso envolvido

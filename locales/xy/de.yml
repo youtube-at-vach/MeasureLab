@@ -1,0 +1,61 @@
+_version: 1
+xy.amplitude_range: Amplitudenbereich
+xy.auto_no_crossing: ' · Automatisch (keine Flanke)'
+xy.b_a_x_y_fs: B−A ΔX %{delta} · ΔY %{delta_2} FS
+xy.cursors: CURSORS
+xy.fix_x_y_amplitudes_independently_of_the_moving_trace: X-/Y-Amplituden unabhängig
+  von der bewegten Kurve fixieren. ΔX und ΔY messen.
+xy.follow_a_real_sample_at_a_fixed_time_offset: Realem Sample mit festem Zeitversatz
+  zum XY-Trigger folgen. Verwendet die Scope-Triggereinstellungen.
+xy.free: Frei
+xy.free_click_or_drag_to_fix_x_y_amplitudes: 'Frei: klicken oder ziehen, um X-/Y-Amplituden
+  festzulegen. A/B messen ΔX und ΔY unabhängig von der bewegten Kurve. Freie Positionen
+  bleiben beim Wechsel zu Trace Snap erhalten.'
+xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: Frei hält X-/Y-Amplituden fest und
+  liest ΔX/ΔY ab. Cursorpositionen bleiben beim Moduswechsel erhalten.
+xy.free_outside_plot: Frei · außerhalb des Diagramms
+xy.free_run_moving_reference: ' · Dauerbetrieb (bewegliche Referenz)'
+xy.input_source: Eingangsquelle
+xy.ms_samples: '%{sample_rate} ms · Samples %{start}..%{end}%{else}%{auto_no_crossing}'
+xy.observation: BEOBACHTUNG
+xy.observation_window: Beobachtungsfenster
+xy.outside_xy_window_or_unavailable: '%{index} · außerhalb des XY-Fensters oder nicht
+  verfügbar'
+xy.point_limit: ' · Punktlimit'
+xy.reset_xy_scales: XY-Skalen zurücksetzen
+xy.shared_with_scope: Gemeinsam mit Scope
+xy.source_changes_apply_on_start_held_xy_keeps_its: Quellenänderungen gelten ab „Start“.
+  Gehaltenes XY behält seine Kanäle.
+xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
+xy.trace_snap: Trace Snap
+xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Trace Snap folgt einem
+  triggerrelativen Sample. Automatik/Dauerbetrieb kann die Markierung bewegen; „Stop“
+  friert sie ein.
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: 'Trace Snap: wählt das nächstgelegene
+  tatsächliche Wertepaar der zugewiesenen X-/Y-Kanäle aus und behält dessen Sampleversatz
+  zum XY-Trigger bei. Verwendet Triggerquelle, Flanke und Pegel von Scope. Ohne Flanke
+  bewegt sich die Referenz mit dem neuesten Fenster. Bei überlappenden Punkten wird
+  das neueste Sample gewählt; „Stop“ hält die Erfassung an.'
+xy.trigger: TRIGGER
+xy.triggered: ' · Getriggert'
+xy.up_to_real_sample_pairs_longer_windows_show_the: Bis zu %{xy} echte Samplepaare;
+  längere Fenster zeigen den neuesten Ausschnitt.
+xy.waiting_for_sample_pairs: Warten auf Samplepaare…
+xy.x_axis: X-ACHSE
+xy.x_fs_div_y_fs_div: 'X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2}
+  · %{y_fs_per_div} FS/div'
+xy.x_fs_y_fs: X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS
+xy.x_fs_y_fs_2: '%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS
+
+  %{detail}'
+xy.x_y_use_the_same_input_frame_equal_axis: X/Y verwenden dasselbe Eingangsframe.
+  Gleiche Achsenskalierung bewahrt Kreise im quadratischen Diagramm.
+xy.xy_free_cursor: XY · Freier Cursor
+xy.xy_lissajous: XY / Lissajous
+xy.xy_requires_at_least_two_input_channels: XY erfordert mindestens zwei Eingangskanäle.
+xy.xy_requires_two_input_channels: XY erfordert zwei Eingangskanäle
+xy.xy_trace_snap_cursor: XY · Trace-Snap-Cursor
+xy.xy_unavailable_assigned_channel_missing: 'XY nicht verfügbar: zugewiesener Kanal
+  fehlt'
+xy.xy_unavailable_mono_input: 'XY nicht verfügbar: Monoeingang'
+xy.y_axis: Y-ACHSE

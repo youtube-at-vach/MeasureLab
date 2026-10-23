@@ -1,0 +1,134 @@
+_version: 1
+oscilloscope.acquiring_post_trigger: Adquirindo pós-disparo
+oscilloscope.acquisition: AQUISIÇÃO
+oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: Um valor adquirido
+  ou calibrado não é finito; nenhuma leitura numérica válida
+oscilloscope.auto: Automático
+oscilloscope.auto_free: Automático / livre
+oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: Defina automaticamente
+  a escala de tempo, a amplitude e o disparo para um sinal periódico
+oscilloscope.autoset: Ajuste automático
+oscilloscope.autoset_frequency: 'Ajuste automático: %{frequency} Hz a partir de cruzamentos
+  brutos'
+oscilloscope.autoset_held: Amplitude da captura retida ajustada; tempo/disparo se
+  aplicam no próximo início (%{frequency} Hz)
+oscilloscope.capture_once_on_the_next_trigger_crossing: Capturar uma vez no próximo
+  cruzamento do disparo
+oscilloscope.centre_offset: Offset central
+oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
+oscilloscope.ch_2: CH%{index}%{else}
+oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
+
+  %{index_2}
+
+  Selecione para editar este canal nas configurações do Scope. Exibição ligada/desligada
+  é independente.
+
+  %{display}'
+oscilloscope.channel_out_of_range: — · canal fora da faixa
+oscilloscope.cursor: Cursor %{index} · %{join}
+oscilloscope.display: Exibição
+oscilloscope.drag_the_slider_or_value_to_adjust_double_click: Arraste o controle deslizante
+  ou o valor para ajustar. Clique duas vezes no valor para digitar um número.
+oscilloscope.edge: Borda
+oscilloscope.edge_names.falling: Descendente
+oscilloscope.edge_names.free: Livre
+oscilloscope.edge_names.rising: Ascendente
+oscilloscope.falling_edge: Borda descendente
+oscilloscope.fit_amplitude: Ajustar amplitude
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajuste o pico bruto do
+  canal selecionado e centralize seu offset
+oscilloscope.free_run: Execução livre
+oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
+oscilloscope.fs_div: '%{fs_per_div} FS/div'
+oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = escala completa
+  · Fs = taxa de amostragem · div = divisão da grade
+oscilloscope.guides: Guias
+oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: CONDIÇÕES
+  RETIDAS PRESERVADAS · configurações de medição enfileiradas se aplicam no próximo
+  início
+oscilloscope.horizontal: HORIZONTAL
+oscilloscope.input_source: Fonte de entrada
+oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
+  · %{reading}
+
+  Intervalo %{start}..%{end} (fim exclusivo) · geração %{input_generation} · %{sample_rate}
+  Hz nominal. %{channel_2}. A forma de onda e o disparo usam FS bruto.'
+oscilloscope.invalid_value: — · valor inválido
+oscilloscope.level: Nível
+oscilloscope.markers: Marcadores
+oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted: 'Marcadores: apenas
+  marcadores T. Guias: marcadores T e guias pontilhadas de tempo/nível. Desligado:
+  ocultar ambos. Uma guia horizontal aparece ao editar Nível em qualquer modo.'
+oscilloscope.mode_names.auto: Automático
+oscilloscope.mode_names.normal: Normal
+oscilloscope.mode_names.single: Único
+oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
+oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · forma de
+  onda: FS bruto'
+oscilloscope.no_acquired_samples_for_this_channel_and_interval: Nenhuma amostra adquirida
+  para este canal e intervalo
+oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
+  · Nenhuma amostra adquirida
+
+  As condições de entrada não foram adquiridas. A forma de onda e o disparo usam FS
+  bruto.'
+oscilloscope.no_samples_in_this_interval: — · sem amostras neste intervalo
+oscilloscope.normal: Normal
+oscilloscope.off: Desligado
+oscilloscope.out_of_range: Fora da faixa
+oscilloscope.outside_input_channel_range: ' · fora da faixa do canal de entrada'
+oscilloscope.outside_input_channel_range_2: '%{channel} · fora da faixa do canal de
+  entrada'
+oscilloscope.outside_sweep: '%{index} #%{sample} · fora da varredura'
+oscilloscope.partial_missing_samples: Parcial · %{scope_missing} amostras ausentes
+oscilloscope.position: Posição
+oscilloscope.reset_time_position: Redefinir posição de tempo
+oscilloscope.rising_edge: Borda ascendente
+oscilloscope.rms_p_p: RMS %{rms} %{unit} · pico a pico %{peak_to_peak} %{unit}
+oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · pico a pico %{peak_to_peak}
+  %{unit} · pico %{peak} %{unit} · %{samples} amostras adquiridas
+oscilloscope.show_ch_waveform_keeps_selection_and_measurements: Mostrar forma de onda
+  de CH%{index} (mantém seleção e medições)
+oscilloscope.single: Único
+oscilloscope.single_complete: Captura única completa
+oscilloscope.source: Fonte
+oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
+
+  %{scope_trigger_marker_status} · fonte %{channel} · nível %{level} FS bruto. O nível
+  acompanha a faixa vertical do canal de origem, que pode diferir do eixo do canal
+  selecionado.'
+oscilloscope.spectrogram_time_hz_cursor: Spectrogram · cursor de tempo / Hz
+oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Inicie a entrada
+  e aguarde uma captura única disparada
+oscilloscope.start_single_capture: Iniciar captura única
+oscilloscope.t_markers_captured: 'Marcadores T: capturado'
+oscilloscope.t_markers_settings_only: 'Marcadores T: apenas configurações'
+oscilloscope.t_markers_top_ms_right_level: 'Marcadores T: topo = 0 ms · direita =
+  nível'
+oscilloscope.time_scale: Escala de tempo
+oscilloscope.time_trigger_edits_apply_on_next_start: Edições de tempo/disparo se aplicam
+  no próximo início
+oscilloscope.trigger: DISPARO
+oscilloscope.trigger_settings: Configurações do disparo
+oscilloscope.trigger_source_unavailable: Fonte de disparo indisponível
+oscilloscope.triggered: Disparado
+oscilloscope.update_even_without_a_trigger_crossing: Atualizar mesmo sem cruzamento
+  do disparo
+oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: Atualizar nos
+  cruzamentos do disparo; manter a última captura enquanto aguarda
+oscilloscope.vertical_ch: VERTICAL · CH%{index}
+oscilloscope.vertical_range: Faixa vertical
+oscilloscope.waiting_for_sweep: '%{index} · aguardando varredura'
+oscilloscope.waiting_for_trigger: Aguardando disparo
+oscilloscope.waiting_previous_capture: Aguardando · captura anterior
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale: 'Roda: escala de
+  tempo · Shift+roda: escala do canal selecionado'
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double: '%{display}
+
+  %{display_2}
+
+  Roda: escala de tempo · Shift+roda: escala do canal selecionado · clique duplo:
+  redefinir visualização'
+oscilloscope.zero_level: Nível zero
+oscilloscope.zero_offset: Offset zero

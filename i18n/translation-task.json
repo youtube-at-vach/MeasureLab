@@ -1,18 +1,18 @@
 {
   "version": 1,
-  "base_revision": "57bf8a414a6d0166fc6a63ad05ba1e59421314e1",
+  "base_revision": "a89b5fe38d7f8b155cdac00a2fff1e4ba922f892",
   "locale": "ru",
   "groups": [
     "common",
-    "shell",
-    "io",
-    "oscilloscope",
-    "spectrum",
-    "spectrogram",
-    "xy",
+    "comparison",
     "generator",
+    "io",
     "lockin",
-    "comparison"
+    "oscilloscope",
+    "shell",
+    "spectrogram",
+    "spectrum",
+    "xy"
   ],
   "entries": [
     {
