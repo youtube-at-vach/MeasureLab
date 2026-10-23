@@ -1,40 +1,26 @@
 {
   "version": 1,
-  "base_revision": "7b60b6fad5b1fb670a98468a247c8e60c398f062",
-  "locale": "zh",
+  "base_revision": "bdf277f425406162b9f2e482944d81e2e3c42953",
+  "locale": "ja",
   "groups": [
-    "oscilloscope"
+    "spectrogram"
   ],
   "review_keys": [
-    "oscilloscope.fit_amplitude",
-    "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre"
+    "spectrogram.gestures"
   ],
   "entries": [
     {
-      "key": "oscilloscope.fit_amplitude",
-      "group": "oscilloscope",
+      "key": "spectrogram.gestures",
+      "group": "spectrogram",
       "reasons": [
         "review"
       ],
-      "old_english": "Fit amplitude",
-      "new_english": "Fit amplitude",
+      "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+      "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
       "variables": [],
-      "translation": "拟合幅度",
-      "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
-      "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
-    },
-    {
-      "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
-      "group": "oscilloscope",
-      "reasons": [
-        "review"
-      ],
-      "old_english": "Fit the selected channel's raw peak and centre its offset",
-      "new_english": "Fit the selected channel's raw peak and centre its offset",
-      "variables": [],
-      "translation": "拟合所选通道的原始峰值并将偏移居中",
-      "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
-      "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+      "translation": "スペクトログラム：ホイールで周波数をズーム、ドラッグで周波数／時間をパンします。Shift＋ホイールまたは時間軸上のホイールで履歴をスクロールします。クリックで履歴を保持してフレームを選択し、カーソル線のドラッグで位置を移動します。ライブで履歴固定を解除します。ダブルクリックで周波数／時間位置をリセットします。",
+      "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
+      "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
     }
   ]
 }
