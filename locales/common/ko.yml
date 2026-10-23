@@ -1,0 +1,325 @@
+_version: 1
+common.acquiring_post_trigger_samples: 트리거 이후 샘플 취득 중…
+common.active_input_differs_from_the_device_list_stop_and: 활성 입력이 장치 목록과 다릅니다. 저장하기
+  전에 중지하고 새로고침하세요
+common.all_channels_off: 모든 채널 꺼짐
+common.all_scope_channels_off: 모든 Scope 채널 꺼짐
+common.amplitude_fs: 진폭 [FS]
+common.amplitude_help: FS = 디지털 풀 스케일입니다. 파형과 트리거 레벨은 원시 FS를 사용합니다. RMS / P-P 판독값은
+  캡처된 채널 보정값을 사용하고 해당 단위를 표시합니다.
+common.an_export_is_already_in_progress: 내보내기가 이미 진행 중입니다
+common.band_hz_power_rms: 대역 %{bin_centres_hz} Hz | 전력 %{power} %{power_unit} | RMS
+  %{rms} %{rms_unit}
+common.calibration_rev_gain_offset: 보정 %{id} rev %{revision} | 이득 %{gain} 오프셋 %{offset}
+  %{unit} | %{conditions}
+common.calibration_rev_gain_offset_2: 보정 %{id} rev %{revision} | 이득 %{gain} 오프셋 %{offset}
+  | %{conditions}
+common.calibration_rev_y_fs: 보정 %{id} · rev %{revision} · y = %{gain} × FS + %{offset}
+  %{unit} · %{conditions}
+common.calibration_revision_exhausted: 보정 리비전이 한도에 도달했습니다
+common.capacity_limited: ' · 용량 제한됨'
+common.captured_f64: '캡처된 f64: %{v} %{unit}'
+common.channel_unavailable: CH 사용 불가
+common.channels_outside_the_input_range: 입력 범위를 벗어난 채널
+common.check_input_settings_and_the_acquisition_error_then_press: 입력 설정과 취득 오류를 확인한
+  다음 입력 시작을 눌러 다시 시도하세요.
+common.choose_an_available_trigger_source_in_scope_settings_or: Scope 설정에서 사용 가능한
+  트리거 소스를 선택하거나 Audio I/O에서 입력 소스를 변경하세요.
+common.choose_which_cursor_the_next_plot_click_or_drag: 다음 플롯 클릭 또는 드래그로 배치할 커서를 선택합니다.
+  A 또는 B를 선택해도 커서가 배치되지는 않습니다. Scope는 플롯 위치를 유지합니다. Spectrogram은 선택한 FFT 프레임을 고정합니다.
+  XY Free는 X/Y 진폭을 유지하고 Trace Snap은 트리거 기준 샘플을 따라갑니다.
+common.clear_both_a_b_time_cursors_spectrum_spectrogram_frequency: 모든 기기에서 A/B 시간
+  커서, Spectrum/Spectrogram 주파수 커서, XY Free 점 및 Spectrogram 프레임 선택을 지웁니다. 취득한 데이터는
+  유지됩니다.
+common.clear_cursors: 커서 지우기
+common.clear_reference: 기준값 지우기
+common.collecting_a_complete_fft_window: 완전한 FFT 윈도우 수집 중…
+common.compare_saved_reference: 저장된 기준값과 비교
+common.current: 현재
+common.current_held_result: 현재 고정 결과
+common.current_reference_gain_phase_wrapped_delay_s: '현재 − 기준값: 이득 %{gain} · 위상 %{phase_degrees}°
+  · 래핑된 지연 %{phase_delay_seconds} s'
+common.cursor_channel_invalid: ' · %{channel} 유효하지 않은 값'
+common.dc_fs_noise_rms_fs_frequency_offset_hz_ref: DC %{dc_offset} FS | 잡음 RMS %{noise_rms}
+  FS | 주파수 오프셋 %{frequency_offset_hz} Hz | REF %{disabled}
+common.delay_samples: '지연 샘플 '
+common.difference_requires_valid_matching_input_analysis_calibration_and_excitation: 차이를
+  계산하려면 손실 없이 유효한 입력, 분석, 보정 및 여기 조건이 일치해야 합니다. 독립적인 외부 출력 이력만으로는 입력 샘플의 여기 조건이 일치한다고
+  볼 수 없습니다.
+common.disabled: 비활성화됨
+common.display_updates_skipped: 건너뛴 화면 업데이트 %{elaxed}
+common.div_help: div = 격자 한 칸입니다. ms/div는 가로 격자 한 칸당 시간을 설정하고, FS/div는 각 Scope 채널의
+  세로 격자 한 칸당 원시 진폭을 설정합니다.
+common.dropped: 삭제됨 %{dropped}
+common.dut_dc_fs: 'DUT DC FS '
+common.dut_frequency_offset_hz: 'DUT 주파수 오프셋 Hz '
+common.dut_gain: 'DUT 이득 '
+common.dut_gain_phase_delay_samples: DUT 이득 %{gain} | 위상 %{phase_degrees}° | 지연 %{delay_samples}
+  샘플
+common.ema_windows_envelope: EMA α %{alpha} | %{processed_windows}개 윈도우 | 포락선 [%{start},
+  %{end})
+common.enabled: 활성화됨
+common.enter_a_results_file_path: 결과 파일 경로 입력
+common.enter_a_settings_file_path: 설정 파일 경로 입력
+common.envelope_latest_complete_windows_missing_samples_ref_hz_ac: '포락선 [%{start},
+  %{end}) · 최신 [%{start_2}, %{end_2})
+
+  완료된 윈도우 %{processed_windows}개 · 누락 샘플 %{missing_samples}개
+
+  REF %{reference_frequency_hz} Hz · AC RMS %{reference_ac_rms_fs} FS · 정현파 피팅 %{reference_sinusoid_fraction}'
+common.export_annotated_png: 주석이 포함된 PNG 내보내기…
+common.export_held_result_csv: 고정 결과 CSV 내보내기…
+common.export_held_results: 고정 결과 내보내기
+common.export_held_scope_csv: 고정 Scope CSV 내보내기…
+common.export_held_scope_only: 고정 Scope만 내보내기
+common.export_held_scope_png: 고정 Scope PNG 내보내기…
+common.exporting_results: 고정 결과 내보내는 중…
+common.exports_the_retained_scope_interval_and_the_independently_timed: 유지된 Scope
+  구간과 독립된 시간 기준의 Spectrum 결과를 내보냅니다. 누락 샘플은 null로 유지됩니다. Spectrogram, XY 및 커서는 포함되지
+  않습니다.
+common.external_generator_history_independent_uncalibrated_output_clock_input_window: '외부
+  Generator 이력: 독립된 비보정 출력 클록이며 입력 구간과의 대응 관계는 알 수 없습니다.'
+common.f_hz_rbw_hz: Δf %{bin_width_hz} Hz | RBW %{rbw_hz} Hz
+common.fft_precision: FFT 정밀도
+common.file: 파일
+common.file_paths_status: 파일 경로 및 상태…
+common.file_selection_cancelled: 파일 선택이 취소되었습니다
+common.finishing: 마무리 중
+common.finishing_acquisition: 취득 마무리 중…
+common.fixed_frequency: 고정 주파수
+common.frequency_hz: '주파수 Hz '
+common.gain_phase_coherence: 이득 %{gain} · 위상 %{phase_lead_degrees}° · 코히런스 %{coherence}
+  · %{state}
+common.generation_nominal_hz_ch: 생성 %{generation} | 공칭 %{nominal_sample_rate_hz} Hz
+  | %{channels}채널
+common.generator_internal_loopback_actual_f64_output_shared_integer_sample: Generator
+  내부 루프백 · 실제 f64 출력 · 공유 정수 샘플 클록
+common.gpu_segments: GPU 세그먼트 %{len}개
+common.held: 고정됨
+common.held_input_generation_does_not_match_results: 고정된 입력 세대가 결과와 일치하지 않습니다
+common.held_measurement_results: 고정된 측정 결과
+common.hz_2: '%{frequency_hz} Hz · %{level_db} %{db_unit}'
+common.hz_3: '%{rate} Hz'
+common.hz_4: '%{unwrap_or} Hz'
+common.input: 입력 %{device_name} | %{sample_format}
+common.input_acquisition_failed: 입력 취득 실패
+common.input_conditions: '입력 조건: —'
+common.input_conditions_changed_since_restoration_refresh_devices_and_restore: 복원
+  이후 입력 조건이 변경되었습니다. 장치를 새로고침한 다음 다시 복원하세요
+common.input_is_active_check_the_trigger_source_level_and: 입력이 활성 상태입니다. Scope 설정에서
+  트리거 소스, 레벨 및 에지를 확인하거나 자동 모드를 사용하세요.
+common.input_is_active_waiting_for_enough_samples_to_draw: 입력이 활성 상태입니다. 전체 스윕을 그리는
+  데 필요한 샘플을 기다리는 중입니다.
+common.input_is_active_waiting_for_the_rest_of_the: 입력이 활성 상태입니다. 트리거된 스윕의 나머지 부분을
+  기다리는 중입니다.
+common.input_ksa_s_nominal_ch: '%{state} 입력 · 공칭 %{nominal_sample_rate_hz} kSa/s ·
+  %{channels}채널 · %{format}'
+common.input_stopped: 입력 중지됨
+common.input_stopped_before_a_complete_sweep_was_available_check: 완전한 스윕을 사용할 수 있기
+  전에 입력이 중지되었습니다. Scope 설정을 확인한 다음 입력 시작을 눌러 다시 취득하세요.
+common.invalid_fft_window_nonfinite_value: 잘못된 FFT 윈도우 · 유한하지 않은 값
+common.invalid_value: 유효하지 않은 값
+common.keep_held_result_as_reference: 고정된 결과를 기준값으로 유지
+common.known_sine_gain_phase_delay_noise_dut_common_input: 기준 정현파 → 이득 / 위상 / 지연 /
+  잡음 DUT → 공통 입력. 시작할 때 조건이 적용됩니다.
+common.language_fallback: 번역되지 않은 텍스트는 영어로 표시됩니다. 기기 번역을 준비 중입니다.
+common.last_observed_output_nominal_hz_generation_revision_next_output: '마지막으로 관찰된
+  출력: %{label} | 공칭 %{nominal_sample_rate} Hz | %{pcm_label} | %{state} | 세대 %{output_generation}
+  리비전 %{revision} | 다음 출력 샘플 %{next_sample}'
+common.live: 실시간
+common.load_reference_result: 기준 결과 불러오기…
+common.lock_in_current_reference_each_result_s_own_interval: 'Lock-in 현재 − 기준값 (각
+  결과의 자체 구간):
+
+  ΔX %{x} · ΔY %{y} · ΔR %{amplitude_peak} %{response_unit_peak}
+
+  Δθ %{phase_degrees}° (±180°로 래핑) · Δ이득 %{gain} %{gain_unit}'
+common.lock_in_difference_requires_two_valid_settled_results_with: Lock-in 차이를 계산하려면
+  유효하고 안정된 두 결과의 공칭 Fs, 채널, REF/필터 설정 및 보정이 일치하고, 입력 실패가 없으며, Generator 입력에 대해 알려진
+  동일한 정상 여기 상태여야 합니다.
+common.lock_in_experimental_sig_ch_ref_ch_s_n: 'Lock-in %{state} · 실험용 | SIG CH %{response_channel}
+  / REF CH %{reference_channel}
+
+  τ %{time_constant_seconds} s · N %{integration_samples} · 힌트 %{frequency_hz} Hz
+  · %{fixed_frequency} · REF 최소 %{reference_min_rms_fs} FS RMS'
+common.loss_capture_scope_fft_input_fft_windows_missing_nonfinite: '손실: 캡처 %{capture_dropped_samples}
+  | Scope %{scope_missing_samples} | FFT 입력 %{missing_input_samples}
+
+  FFT 윈도우: 누락 %{missing_windows} | 유한하지 않음 %{nonfinite_windows} | 관찰됨 %{processed_windows_since_reset}
+
+  입력 종료 %{input_end} | 채워짐 %{filled_samples} | 입력 실패 %{input_failed}'
+common.measurement_settings: 측정 설정
+common.missing_sample: 누락 샘플
+common.ms: '%{index} %{seconds} ms  '
+common.no_complete_fft_window: 완전한 FFT 윈도우 없음
+common.no_complete_sweep_captured: 완전한 스윕이 캡처되지 않았습니다
+common.no_held_input_conditions: 고정된 입력 조건 없음
+common.no_samples_acquired_yet: 아직 취득한 샘플이 없습니다
+common.no_valid_captured_value: 유효한 캡처 값 없음
+common.noise_rms_fs: '잡음 RMS FS '
+common.not_acquired: 취득되지 않음
+common.observed_changes_evicted_lost_reports_output_notifications_since_output: 관찰된
+  변경 %{len}개 | 제거됨 %{evicted_changes}개 | 손실된 보고 %{lost_reports_since_output_worker_start}개
+  | 출력 작업자 시작 이후 출력 알림 %{notifications_since_output_worker_start}개
+common.one_reference_is_retained_recordings_use_independent_sample_clock: 기준값 하나가
+  유지됩니다. 녹화마다 샘플 클록 시작점이 독립적이며 플롯은 따로 표시됩니다.
+common.only_this_instrument_s_fft_changes_precision_input_history: 이 기기의 FFT 정밀도만
+  변경됩니다. 입력 이력, DC 제거 및 전력 평균화는 64비트를 사용합니다.
+common.open_input_settings: 입력 설정 열기
+common.open_input_settings_to_choose_the_source_then_press: 입력 설정을 열어 소스를 선택한 다음 상단
+  표시줄에서 입력 시작을 누르세요.
+common.open_input_settings_to_select_or_refresh_an_audio: 입력 설정을 열어 오디오 장치를 선택하거나
+  새로고침하거나 Software Loopback을 선택하세요. 그런 다음 입력 시작을 누르세요.
+common.outside_sweep: 스윕 범위 밖
+common.peak_hold: 피크 유지
+common.performance: 성능
+common.phase_lead: '위상 선행 ° '
+common.place_cursor: '커서 배치:'
+common.placed_a: '배치됨: A'
+common.placed_a_b: '배치됨: A, B'
+common.placed_b: '배치됨: B'
+common.placed_none: 배치된 커서 없음
+common.precision.f32: 32비트 (빠른 FFT)
+common.precision.f64: 64비트
+common.preparing_input: 입력 준비 중…
+common.previous_held_result: 이전 고정 결과
+common.psd_band_power_current_reference: 'PSD 대역 전력 현재 − 기준값: %{power} %{power_unit}'
+common.raw_sample_unavailable: '#%{sample} · 원시 샘플을 사용할 수 없음'
+common.raw_scope_fs_relative_sample_position: 원시 Scope FS · 상대 샘플 위치
+common.ref: REF
+common.ref_ch_sig_ch_windows: '%{label}: %{state} · REF CH %{reference_channel} /
+  SIG CH %{response_channel} · %{start}..%{end} · 윈도우 %{averaged_windows}개 · %{gain_unit}'
+common.reference: 기준값
+common.reference_comparison: 기준 비교
+common.reference_loaded_captured_input_conditions_preserved: 기준값을 불러왔으며 캡처된 입력 조건은
+  유지됩니다
+common.reference_peak_fs: '기준 피크 FS '
+common.reference_present: 기준값 있음
+common.restore_settings: 설정 복원
+common.restore_settings_2: 설정 복원…
+common.restored_input_selection_changed_restore_settings_again: 복원된 입력 선택이 변경되었습니다.
+  설정을 다시 복원하세요
+common.result_states.non_finite: 유한하지 않음
+common.result_states.partial: 부분
+common.result_states.unavailable: 사용 불가
+common.result_states.valid: 유효
+common.result_states.waiting: 대기 중
+common.results_exported: '결과 내보냄: %{path}'
+common.results_json_file_path: 결과 JSON 파일 경로
+common.retained_output_condition_intervals_missing_evicted_intervals_are_unknown: 유지된
+  출력 조건 구간 %{len}개; 누락되거나 제거된 구간은 알 수 없습니다
+common.rev_gain_offset: '%{label}: %{id} rev %{revision} · 이득 %{gain} 오프셋 %{offset}
+  %{unit} · %{conditions}'
+common.revision_y_fs: '%{id} · 리비전 %{revision} · y = %{gain} × FS + %{offset} %{unit}
+  · %{conditions}'
+common.rms_peak_p_p: 'RMS %{rms}
+
+  피크 %{peak}
+
+  P-P %{peak_to_peak}'
+common.sample_rate_help: Fs = 초당 샘플 수(Sa/s)로 표시한 공칭 샘플 레이트입니다. 캡처된 시간과 주파수는 이 레이트를
+  사용하며 실제 샘플 클록은 보정되지 않았습니다.
+common.save_held_result_json: 고정 결과 JSON 저장…
+common.save_held_scope_json: 고정 Scope JSON 저장…
+common.save_settings: 설정 저장
+common.save_settings_2: 설정 저장…
+common.save_the_queued_input_channels_analysis_and_calibration_for: 다음 시작에 사용할 대기
+  입력, 채널, 분석 및 보정을 저장합니다. 중지 상태에서 복원한 다음 입력을 명시적으로 시작하세요.
+common.saved: 저장됨 %{display}
+common.saved_calibration_conflicts_with_an_existing_id_revision: 저장된 보정이 기존 ID/리비전과
+  충돌합니다
+common.scope_prep_ms: Scope 준비 %{build_ms} ms
+common.scope_trigger_ch_at_fs: Scope [%{start}, %{end}) | %{acquisition_mode} | 트리거
+  CH %{channel} %{edge} %{level} FS
+common.select_a_channel_below_the_plot_and_choose_its: 플롯 아래에서 채널을 선택하고 Scope 설정에서
+  해당 입력 소스를 선택하거나 Audio I/O에서 입력 소스를 변경하세요.
+common.select_an_audio_input_to_observe_audio_device_output: 오디오 장치 출력을 보려면 오디오 입력을
+  선택하세요
+common.select_an_input_device_first: 먼저 입력 장치를 선택하세요
+common.select_an_input_source: 입력 소스 선택
+common.selected_ch_axis: 선택된 CH%{scope_selected} 축. %{display}
+common.selecting_file: 파일 선택 중…
+common.settings_error: 설정 오류
+common.settings_failed: '설정 실패: %{detail}'
+common.settings_json_file_path: 설정 JSON 파일 경로
+common.settings_restored: '설정 복원됨: %{path}. 입력은 계속 중지 상태입니다. 측정하려면 입력 시작을 누르세요.'
+common.settings_restored_input_stopped: 설정 복원됨; 입력 중지됨
+common.settings_saved: '설정 저장됨: %{path}'
+common.settings_status: 설정 상태
+common.sig: SIG
+common.single_complete_fft_window_was_not_filled: 단일 완료 · FFT 윈도우가 채워지지 않았습니다
+common.software_loopback_ch_ref_ch_dut: SOFTWARE LOOPBACK · CH 1 REF / CH 2 DUT
+common.software_loopback_hz_ref_fs_peak: Software Loopback | %{frequency_hz} Hz |
+  REF %{amplitude_peak} FS 피크
+common.spectrogram_history_ms: Spectrogram 이력 %{spectrogram_build_ms} ms
+common.spectrogram_rows_mib_cpu_storage: Spectrogram %{len} / %{spectrogram}행 · %{storage_bytes}
+  MiB CPU 저장 공간
+common.spectrum_ch_points_dc_removal: 'Spectrum %{state} | CH %{c}
+
+  %{end} | %{size}개 포인트 | %{name}
+
+  %{mode} | DC 제거 %{remove_dc} | %{unit}'
+common.spectrum_definitions_or_known_stationary_excitation_differ_inspect_each: Spectrum
+  정의 또는 알려진 정상 여기 조건이 다릅니다. 각 결과의 빈과 대역을 따로 확인하세요.
+common.spectrum_linear_values_bin_position: Spectrum 선형 값 · 빈 위치
+common.spectrum_prep_ms: Spectrum 준비 %{spectrum_build_ms} ms
+common.spectrum_windows_missing: Spectrum %{mode} · 윈도우 %{updates}개 · 누락 %{missing_windows}개
+common.start_input_to_begin_acquisition: 취득을 시작하려면 입력 시작을 누르세요
+common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / 홉 %{hop} · 샘플 %{start}..%{end}
+common.stft_history_storage_losses_allocated_mib_peak_mib: STFT 이력 저장 손실 %{elaxed}
+  · 할당 %{allocated_frame_bytes} MiB / 최대 %{peak_frame_bytes} MiB
+common.stft_input_dropped_rows_dropped: STFT 입력 드롭 %{elaxed} · 행 드롭 %{elaxed_2}
+common.stft_raster_peak_mib_mib_display_requests_replaced: STFT 래스터 최대 %{peak_cache_bytes}
+  MiB / 8 MiB · 대체된 화면 요청 %{elaxed}
+common.stft_retention_s_frames_mib_retired: STFT 유지 기간 %{retained_seconds} s · 프레임
+  %{len}개 · %{storage_bytes} MiB · 폐기됨 %{retired}%{else}
+common.stop_input_and_output_and_wait_for_pending_operations: 설정을 복원하기 전에 입력과 출력을
+  중지하고 진행 중인 작업이 완료될 때까지 기다리세요
+common.stop_input_and_wait_for_held_scope_samples: 입력을 중지하고 고정된 Scope 샘플을 기다리세요
+common.stop_input_and_wait_for_the_held_measurement_results: 입력을 중지하고 고정된 측정 결과를 기다리세요
+common.stop_input_before_restoring_settings: 설정을 복원하기 전에 입력을 중지하세요
+common.stop_input_then_export_scope_samples_and_statistics_spectrum: 입력을 중지한 다음 Scope
+  샘플과 통계, Spectrum 빈 및 캡처된 조건을 JSON으로 내보내세요.
+common.stop_input_to_compare_the_current_result: 현재 결과를 비교하려면 입력을 중지하세요.
+common.stored_cursor_positions_for_this_view_readings_can_be: 이 보기의 저장된 커서 위치입니다.
+  취득된 데이터 범위 밖에서는 판독값을 사용할 수 없습니다.
+common.synchronous_comparison_at_bin_hz: 빈 %{bin}에서 동기 비교 (%{width} Hz)
+common.t_ms: Δt %{delta} ms
+common.t_ms_2: '%{index} T%{sample_rate} ms  '
+common.time_ms: 시간 [ms]
+common.time_relative_to_the_sweep_reference_t_ms: 스윕 기준(T, 0 ms)에 대한 시간. %{display}
+common.timings_are_cpu_work_not_gpu_execution: 시간은 GPU 실행이 아니라 CPU 작업 시간입니다.
+common.trace_ch: Trace %{i} CH %{channel} %{state} | %{unit}
+common.trace_current_reference_rms_each_result_s_own_interval: 'Trace %{i}: 현재 − 기준값
+  RMS %{rms} (각 결과의 자체 구간)'
+common.trace_differs_in_channel_unit_or_known_stationary_excitation: Trace %{i}의 채널,
+  단위 또는 알려진 정상 여기 상태가 다르므로 수치 차이를 표시하지 않습니다
+common.tracking: ±10% 추적
+common.trigger_help: T는 맨 위에서 시간 기준(0 ms)을 표시하고, 오른쪽의 T는 해당 소스 채널의 원시 FS 트리거 레벨을 표시합니다.
+  트리거가 확인되지 않으면 둘 다 설정값으로만 표시됩니다.
+common.trigger_source_outside_the_input_range: 입력 범위를 벗어난 트리거 소스
+common.turn_on_a_channel_using_the_checkboxes_below_the: 플롯 아래의 체크박스를 사용해 채널을 켜세요.
+common.ui_fps: UI %{fps} fps
+common.unavailable: '%{selected} · 사용 불가'
+common.unavailable_2: ' · %{channel} 사용 불가'
+common.uncalibrated: 보정되지 않음
+common.uncalibrated_fs: 보정되지 않음 · FS
+common.uncalibrated_fs_2: '%{label}: 보정되지 않음 · FS'
+common.wait_for_the_generator_settings_to_be_applied: Generator 설정이 적용될 때까지 기다리세요
+common.waiting: 대기 중
+common.waiting_for_the_final_measurement_acquired_data_will_be: 최종 측정을 기다리는 중입니다.
+  취득된 데이터는 유지됩니다.
+common.waiting_for_the_input_source_and_its_channel_count: 입력 소스와 채널 수가 준비될 때까지 기다리는
+  중입니다.
+common.waiting_for_trigger: 트리거 대기 중
+common.window: 윈도우 [%{start}, %{end})
+common.window_names.blackman_harris: Blackman-Harris
+common.window_names.hann: Hann
+common.window_names.rectangular: 직사각형
+common.worker_fft_ms: 작업자 FFT %{fft_ms} ms
+common.working: 작업 중…
+common.x_y_r_leads_ref_gain: 'X %{x} · Y %{y} · R %{amplitude_peak} %{response_unit_peak}
+
+  θ %{phase_degrees}° (REF 선행) · 이득 %{gain} %{gain_unit}'
+common.xy_prep_ms: XY 준비 %{xy_build_ms} ms
+common.zero_db_readout: −∞ %{unit} (영)
