@@ -28,7 +28,7 @@ from i18n import (
     snapshot,
     warnings,
 )
-from translate import ANSWERS, apply, prepare, verify
+from translate import ANSWERS, apply, bundle, prepare, verify
 
 
 def catalog_files(english=None, translation=None, source=None):
@@ -607,6 +607,103 @@ class RepositoryTests(unittest.TestCase):
         self.write({"locales/common/fr.yml": "_version: 1\ncommon.ready: Prêt\n"})
         with self.assertRaisesRegex(InvalidCatalog, "mixes feature"):
             apply(self.root)
+
+    def review_bundle_fixture(self):
+        self.translate()
+        files = snapshot(self.root)
+        metadata = json.loads(files[METADATA])
+        metadata["translations"]["fr"] = {
+            "common.ready": dict(source="Ready", source_hash=digest("Ready"), translation_hash=digest("Prêt"))
+        }
+        self.write({METADATA: json.dumps(metadata), "locales/common/fr.yml": "_version: 1\ncommon.ready: Prêt\n"})
+        self.commit()
+        base = revision(self.root, "HEAD")
+        self.write(
+            {
+                "src/app.rs": "fn main() {}",
+                "locales/common/en-US.yml": "_version: 1\ncommon.ready: Ready\ncommon.other: Other %{name}\n",
+            }
+        )
+        self.commit()
+        source = revision(self.root, "HEAD")
+        self.write(
+            catalog_files(
+                {"common.ready": "Ready", "common.other": "Other %{name}"},
+                {"common.ready": "準備済み", "common.other": "他 %{name}"},
+                {"common.ready": "Ready", "common.other": "Other %{name}"},
+            )
+        )
+        metadata = json.loads((self.root / METADATA).read_text())
+        metadata["translations"]["fr"] = {
+            "common.ready": dict(source="Ready", source_hash=digest("Ready"), translation_hash=digest("Disponible"))
+        }
+        self.write({METADATA: json.dumps(metadata), "locales/common/fr.yml": "_version: 1\ncommon.ready: Disponible\n"})
+        return base, source
+
+    def test_review_bundle_bounds_multiple_locales_and_preserves_assets(self):
+        base, source = self.review_bundle_fixture()
+        before = snapshot(self.root)
+        task = bundle(self.root, base)
+        self.assertEqual(snapshot(self.root), before)
+        self.assertEqual(
+            [(item["locale"], item["groups"]) for item in task["tasks"]], [("ja", ["common"]), ("fr", ["common"])]
+        )
+        self.assertEqual(verify(self.root), (3, 1))
+        with self.assertRaisesRegex(InvalidCatalog, "read-only"):
+            apply(self.root)
+        self.commit()
+        self.assertEqual(verify(self.root), (3, 1))
+        squashed = git(self.root, "commit-tree", "HEAD^{tree}", "-p", base, "-m", "squashed review").strip()
+        git(self.root, "update-ref", "HEAD", squashed)
+        self.assertEqual(verify(self.root), (3, 1))
+
+    def test_review_bundle_rejects_changes_outside_localization(self):
+        base, _ = self.review_bundle_fixture()
+        self.write({"src/spectrum.rs": "fn unrelated_dsp() {}"})
+        with self.assertRaisesRegex(InvalidCatalog, "outside localization review"):
+            bundle(self.root, base)
+
+    def test_review_bundle_rejects_feature_edits_after_source_and_edited_components(self):
+        base, source = self.review_bundle_fixture()
+        task = bundle(self.root, base)
+        self.write({"src/app.rs": "fn changed() {}"})
+        with self.assertRaisesRegex(InvalidCatalog, "sources changed"):
+            check_scope(
+                self.root, base, load_catalog(snapshot(self.root, base)), load_catalog(snapshot(self.root)), task
+            )
+        self.write({"src/app.rs": "fn main() {}"})
+        task["tasks"][0]["entries"][0]["new_english"] = "tampered"
+        with self.assertRaisesRegex(InvalidCatalog, "source snapshot"):
+            check_scope(
+                self.root, base, load_catalog(snapshot(self.root, base)), load_catalog(snapshot(self.root)), task
+            )
+
+    def test_review_bundle_rejects_outside_keys_duplicate_groups_and_wrong_base(self):
+        base, source = self.review_bundle_fixture()
+        task = bundle(self.root, base)
+        original = snapshot(self.root)
+        for mutation in ("outside", "duplicate", "base"):
+            candidate = json.loads(json.dumps(task))
+            if mutation == "outside":
+                self.write({"locales/common/ja.yml": original["locales/common/ja.yml"] + "common.unscoped: 外\n"})
+            elif mutation == "duplicate":
+                candidate["tasks"].append(candidate["tasks"][0])
+            else:
+                candidate["base_revision"] = source
+            with self.subTest(mutation=mutation), self.assertRaises(InvalidCatalog):
+                check_scope(
+                    self.root,
+                    base,
+                    load_catalog(snapshot(self.root, base)),
+                    load_catalog(snapshot(self.root)),
+                    candidate,
+                )
+            self.write(original)
+
+    def test_git_batch_snapshot_matches_worktree_with_unicode_and_newline_paths(self):
+        self.write({"src/日本語 name\nline.rs": "// UTF-8\n", "src/ignored.txt": "not a Rust input"})
+        self.commit()
+        self.assertEqual(snapshot(self.root, "HEAD"), snapshot(self.root))
 
 
 if __name__ == "__main__":

@@ -79,8 +79,37 @@ def revision(root: Path, ref: str) -> str:
 def snapshot(root: Path, ref: str | None = None) -> dict[str, str]:
     """Read only managed catalog/metadata/Rust inputs, including working-tree additions."""
     if ref is not None:
-        paths = git(root, "ls-tree", "-r", "--name-only", "-z", ref, "--", "locales", "i18n", "src").split("\0")
-        return {path: git(root, "show", f"{ref}:{path}") for path in paths if relevant(path)}
+        entries = []
+        for entry in git(root, "ls-tree", "-r", "-z", ref, "--", "locales", "i18n", "src").split("\0"):
+            if entry:
+                header, path = entry.split("\t", 1)
+                if relevant(path):
+                    entries.append((path, header.split()[2]))
+        executable = shutil.which("git")
+        if executable is None:
+            raise InvalidCatalog("Git executable is required for revision/scope checks")
+        result = subprocess.run(  # noqa: S603 - fixed Git batch protocol, object IDs from ls-tree
+            [executable, "-C", str(root), "cat-file", "--batch"],
+            input="".join(oid + "\n" for _, oid in entries).encode(),
+            capture_output=True,
+            check=False,
+        )
+        if result.returncode:
+            raise InvalidCatalog(result.stderr.decode("utf-8").strip())
+        files = {}
+        offset = 0
+        for path, oid in entries:
+            end = result.stdout.index(b"\n", offset)
+            header = result.stdout[offset:end].decode("ascii").split()
+            if len(header) != 3 or header[:2] != [oid, "blob"]:
+                raise InvalidCatalog(f"cannot read catalog snapshot: {path}")
+            size = int(header[2])
+            offset = end + 1
+            files[path] = result.stdout[offset : offset + size].decode("utf-8")
+            offset += size + 1
+        if offset != len(result.stdout):
+            raise InvalidCatalog("invalid Git snapshot batch response")
+        return files
     paths = [p for folder in ("locales", "i18n", "src") for p in (root / folder).rglob("*") if p.is_file()]
     return {
         path.relative_to(root).as_posix(): path.read_text(encoding="utf-8")
@@ -422,16 +451,136 @@ def make_review(catalog: Catalog, locale: str, groups: list[str], keys: list[str
     return dict(version=1, base_revision=base, locale=locale, groups=groups, review_keys=sorted(keys), entries=entries)
 
 
-def check_scope(root: Path, base: str, old: Catalog, current: Catalog, task: dict | None) -> None:
-    translated = {
+def changed_paths(root: Path, base: str, end: str | None = None) -> set[str]:
+    paths = set(git(root, "diff", "--name-only", "--no-renames", "-z", base, *([end] if end else []), "--").split("\0"))
+    if end is None:
+        paths.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").split("\0"))
+    return paths - {""}
+
+
+def translation_changes(old: Catalog, current: Catalog) -> set[tuple[str, str]]:
+    return {
         (locale, key)
         for locale in LOCALES[1:]
         for key in changed_keys(old.texts[locale], current.texts[locale])
         | changed_keys(old.records.get(locale, {}), current.records.get(locale, {}))
     }
-    paths = set(git(root, "diff", "--name-only", "--no-renames", "-z", base, "--").split("\0")) - {""}
-    paths.update(git(root, "ls-files", "--others", "--exclude-standard", "-z").split("\0"))
-    paths.discard("")
+
+
+def review_source(old: Catalog, current: Catalog) -> Catalog:
+    """Review the new English against the PR base's unmodified translations."""
+    return Catalog(texts={**old.texts, ENGLISH: current.english}, origins=old.origins, records=old.records)
+
+
+def review_component(old: Catalog, source: Catalog, locale: str, group: str, keys: list[str], base: str) -> dict:
+    task = make_diff(old, source, locale, [group], base)
+    if keys:
+        reviewed = make_review(source, locale, [group], keys, base)
+        task["review_keys"] = reviewed["review_keys"]
+        task["entries"] = sorted(task["entries"] + reviewed["entries"], key=lambda entry: entry["key"])
+    if not task["entries"]:
+        raise InvalidCatalog("empty review component")
+    return task
+
+
+def reviewed_source_paths(root: Path, base: str) -> list[dict]:
+    before, after = snapshot(root, base), snapshot(root)
+    paths = []
+    for path in sorted(changed_paths(root, base)):
+        if path in (METADATA, TASK) or path.endswith(".md"):
+            continue
+        if path.startswith("locales/") and Path(path).stem in LOCALES[1:]:
+            continue
+        english = path.startswith("locales/") and Path(path).stem == ENGLISH and path.endswith(".yml")
+        gui = path in {"src/app.rs", "src/i18n.rs"} or (path.startswith("src/app/") and path.endswith(".rs"))
+        tooling = path in {
+            "scripts/i18n.py",
+            "scripts/translate.py",
+            "scripts/test_i18n.py",
+            "scripts/qa_gui_redesign.py",
+        }
+        if not (english or gui or tooling):
+            raise InvalidCatalog(f"file is outside localization review: {path}")
+        # Tool sources are outside the runtime catalog snapshot.
+        previous = before.get(path) if path in before else None
+        latest = after.get(path) if path in after else None
+        if tooling:
+            try:
+                previous = git(root, "show", f"{base}:{path}")
+            except InvalidCatalog:
+                previous = None
+            latest = (root / path).read_text(encoding="utf-8") if (root / path).is_file() else None
+        paths.append(
+            dict(
+                path=path,
+                before_hash=digest(previous) if previous is not None else None,
+                after_hash=digest(latest) if latest is not None else None,
+            )
+        )
+    return paths
+
+
+def check_review_bundle(root: Path, base: str, old: Catalog, current: Catalog, task: dict) -> None:
+    if (
+        set(task) != {"version", "kind", "base_revision", "source_paths", "tasks"}
+        or task.get("kind") != "visual_review"
+    ):
+        raise InvalidCatalog("invalid visual review bundle")
+    if task["base_revision"] != base:
+        raise InvalidCatalog("review bundle must match the PR base revision")
+    if task["source_paths"] != reviewed_source_paths(root, base):
+        raise InvalidCatalog("localization sources changed after review extraction; re-extract the bundle")
+    captured = review_source(old, current)
+    if not isinstance(task["tasks"], list) or not task["tasks"]:
+        raise InvalidCatalog("review bundle needs locale/group tasks")
+    allowed = set()
+    selected = set()
+    for component in task["tasks"]:
+        if not isinstance(component, dict) or component.get("locale") not in LOCALES[1:]:
+            raise InvalidCatalog("invalid review component locale")
+        locale = component["locale"]
+        groups = component.get("groups")
+        if not isinstance(groups, list) or len(groups) != 1 or groups[0] not in GROUPS:
+            raise InvalidCatalog("each review component must select one group")
+        if (locale, groups[0]) in selected:
+            raise InvalidCatalog("duplicate review locale/group")
+        selected.add((locale, groups[0]))
+        keys = component.get("review_keys", [])
+        if not isinstance(keys, list):
+            raise InvalidCatalog("invalid review keys")
+        expected = review_component(old, captured, locale, groups[0], keys, base)
+        if component != expected:
+            raise InvalidCatalog("review component does not match its source snapshot")
+        allowed.update((locale, entry["key"]) for entry in expected["entries"])
+    for path in changed_paths(root, base):
+        translation = path.startswith("locales/") and path.endswith(".yml") and Path(path).stem in LOCALES[1:]
+        if translation and (Path(path).stem, Path(path).parts[1]) not in selected:
+            raise InvalidCatalog(f"translation file outside the review bundle: {path}")
+        if not (
+            translation
+            or path in (METADATA, TASK)
+            or path.endswith(".md")
+            or any(item["path"] == path for item in task["source_paths"])
+        ):
+            raise InvalidCatalog(f"file is outside localization review: {path}")
+    for locale, key in sorted(translation_changes(old, current)):
+        if (locale, key) not in allowed:
+            raise InvalidCatalog(f"translation edit outside the review bundle: {locale}:{key}")
+        if key not in current.english:
+            if key in current.texts[locale] or key in current.records.get(locale, {}):
+                raise InvalidCatalog(f"removed review key must be cleaned: {locale}:{key}")
+        elif current.state(locale, key) != "current":
+            raise InvalidCatalog(f"review translation needs matching source and variables: {locale}:{key}")
+
+
+def check_scope(
+    root: Path, base: str, old: Catalog, current: Catalog, task: dict | None, *, paths: set[str] | None = None
+) -> None:
+    if isinstance(task, dict) and type(task.get("version")) is int and task["version"] == 2:
+        check_review_bundle(root, base, old, current, task)
+        return
+    translated = translation_changes(old, current)
+    paths = changed_paths(root, base) if paths is None else paths
     translation_paths = {path for path in paths if path.startswith("locales/") and Path(path).stem in LOCALES[1:]}
     metadata_changed = METADATA in paths
     # Bootstrap an empty metadata registry in I1 without treating it as a translation edit.

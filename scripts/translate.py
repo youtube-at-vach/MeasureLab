@@ -15,12 +15,16 @@ from i18n import (
     InvalidCatalog,
     check_calls,
     check_scope,
+    changed_keys,
     digest,
     git,
     load_catalog,
     make_diff,
     make_review,
     read_json,
+    review_component,
+    review_source,
+    reviewed_source_paths,
     revision,
     snapshot,
     variables,
@@ -66,6 +70,8 @@ def prepare(root: Path, locale: str, group: str, review_keys: list[str] | None =
 
 def apply(root: Path) -> int:
     task = read_json((root / TASK).read_text(encoding="utf-8"))
+    if task.get("version") == 2:
+        raise InvalidCatalog("review bundles are read-only; prepare a locale/group task to revise translations")
     answers = read_json((root / ANSWERS).read_text(encoding="utf-8"))
     base = revision(root, "HEAD")
     old_files = snapshot(root, base)
@@ -149,9 +155,46 @@ def verify(root: Path) -> tuple[int, int]:
     check_calls(files, current)
     check_scope(root, base, load_catalog(snapshot(root, base)), current, task)
     warnings(current)
-    active = [entry["key"] for entry in task["entries"] if entry["new_english"] is not None]
-    completed = sum(current.state(task["locale"], key) == "current" for key in active)
+    tasks = task["tasks"] if task.get("version") == 2 else [task]
+    active = [
+        (item["locale"], entry["key"])
+        for item in tasks
+        for entry in item["entries"]
+        if entry["new_english"] is not None
+    ]
+    completed = sum(current.state(locale, key) == "current" for locale, key in active)
     return completed, len(active) - completed
+
+
+def bundle(root: Path, base: str) -> dict:
+    """Bundle completed explicit review tasks without changing any translations."""
+    base = revision(root, base)
+    original = load_catalog(snapshot(root, base))
+    files = snapshot(root)
+    current = load_catalog(files)
+    captured = review_source(original, current)
+    components = []
+    for locale in LOCALES[1:]:
+        changed = changed_keys(captured.texts[locale], current.texts[locale]) | changed_keys(
+            captured.records.get(locale, {}), current.records.get(locale, {})
+        )
+        for group in GROUPS:
+            keys = sorted(key for key in changed if key.split(".")[0] == group)
+            if keys:
+                reviewed = [key for key in keys if key in captured.english and captured.state(locale, key) == "current"]
+                components.append(review_component(original, captured, locale, group, reviewed, base))
+    task = dict(
+        version=2,
+        kind="visual_review",
+        base_revision=base,
+        source_paths=reviewed_source_paths(root, base),
+        tasks=components,
+    )
+    check_calls(files, current)
+    warnings(current)
+    check_scope(root, base, original, current, task)
+    (root / TASK).write_text(json_text(task), encoding="utf-8")
+    return task
 
 
 def main() -> int:
@@ -166,6 +209,10 @@ def main() -> int:
     )
     commands.add_parser("apply", help="validate answers, then write only scoped translations and hashes")
     commands.add_parser("verify", help="read-only check against the saved task base, including after committing")
+    grouped = commands.add_parser(
+        "bundle", help="bundle explicit visual reviews with their exact localization source hashes"
+    )
+    grouped.add_argument("--base", required=True)
     args = parser.parse_args()
     try:
         root = args.root.resolve()
@@ -175,6 +222,9 @@ def main() -> int:
             print(f"Edit only text fields in {ANSWERS}; null defers a key. Removed keys are cleaned by apply.")
         elif args.command == "apply":
             print(f"Applied {apply(root)} translations. Review the diff, then run translate.py verify.")
+        elif args.command == "bundle":
+            task = bundle(root, args.base)
+            print(f"Bundled {len(task['tasks'])} locale/group tasks. Catalogs and hashes were not changed.")
         else:
             completed, deferred = verify(root)
             print(f"Translation task verified: {completed} current, {deferred} awaiting translation.")
