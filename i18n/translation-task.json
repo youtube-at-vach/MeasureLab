@@ -1,26 +1,40 @@
 {
   "version": 1,
-  "base_revision": "07e309e1a61c34ed849e8260c73dbbc74f1f63c8",
-  "locale": "ja",
+  "base_revision": "0ba59ef315a5a161f0f1e2496735bc1292324357",
+  "locale": "fr",
   "groups": [
-    "common"
+    "oscilloscope"
   ],
   "review_keys": [
-    "common.raw_scope_fs_relative_sample_position"
+    "oscilloscope.centre_offset",
+    "oscilloscope.reset_time_position"
   ],
   "entries": [
     {
-      "key": "common.raw_scope_fs_relative_sample_position",
-      "group": "common",
+      "key": "oscilloscope.centre_offset",
+      "group": "oscilloscope",
       "reasons": [
         "review"
       ],
-      "old_english": "Raw Scope FS · relative sample position",
-      "new_english": "Raw Scope FS · relative sample position",
+      "old_english": "Centre offset",
+      "new_english": "Centre offset",
       "variables": [],
-      "translation": "スコープの生FS · 相対サンプル位置",
-      "source_hash": "f1318d5af8acc86fc938d554418b8a6f4f207203ce141fc1216c530e1770e67b",
-      "translated_source_hash": "f1318d5af8acc86fc938d554418b8a6f4f207203ce141fc1216c530e1770e67b"
+      "translation": "Centrer le décalage",
+      "source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a",
+      "translated_source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a"
+    },
+    {
+      "key": "oscilloscope.reset_time_position",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Reset time position",
+      "new_english": "Reset time position",
+      "variables": [],
+      "translation": "Réinitialiser la position temporelle",
+      "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
+      "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
     }
   ]
 }
