@@ -1,53 +1,53 @@
 {
   "version": 1,
-  "base_revision": "df11a114f93a41d964f94305aab36714ba38aec3",
+  "base_revision": "a36627eefaaeefe6f682dd7ba2641d20e8c56762",
   "locale": "ru",
   "groups": [
-    "oscilloscope"
+    "spectrum"
   ],
   "entries": [
     {
-      "key": "oscilloscope.acquiring_post_trigger",
-      "group": "oscilloscope",
+      "key": "spectrum.advanced_analysis_diagnostics",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Acquiring post-trigger",
-      "new_english": "Acquiring post-trigger",
+      "old_english": "Advanced analysis / diagnostics",
+      "new_english": "Advanced analysis / diagnostics",
       "variables": [],
       "translation": null,
-      "source_hash": "12b4a84699481ece363b045972cd4174cb354507842d92a35d9ae50a737d3905",
+      "source_hash": "a891e3cd14ba67918093d1413968bac0f2df9d1e7b8bc7be22c777ac851e0033",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.acquisition",
-      "group": "oscilloscope",
+      "key": "spectrum.amplitude",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "ACQUISITION",
-      "new_english": "ACQUISITION",
+      "old_english": "Amplitude",
+      "new_english": "Amplitude",
       "variables": [],
       "translation": null,
-      "source_hash": "01e0d982813cd8c5143eec925431d6270c5b7d647cb15e479379917ebe932753",
+      "source_hash": "af20d3048029ab28a06aa6826c3df53393accb3c57e3ff9c0219b2a9e8696489",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid",
-      "group": "oscilloscope",
+      "key": "spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "An acquired or calibrated value is nonfinite; no valid numeric readout",
-      "new_english": "An acquired or calibrated value is nonfinite; no valid numeric readout",
+      "old_english": "Analysis changes apply when input restarts. The captured spectrum stays held.",
+      "new_english": "Analysis changes apply when input restarts. The captured spectrum stays held.",
       "variables": [],
       "translation": null,
-      "source_hash": "b595c97725a959f1ab522947d4e47c5ac527cbcd198ae763f778edf39e0e71b3",
+      "source_hash": "e02f27009c51cb39529267d6d1423c297054101d2dd583598ba2d9939bddf01f",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.auto",
-      "group": "oscilloscope",
+      "key": "spectrum.auto",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
@@ -59,398 +59,639 @@
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.auto_free",
-      "group": "oscilloscope",
+      "key": "spectrum.average",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Auto / free",
-      "new_english": "Auto / free",
+      "old_english": "Average",
+      "new_english": "Average",
       "variables": [],
       "translation": null,
-      "source_hash": "51708216d6b0dc52a2544b96ac752d9a6e27665d7fce2b417223b742a72ce2e0",
+      "source_hash": "b38ae2c5b84529e8027b43a69c8ce9426a3cb081dae97b77bdcd2fdc5a9df742",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a",
-      "group": "oscilloscope",
+      "key": "spectrum.averaging",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Automatically set time scale, amplitude and trigger for a periodic signal",
-      "new_english": "Automatically set time scale, amplitude and trigger for a periodic signal",
+      "old_english": "AVERAGING",
+      "new_english": "AVERAGING",
       "variables": [],
       "translation": null,
-      "source_hash": "420b5bde5569ba841a1de599671b2306b42e5618a28ba57fe625549e10fa50a5",
+      "source_hash": "dd41f9c8cfbf36f85ee3e1c0ea5fda3444708b55fd861df5e2c9a42e6e279583",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.autoset",
-      "group": "oscilloscope",
+      "key": "spectrum.avg_off",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Autoset",
-      "new_english": "Autoset",
+      "old_english": "AVG OFF",
+      "new_english": "AVG OFF",
       "variables": [],
       "translation": null,
-      "source_hash": "47268da669c3f0e8133ed05cae48c5cb1724d270ba262d2db973476c98f0711f",
+      "source_hash": "bb177600ad11b4380c4259902269cbb2f876d48600400141d57c037c5361fca9",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.autoset_frequency",
-      "group": "oscilloscope",
+      "key": "spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Autoset: %{frequency} Hz from raw crossings",
-      "new_english": "Autoset: %{frequency} Hz from raw crossings",
+      "old_english": "Band power unavailable · invalid window, range or nonfinite sum",
+      "new_english": "Band power unavailable · invalid window, range or nonfinite sum",
+      "variables": [],
+      "translation": null,
+      "source_hash": "eeb09abc50c86a9626aae22ce7f870a578d36e23715d4bae224932dad991a8fd",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.band_rms",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Band RMS %{rms} %{unit}",
+      "new_english": "Band RMS %{rms} %{unit}",
       "variables": [
-        "frequency"
+        "rms",
+        "unit"
       ],
       "translation": null,
-      "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
+      "source_hash": "d2f2ec0134c00629078ad4202362bf2d8316a4ae43fbe2a0a56e4a93bf02844b",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.autoset_held",
-      "group": "oscilloscope",
+      "key": "spectrum.before_input_began_no_stft_frame",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-      "new_english": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-      "variables": [
-        "frequency"
-      ],
-      "translation": null,
-      "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.capture_once_on_the_next_trigger_crossing",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Capture once on the next trigger crossing",
-      "new_english": "Capture once on the next trigger crossing",
+      "old_english": "Before input began · no STFT frame",
+      "new_english": "Before input began · no STFT frame",
       "variables": [],
       "translation": null,
-      "source_hash": "9db8198e1d68e5270e330e824e0c4295685bbb03af049a84b7ccff68626e6ed6",
+      "source_hash": "691108b4ed9c04913467395a4405f364238b8fe53eb5082df1f87b2d0330ba50",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.centre_offset",
-      "group": "oscilloscope",
+      "key": "spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Centre offset",
-      "new_english": "Centre offset",
+      "old_english": "Bin amplitude · 0 dBFS = 1 FS peak sine at a bin centre. Window coherent gain corrected; off-bin tones have scalloping loss.",
+      "new_english": "Bin amplitude · 0 dBFS = 1 FS peak sine at a bin centre. Window coherent gain corrected; off-bin tones have scalloping loss.",
       "variables": [],
       "translation": null,
-      "source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a",
+      "source_hash": "eb30b51a491735c4574a5f70678ba412760b4967571de7577ff2c65a086f6435",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.ch",
-      "group": "oscilloscope",
+      "key": "spectrum.bottom",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "CH%{scope_selected} · %{scope_selected_2}",
-      "new_english": "CH%{scope_selected} · %{scope_selected_2}",
+      "old_english": "Bottom",
+      "new_english": "Bottom",
+      "variables": [],
+      "translation": null,
+      "source_hash": "479ad21ac9096236e921c228a511f12cc84758e21d9edda03ae82c501d367c93",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.calibration_rev",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Calibration %{id} · rev %{revision}",
+      "new_english": "Calibration %{id} · rev %{revision}",
       "variables": [
-        "scope_selected",
-        "scope_selected_2"
+        "id",
+        "revision"
       ],
       "translation": null,
-      "source_hash": "8276ee6d6ce5d1d1369bb9bbc0390eecbdeabe4a20f2342b8049af16b67345a3",
+      "source_hash": "b96e35337395daf4649f3550fa34a565ab8cbed064b3af14e6f8db59859d63b4",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.ch_2",
-      "group": "oscilloscope",
+      "key": "spectrum.captured_fft_source_units_and_averaging_are_read_only",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "CH%{index}%{else}",
-      "new_english": "CH%{index}%{else}",
+      "old_english": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
+      "new_english": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "791c826af16c642a880363aac3af9e1ffd1f5f868f5009c13718e931c6872cd7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.ch",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "CH%{index}",
+      "new_english": "CH%{index}",
       "variables": [
-        "else",
         "index"
       ],
       "translation": null,
-      "source_hash": "5e1cd689e0925ed5ed6333c3b7c95381e125da4a30246dcf4a1e686ea81f513c",
+      "source_hash": "236889a28c78d514daab7ee0f54624362975b5c8a9a62528969979cc1f11bda3",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.ch_select_to_edit_this_channel_in_scope_settings",
-      "group": "oscilloscope",
+      "key": "spectrum.ch_input",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "CH%{index} · %{channel}%{else}\n%{index_2}\nSelect to edit this channel in Scope settings. Display on/off is independent.\n%{display}",
-      "new_english": "CH%{index} · %{channel}%{else}\n%{index_2}\nSelect to edit this channel in Scope settings. Display on/off is independent.\n%{display}",
+      "old_english": "CH%{shown_spectrum_index} · Input %{channel} · %{db_unit}",
+      "new_english": "CH%{shown_spectrum_index} · Input %{channel} · %{db_unit}",
       "variables": [
         "channel",
-        "display",
-        "else",
-        "index",
-        "index_2"
+        "db_unit",
+        "shown_spectrum_index"
       ],
       "translation": null,
-      "source_hash": "3534f67a5010c9a29af959f50ed779d067a28cf1b985322bea67c4c3ad5bc9a4",
+      "source_hash": "28f01719449c6b70d2397e0245f2763103ff746f83241452d058a2cf7dfa51b9",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.channel_out_of_range",
-      "group": "oscilloscope",
+      "key": "spectrum.ch_input_select_for_peak_cursor_and_export_display",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "— · channel out of range",
-      "new_english": "— · channel out of range",
-      "variables": [],
-      "translation": null,
-      "source_hash": "281591f7b02e512c5d81a0e369e024dd8ed73039909f75156ca2021bcc73b800",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.cursor",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Cursor %{index} · %{join}",
-      "new_english": "Cursor %{index} · %{join}",
+      "old_english": "CH%{index} · input %{source} · %{db_unit}\nSelect for peak/cursor and export. Display ON/OFF is independent. Re-enabling starts a fresh average.",
+      "new_english": "CH%{index} · input %{source} · %{db_unit}\nSelect for peak/cursor and export. Display ON/OFF is independent. Re-enabling starts a fresh average.",
       "variables": [
+        "db_unit",
         "index",
-        "join"
+        "source"
       ],
       "translation": null,
-      "source_hash": "7bdb09d78ad9a3eed3337574a2c64cd3ef733352b66355ee4512130b14590355",
+      "source_hash": "468ba2c0245ce04487a4c280885ba7289f52e95d089ff5068926737f59d5464f",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.display",
-      "group": "oscilloscope",
+      "key": "spectrum.choose_which_cursor_the_next_spectrum_click_or_drag",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Display",
-      "new_english": "Display",
+      "old_english": "Choose which cursor the next spectrum click or drag places; selecting A or B does not place it. Both cursors read the selected channel's nearest FFT bin.",
+      "new_english": "Choose which cursor the next spectrum click or drag places; selecting A or B does not place it. Both cursors read the selected channel's nearest FFT bin.",
       "variables": [],
       "translation": null,
-      "source_hash": "34e108c0896d0158ca4f2797d4f12a143943803be2151aa5d2136ea1bcd9a468",
+      "source_hash": "2e6957a55e0e4d958cdbada96d978353aebc98d55fc8c677017bd625c12abd35",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.drag_the_slider_or_value_to_adjust_double_click",
-      "group": "oscilloscope",
+      "key": "spectrum.clear_both_frequency_cursors_shared_by_spectrum_and_spectrogram",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Drag the slider or value to adjust. Double-click the value to type a number.",
-      "new_english": "Drag the slider or value to adjust. Double-click the value to type a number.",
+      "old_english": "Clear both frequency cursors shared by Spectrum and Spectrogram. Time cursors, Spectrogram frame selections, XY Free points and acquired data are kept.",
+      "new_english": "Clear both frequency cursors shared by Spectrum and Spectrogram. Time cursors, Spectrogram frame selections, XY Free points and acquired data are kept.",
       "variables": [],
       "translation": null,
-      "source_hash": "b3346f3a5987438d7424d10504f46bea3e6ce5e6f9e4b7ed39c237bcb67bd61e",
+      "source_hash": "bdc17ac781e786d2532273f583a8c2265b19511a6e11f26949ce84e433bb8026",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.edge",
-      "group": "oscilloscope",
+      "key": "spectrum.clear_frequency",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Edge",
-      "new_english": "Edge",
+      "old_english": "Clear frequency",
+      "new_english": "Clear frequency",
       "variables": [],
       "translation": null,
-      "source_hash": "0f82fe727756eb9a80e0e95581f2ef26aeaffb0bf903dcf8106d575878960fb6",
+      "source_hash": "1d6f3393f3c52365433dcdd6d2b1dd4d1ac1fdd7a26755c5d58d03d1e6e83c29",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.edge_names.falling",
-      "group": "oscilloscope",
+      "key": "spectrum.clear_hold",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Falling",
-      "new_english": "Falling",
+      "old_english": "Clear hold",
+      "new_english": "Clear hold",
       "variables": [],
       "translation": null,
-      "source_hash": "6192f1847550c59656b0d977617a16d13cce4aec47526218df47011a293dc962",
+      "source_hash": "0282f89ffe113f7a85d306e94bb91156c3871e9350aa17e1783cfc789523802e",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.edge_names.free",
-      "group": "oscilloscope",
+      "key": "spectrum.click_drag_the_plot_to_place_a_cursor",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Free",
-      "new_english": "Free",
+      "old_english": "Click / drag the plot to place a cursor",
+      "new_english": "Click / drag the plot to place a cursor",
       "variables": [],
       "translation": null,
-      "source_hash": "f411a1fb62758b4c54690d0a702b4955b54dd22115416fa7b1ce51b4a084818d",
+      "source_hash": "7dc8358e80651048895ef0c4594410aac7210c0c98713a687e713b915da1ce9c",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.edge_names.rising",
-      "group": "oscilloscope",
+      "key": "spectrum.continuous_hop_ms",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Rising",
-      "new_english": "Rising",
-      "variables": [],
-      "translation": null,
-      "source_hash": "522e5549af01c747329d923110c058b7bb7e112816de64bd7919d7b9194fba5b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.falling_edge",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Falling edge",
-      "new_english": "Falling edge",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8ff44b6476ef3262c48e0c133a84ecb7d6ee2b130e05fa431429e36523ec42d2",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.fit_amplitude",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Fit amplitude",
-      "new_english": "Fit amplitude",
-      "variables": [],
-      "translation": null,
-      "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Fit the selected channel's raw peak and centre its offset",
-      "new_english": "Fit the selected channel's raw peak and centre its offset",
-      "variables": [],
-      "translation": null,
-      "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.free_run",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Free run",
-      "new_english": "Free run",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a027d70d45950d5432f65c78b4f9fb7fe92002940b31409667e4fb29bf48c683",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.fs",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{channel}: %{raw} FS → %{value} %{channel_2}",
-      "new_english": "%{channel}: %{raw} FS → %{value} %{channel_2}",
+      "old_english": "Continuous · hop %{sample_rate} ms",
+      "new_english": "Continuous · hop %{sample_rate} ms",
       "variables": [
+        "sample_rate"
+      ],
+      "translation": null,
+      "source_hash": "623431f15bed6a1565c7a9781705ae29c29cc60717361d45462c341a6c4cfa7c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.continuous_process_every_window",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Continuous · process every window",
+      "new_english": "Continuous · process every window",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c3e5ca9c65b95cc473c75d042a2c2d876e5a25eff2b6224678820996fb6e432c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Cursor %{index} · nearest bin: %{value} %{linear_unit}. Latest window: samples %{start}..%{end} (exclusive end), CH %{channel}, %{sample_rate} Hz, %{size} points, %{name}, %{name_2}. EMA α = 1/%{averages}; %{updates} processed windows, contribution envelope %{start_2}..%{end_2} (exponential weights). Input generation %{input_generation}; missing windows %{missing_windows}.%{times}",
+      "new_english": "Cursor %{index} · nearest bin: %{value} %{linear_unit}. Latest window: samples %{start}..%{end} (exclusive end), CH %{channel}, %{sample_rate} Hz, %{size} points, %{name}, %{name_2}. EMA α = 1/%{averages}; %{updates} processed windows, contribution envelope %{start_2}..%{end_2} (exponential weights). Input generation %{input_generation}; missing windows %{missing_windows}.%{times}",
+      "variables": [
+        "averages",
         "channel",
-        "channel_2",
-        "raw",
+        "end",
+        "end_2",
+        "index",
+        "input_generation",
+        "linear_unit",
+        "missing_windows",
+        "name",
+        "name_2",
+        "sample_rate",
+        "size",
+        "start",
+        "start_2",
+        "times",
+        "updates",
         "value"
       ],
       "translation": null,
-      "source_hash": "379d0adad4c6a0becd4f3d83a5245e75dfdef7a47549a9b986375abe682342cd",
+      "source_hash": "460823b003f3fe7c9b2bf393d20e88920873ddca3e79011234e557677f185238",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.fs_div",
-      "group": "oscilloscope",
+      "key": "spectrum.custom_frequency_range",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{fs_per_div} FS/div",
-      "new_english": "%{fs_per_div} FS/div",
+      "old_english": "Custom frequency range",
+      "new_english": "Custom frequency range",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b6b4d59e1988169c5b2156910f87b7c2c3acd7fb7e9362d023f8cecd08c58906",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.ema",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "EMA 1/%{averages}",
+      "new_english": "EMA 1/%{averages}",
       "variables": [
-        "fs_per_div"
+        "averages"
       ],
       "translation": null,
-      "source_hash": "d1136e354c09347683e8edc079c72694ef741608dad561d8d390762290555279",
+      "source_hash": "de3017bb1f2974b8e03854ea554eb3bb60c948daa6ce774d2f9067965f0d0c35",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division",
-      "group": "oscilloscope",
+      "key": "spectrum.ema_settling",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "FS = full scale · Fs = sample rate · div = grid division",
-      "new_english": "FS = full scale · Fs = sample rate · div = grid division",
+      "old_english": "EMA settling",
+      "new_english": "EMA settling",
       "variables": [],
       "translation": null,
-      "source_hash": "7e9b94847fd8588545df9e7cd6ca34826553a9bdc2d1893ab0c0cd8df3b7c990",
+      "source_hash": "58ced3fac0411f9dabda9c1355086b50d43de97dfcdfb16be9166a35118e393c",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.guides",
-      "group": "oscilloscope",
+      "key": "spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Guides",
-      "new_english": "Guides",
+      "old_english": "Energy spectral density · energy per Hz. Selecting ESD presets Rectangular, Average OFF and Remove DC OFF for a single transient.",
+      "new_english": "Energy spectral density · energy per Hz. Selecting ESD presets Rectangular, Average OFF and Remove DC OFF for a single transient.",
       "variables": [],
       "translation": null,
-      "source_hash": "572cd72feb9a84e0c639af3ccae73f3a4406f69fe193eac69ab0678eee32baff",
+      "source_hash": "1330dca07d26e4223ecee73ec0494c5abed6c67fe815718a3e09e9604903472c",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next",
-      "group": "oscilloscope",
+      "key": "spectrum.exponential_average_of_linear_power_off_uses_the_latest",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "HELD conditions retained · queued measurement settings apply on next Start",
-      "new_english": "HELD conditions retained · queued measurement settings apply on next Start",
+      "old_english": "Exponential average of linear power. OFF uses the latest processed window.",
+      "new_english": "Exponential average of linear power. OFF uses the latest processed window.",
       "variables": [],
       "translation": null,
-      "source_hash": "5da5e24b7f1ace6d236f2583f7b5f65135fab7b90fdbc38b82a6e3f9c22cd06c",
+      "source_hash": "26c721fc3276176d06f752a46c3a6895f8b8d4ca56a1afb193525c3f2e61e0c6",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.horizontal",
-      "group": "oscilloscope",
+      "key": "spectrum.exponential_power_average_approximately_settled_after_weight_windows",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "HORIZONTAL",
-      "new_english": "HORIZONTAL",
-      "variables": [],
+      "old_english": "Exponential power average · α = 1/%{averages}. Approximately 95% settled after 3 × weight windows.",
+      "new_english": "Exponential power average · α = 1/%{averages}. Approximately 95% settled after 3 × weight windows.",
+      "variables": [
+        "averages"
+      ],
       "translation": null,
-      "source_hash": "29b086b8f3bbdb69c32453ba22753c1c749012900499be1637d4363f3ff87cb0",
+      "source_hash": "78746733de2d58f84d6b87cec6248876b7d83fc462bd4ead30e9e79fb0a3e656",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.input_source",
-      "group": "oscilloscope",
+      "key": "spectrum.export_reason",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "History Spectrum export is unavailable. Scope-only JSON / CSV / PNG remain available after input stops; Normal Spectrum restores combined export.",
+      "new_english": "History Spectrum export is unavailable. Scope-only JSON / CSV / PNG remain available after input stops; Normal Spectrum restores combined export.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ece5087363ca18015422ed79d7e3ac69fdfb57eed18ed9d9813bc8e919573a2a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.f_hz",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Δf %{bin_hz} Hz",
+      "new_english": "Δf %{bin_hz} Hz",
+      "variables": [
+        "bin_hz"
+      ],
+      "translation": null,
+      "source_hash": "c7de7e2839ae7ee7a1332a61da32996cd1e8390dddbae75ca5e374cdd5e452f2",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.f_hz_l_db",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Δf %{frequency_hz} Hz · ΔL %{delta_level} dB",
+      "new_english": "Δf %{frequency_hz} Hz · ΔL %{delta_level} dB",
+      "variables": [
+        "delta_level",
+        "frequency_hz"
+      ],
+      "translation": null,
+      "source_hash": "9e547bcc9003389764897c7538352c991a35d297f604ae536e74a6893d9ed734",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.f_hz_rbw_hz_window_ms_processed_windows",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Δf %{bin_hz} Hz · RBW %{rbw_hz} Hz\nWindow %{sample_rate} ms · %{updates} processed windows",
+      "new_english": "Δf %{bin_hz} Hz · RBW %{rbw_hz} Hz\nWindow %{sample_rate} ms · %{updates} processed windows",
+      "variables": [
+        "bin_hz",
+        "rbw_hz",
+        "sample_rate",
+        "updates"
+      ],
+      "translation": null,
+      "source_hash": "b3f4ce1470fca717d7e2cc23c3968a54dbc7588500fd05b3601bcecca8e573e9",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.fft",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "FFT",
+      "new_english": "FFT",
+      "variables": [],
+      "translation": null,
+      "source_hash": "94fa3fe96ddeefe8e4e7f203318826a72c95c5ebe448ebb244268b1380f6a700",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.fft_edits_apply_on_next_start_captured_results_retain",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "FFT edits apply on next Start; captured results retain their conditions.",
+      "new_english": "FFT edits apply on next Start; captured results retain their conditions.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "463700be116634a557c6ed4d87afe610e92ba5f6edffa0230c03f3c992200c90",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.fft_end_acquired_end",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "FFT end #%{end} · acquired end #%{end_2}",
+      "new_english": "FFT end #%{end} · acquired end #%{end_2}",
+      "variables": [
+        "end",
+        "end_2"
+      ],
+      "translation": null,
+      "source_hash": "77bb7592a139cb12a68dc50f4b8f678a7429deced5e20d07fc23a15986ec133d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.filling_window_samples",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Filling window · %{filled_samples} / %{size} samples",
+      "new_english": "Filling window · %{filled_samples} / %{size} samples",
+      "variables": [
+        "filled_samples",
+        "size"
+      ],
+      "translation": null,
+      "source_hash": "1064af1bc2839eeca01423f8b0a74708b385e45714b8909cb11674a75ad211fd",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.fit_the_entire_transient_inside_one_fft_window_trigger",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Fit the entire transient inside one FFT window. Trigger capture is not linked.",
+      "new_english": "Fit the entire transient inside one FFT window. Trigger capture is not linked.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e0c1c39895968d86afbb168a4be7f72b260929828c3faaf20890010db3d727b4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.frequency_scale",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "FREQUENCY / SCALE",
+      "new_english": "FREQUENCY / SCALE",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6c3bbc8a09c8ce5324ed391e2457290d8cd93a11c6d7d28463e5bfebe97aba57",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.from",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "From",
+      "new_english": "From",
+      "variables": [],
+      "translation": null,
+      "source_hash": "218197693424e0154cefc0af31aed96c084b987e08136e91d5528ddbb5461e24",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.full_nyquist",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Full / Nyquist",
+      "new_english": "Full / Nyquist",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c72ac558bb67db6413fb8859ec89c90da2597b7c22fb4e033449be27b747c29e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.history_read_only",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "History · read-only",
+      "new_english": "History · read-only",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f6bd2607646f067a011169b07e412115618b405b358712cac5cfd23c7fa53afa",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.hz_ch_samples",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}\nCH %{channel} · samples %{start}..%{end}",
+      "new_english": "%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}\nCH %{channel} · samples %{start}..%{end}",
+      "variables": [
+        "channel",
+        "db_unit",
+        "end",
+        "frequency_hz",
+        "index",
+        "level_db",
+        "start"
+      ],
+      "translation": null,
+      "source_hash": "a7a2ae244c7fb539d6fd4fb89b5437b83909b37a108faf3bdaf953755961bf87",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.hz_no_complete_window",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{index} %{frequency} Hz · no complete window",
+      "new_english": "%{index} %{frequency} Hz · no complete window",
+      "variables": [
+        "frequency",
+        "index"
+      ],
+      "translation": null,
+      "source_hash": "1350e0cc299a6cdd48d785a2cf7a9d81077e45469906e453ae44039453b1c355",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.hz_power",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{first_hz}–%{last_hz} Hz · power %{power} %{power_unit}",
+      "new_english": "%{first_hz}–%{last_hz} Hz · power %{power} %{power_unit}",
+      "variables": [
+        "first_hz",
+        "last_hz",
+        "power",
+        "power_unit"
+      ],
+      "translation": null,
+      "source_hash": "8b9eae60cb3e971f5495137f50c857b5272bf1a773c14dac45f5fca70e995181",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.input_source",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
@@ -462,739 +703,965 @@
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger",
-      "group": "oscilloscope",
+      "key": "spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{channel} · %{reading}\nInterval %{start}..%{end} (exclusive end) · generation %{input_generation} · nominal %{sample_rate} Hz. %{channel_2}. Waveform and trigger are raw FS.",
-      "new_english": "%{channel} · %{reading}\nInterval %{start}..%{end} (exclusive end) · generation %{input_generation} · nominal %{sample_rate} Hz. %{channel_2}. Waveform and trigger are raw FS.",
+      "old_english": "Invalid FFT window · nonfinite sample or calibrated power",
+      "new_english": "Invalid FFT window · nonfinite sample or calibrated power",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e54fc3e08d62d27f6abfbbb388d42d3ec146a062fcdaee8f795ef6e39df15a00",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.invalid_stft_window_nonfinite_input",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Invalid STFT window · nonfinite input",
+      "new_english": "Invalid STFT window · nonfinite input",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9c4ba4047538338c9b5a837068aee0b95b3a6bcce5a8e9635367cefb8dd2cdc6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.json_csv_png_use_the_selected_trace",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "JSON / CSV / PNG use the selected trace.",
+      "new_english": "JSON / CSV / PNG use the selected trace.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c482e3660b28750bfe151bd9b481409b6f61340b839c9342beaa749d64a740dd",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.latest_observe_at_a_limited_rate",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Latest · observe at a limited rate",
+      "new_english": "Latest · observe at a limited rate",
+      "variables": [],
+      "translation": null,
+      "source_hash": "43ad79b870f187968f2d98ba23b5cd003060ee0901b51af0898391f448bcbdaf",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.latest_target_ms",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Latest · target %{observation_ms} ms",
+      "new_english": "Latest · target %{observation_ms} ms",
+      "variables": [
+        "observation_ms"
+      ],
+      "translation": null,
+      "source_hash": "40dbc283f8bd510f05215173ef38ec2d60f870829ad83f10c5c7ef18b5e63316",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.level_axis",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Level axis",
+      "new_english": "Level axis",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fff0f3a43acf44c95f34fa184d73f216f1f16c3de5fb5058b1f975aeacf1393c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.linear_hz",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Linear Hz",
+      "new_english": "Linear Hz",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d35293c5b6027d55300797c15a83bdd1c89c75b00947f5fa7afcb2fa92932fbf",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.live_observe_newest_window",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Live · observe newest window",
+      "new_english": "Live · observe newest window",
+      "variables": [],
+      "translation": null,
+      "source_hash": "0f85bff6549ed70dbf4590d546696f07a4e557f5e5412b55c4a43d31d3e90ca5",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.live_target_ms",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Live · target %{observation_ms} ms",
+      "new_english": "Live · target %{observation_ms} ms",
+      "variables": [
+        "observation_ms"
+      ],
+      "translation": null,
+      "source_hash": "f1ef01e53553c22154c6680729cf73f289719e38a432c08420e22eb456b6c7b2",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.live_up_to_updates_s",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Live · up to 60 updates/s",
+      "new_english": "Live · up to 60 updates/s",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f9e4ead149619fa3fb5166d8f26604ecfc1d0c9ffe436de3493c5e0aab616d1a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.log_hz",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Log Hz",
+      "new_english": "Log Hz",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7b91026010d597a53c425c595786148a71e5a567e1427bb7f5925143f270d734",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.manual",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Manual",
+      "new_english": "Manual",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b0b9fe24ffa9629125bdc59b122f80d605ab604eb1b74485c2f2ecfde26576ae",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.measurement_ch",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "MEASUREMENT · CH%{index}",
+      "new_english": "MEASUREMENT · CH%{index}",
+      "variables": [
+        "index"
+      ],
+      "translation": null,
+      "source_hash": "22f25daa7ac50b5820487513b931f4c4627757f2baeffc3dcb55949ba763c01d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.missing_input_invalid_windows_missed_observations",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{cadence} · missing input %{input_missing} · invalid windows %{invalid_windows} · missed observations %{missed_observations}",
+      "new_english": "%{cadence} · missing input %{input_missing} · invalid windows %{invalid_windows} · missed observations %{missed_observations}",
+      "variables": [
+        "cadence",
+        "input_missing",
+        "invalid_windows",
+        "missed_observations"
+      ],
+      "translation": null,
+      "source_hash": "9b4cbf9161fde480a05fcd75100ebd679b35f011c621169a003d462626c6b181",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.mixed_level_references_units_shown_per_channel",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Mixed level references · units shown per channel",
+      "new_english": "Mixed level references · units shown per channel",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d0546d52b4d99894c409141ddf0c4f85dad6f9e7638d3951d65d2cf67b4dee36",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.mode_names.continuous",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Continuous",
+      "new_english": "Continuous",
+      "variables": [],
+      "translation": null,
+      "source_hash": "04f13cecbc50590b68a8c4866c8e622c3bc69fb2f8caeeba894cf5c7819315f5",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.mode_names.latest",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Latest",
+      "new_english": "Latest",
+      "variables": [],
+      "translation": null,
+      "source_hash": "8730d3c2022abf1f9665e4ca1da43e4d068843482053675af19176b0f6f51a3e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.mode_names.live",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Live",
+      "new_english": "Live",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b64ac05f17e64d037db81a98f51e2688216e292ae9748f979f04dfbac49fd7fc",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.newest_complete_window_only_intermediate_windows_can_be_skipped",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Newest complete window only; intermediate windows can be skipped. At least 33 ms / N/4 for small FFTs, 100 ms for large FFTs. Does not guarantee transient capture.",
+      "new_english": "Newest complete window only; intermediate windows can be skipped. At least 33 ms / N/4 for small FFTs, 100 ms for large FFTs. Does not guarantee transient capture.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f8a77bee0d9bfe7d42df929270a57fac1563a32d11e104fa420b90d651f6a6da",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.no_input",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "No input",
+      "new_english": "No input",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6e69efde182aea688b0d1755856a46c9112ecbf491a927f0b968ab9eaf0d7e75",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.no_stft_frame_gap_unavailable_or_different_generation",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "No STFT frame · gap, unavailable or different generation",
+      "new_english": "No STFT frame · gap, unavailable or different generation",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7d21305d578cd61f62fbb6b01b465f27b665a65b477d3ee47932e525efe4cecb",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.normal_spectrum",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Normal Spectrum",
+      "new_english": "Normal Spectrum",
+      "variables": [],
+      "translation": null,
+      "source_hash": "dd764d18104fad5e9e69766f8e31980c0738421d9321e91a4b116d90dce8698e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.observe_the_newest_complete_window_with_a_processing_time",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Observe the newest complete window with a processing-time budget. Average and hold update per observed window, independently of drawing. Use Continuous to process every N/4 window.",
+      "new_english": "Observe the newest complete window with a processing-time budget. Average and hold update per observed window, independently of drawing. Use Continuous to process every N/4 window.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "dd64526c48367a75ffb044f47b203ccdd7a9ac93a67bd3ba4ca2d439439ca2f0",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.off",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "OFF",
+      "new_english": "OFF",
+      "variables": [],
+      "translation": null,
+      "source_hash": "38cca6bea010af8adaf4be7d270456fa9adef8c0252db91f2767c607d077319b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.one_complete_window_s_continuous_step_s_n",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "One complete window: %{sample_rate} s · continuous step: %{sample_rate_2} s (N/4)",
+      "new_english": "One complete window: %{sample_rate} s · continuous step: %{sample_rate_2} s (N/4)",
+      "variables": [
+        "sample_rate",
+        "sample_rate_2"
+      ],
+      "translation": null,
+      "source_hash": "55e1d9517876332bcfcb3fc3be912c71ca764dcb4e01d0d8fb7fdbcd982e2468",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.peak_bin_hz",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Peak bin %{frequency} Hz",
+      "new_english": "Peak bin %{frequency} Hz",
+      "variables": [
+        "frequency"
+      ],
+      "translation": null,
+      "source_hash": "9004e99084b18491e8f6fa33fae4dc84d9d18e40c568928284a0af422b968a48",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.peak_hold",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Peak hold",
+      "new_english": "Peak hold",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7af3e1b50bc9afb8786cde12f32d492ef605d287b3658368e558a37e1e170fed",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.peak_markers",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Peak markers",
+      "new_english": "Peak markers",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e2412b6df75b35a92ada79ed2cac0d4195b56ede9e5bbe3b76bec9c00c6d7ab7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.place_cursor",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Place cursor:",
+      "new_english": "Place cursor:",
+      "variables": [],
+      "translation": null,
+      "source_hash": "aeab96caf722280489829d478a2ee0fee2492f4d800c795dee6b58e8013704de",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.place_frequency_cursor",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Place frequency cursor:",
+      "new_english": "Place frequency cursor:",
+      "variables": [],
+      "translation": null,
+      "source_hash": "0dd9049fe0e7e821a11397adeb645e6571240d3c795097edf15895e3c9cf5d44",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.points",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{size} points",
+      "new_english": "%{size} points",
+      "variables": [
+        "size"
+      ],
+      "translation": null,
+      "source_hash": "9aaa22b3e64d8f96b49cd1cca8a4a3ddc4cb5f5ab2d623952fe1847032e0792b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.power_in_band",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Power in band",
+      "new_english": "Power in band",
+      "variables": [],
+      "translation": null,
+      "source_hash": "71216c73e97129b783f19996409669cd0e273df9307833a9468dd9aefed29383",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.power_spectral_density_power_per_hz_with_window_noise",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Power spectral density · power per Hz, with window noise-bandwidth correction",
+      "new_english": "Power spectral density · power per Hz, with window noise-bandwidth correction",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5dd3c33dfc0984be84af96736c4a2bcd65edb6975bbbc3c9ced5f3ab7d1b9de6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.psd",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "PSD",
+      "new_english": "PSD",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6558038e726e98cc4604570a467525f203ad5f5a2e9eba6e1b769fa55f46fa70",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.pt_fs_hz_f_hz",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{size} pt · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz} Hz · %{averaging}",
+      "new_english": "%{size} pt · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz} Hz · %{averaging}",
+      "variables": [
+        "averaging",
+        "bin_hz",
+        "name",
+        "sample_rate",
+        "size"
+      ],
+      "translation": null,
+      "source_hash": "5d7dfe0f8b3c200f0d7914a2b83de5a8701a09ae87c816fbfe3241809e1ed446",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.quantity.amplitude",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Bin amplitude",
+      "new_english": "Bin amplitude",
+      "variables": [],
+      "translation": null,
+      "source_hash": "bcc61655cda4542c0539a5ad50e0edac35e6414218b96307ad3859d72ac60a9b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.quantity.esd",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Transient (ESD)",
+      "new_english": "Transient (ESD)",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4cab4360048de2c17e361758eb57be7d367c951aa6a0b322ab4a88cf87589f9d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.quantity.psd",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Power spectral density",
+      "new_english": "Power spectral density",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1299e6807fbf1e9b6dfb191db07f90eb076110da6f8af6cab3c9161906d85ab1",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.rectangular_recommended_other_windows_attenuate_energy_without_correction",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Rectangular recommended: other windows attenuate energy without correction.",
+      "new_english": "Rectangular recommended: other windows attenuate energy without correction.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "a4578b35e1e604313a6c37b3206c5d8f5eccb1e52c3b7e3bf8adb4dff238da3a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.remove_dc_offset",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Remove DC offset",
+      "new_english": "Remove DC offset",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ab2c3442179ca283844b06668bf22596d8a844ad757a4fdb5e1c7e983a6e8a0d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Requested %{requested_hz}–%{requested_hz_2} Hz, inclusive centres of bins %{first_bin}..=%{last_bin}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH %{channel}, generation %{input_generation}, %{updates} processed windows, contribution envelope %{start}..%{end}. Input loss %{dropped}; missing windows %{missing_windows}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
+      "new_english": "Requested %{requested_hz}–%{requested_hz_2} Hz, inclusive centres of bins %{first_bin}..=%{last_bin}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH %{channel}, generation %{input_generation}, %{updates} processed windows, contribution envelope %{start}..%{end}. Input loss %{dropped}; missing windows %{missing_windows}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
       "variables": [
         "channel",
-        "channel_2",
+        "dropped",
         "end",
+        "first_bin",
         "input_generation",
-        "reading",
+        "last_bin",
+        "missing_windows",
+        "requested_hz",
+        "requested_hz_2",
+        "start",
+        "updates"
+      ],
+      "translation": null,
+      "source_hash": "c9bdcb2cb881ba38643cd928db127edd06af964d70e176bc1c5ecda3eabb3638",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.reset",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Reset",
+      "new_english": "Reset",
+      "variables": [],
+      "translation": null,
+      "source_hash": "daee7606b339f3c339076fe2c9f372a3ff40c8ee896005d829c7481b64ca5303",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Reset averaging and peak hold for all Spectrum traces",
+      "new_english": "Reset averaging and peak hold for all Spectrum traces",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6353f0a4ed4731189797eb836f785a5d82ed982c9c9b70e7e45187e047175149",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.select_a_time_frame_in_spectrogram",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Select a time frame in Spectrogram",
+      "new_english": "Select a time frame in Spectrogram",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1d6f011644ccf639fcc19bf9fa1550fa99693d132a4b30f4a2ab1409d774c304",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.show_ch_spectrum",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Show CH%{index} spectrum",
+      "new_english": "Show CH%{index} spectrum",
+      "variables": [
+        "index"
+      ],
+      "translation": null,
+      "source_hash": "733dfc7307c0c61b3928d5e3ff226f53e64a0320a9fbc4da9f4b91502a937546",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.span",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Span %{hz}",
+      "new_english": "Span %{hz}",
+      "variables": [
+        "hz"
+      ],
+      "translation": null,
+      "source_hash": "e4f4c39837ddca3283f7596841d2ae61aa7a6a27d6a0d5add3bc900d03c98e75",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.span_2",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Span %{span_hz}",
+      "new_english": "Span %{span_hz}",
+      "variables": [
+        "span_hz"
+      ],
+      "translation": null,
+      "source_hash": "04f025c68bb596dcd24603c920998494119b79d91a893159faa8feaebfc6f5c0",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Spectrogram history · Bin amplitude · FS / dBFS · AVG OFF · uncalibrated",
+      "new_english": "Spectrogram history · Bin amplitude · FS / dBFS · AVG OFF · uncalibrated",
+      "variables": [],
+      "translation": null,
+      "source_hash": "295008dd65753beb8dc2ed2b28ed52c04e6ce8c7aaf52009e2fee44994a9ade3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.spectrum_analyzer",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Spectrum Analyzer",
+      "new_english": "Spectrum Analyzer",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6f77fb0399a06324228305621fcb010348d386e9d8c99337e22a500aeb15606f",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.spectrum_and_scope_xy_have_independent_sample_intervals_fft",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.",
+      "new_english": "Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "3d33eb0e4d60fa21dac807aaba8e5e0877a16bf3c9b8710220d8569b4acc5511",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.stopping_finishing_spectrum_windows",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stopping · finishing Spectrum windows",
+      "new_english": "Stopping · finishing Spectrum windows",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f9fd7328644e61ddf428b294312195c7ffe4264e03983487a73d273c944087b8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.subtracts_each_window_s_mean_before_windowing_in_esd",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Subtracts each window's mean before windowing. In ESD this changes transient energy and its dependence on window length.",
+      "new_english": "Subtracts each window's mean before windowing. In ESD this changes transient energy and its dependence on window length.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9761c469be954e52e6b62ae892332b1df5d40a1c94de8a4f629c7d7c551520d2",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.sum_of_f64_esd_f_over_all_bins_including",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Sum of f64 ESD × Δf over all bins, including DC/Nyquist. Energy of the windowed waveform after optional DC removal. Averaging gives an EMA of window energies, not cumulative energy. Nominal input sample clock.",
+      "new_english": "Sum of f64 ESD × Δf over all bins, including DC/Nyquist. Energy of the windowed waveform after optional DC removal. Averaging gives an EMA of window energies, not cumulative energy. Nominal input sample clock.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d47867f580a0b62c06dbf4e33a1b6f411d94c5adda1329240d689d7435e82abb",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.time",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Time %{i}",
+      "new_english": "Time %{i}",
+      "variables": [
+        "i"
+      ],
+      "translation": null,
+      "source_hash": "1a12fb1ec52bf208ca4c50c1ea64028625b1757774fea6e61718babd28cb796d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.time_2",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Time %{i} · %{i_2}",
+      "new_english": "Time %{i} · %{i_2}",
+      "variables": [
+        "i",
+        "i_2"
+      ],
+      "translation": null,
+      "source_hash": "45e8c2775a53ef8ded0f85d3bd7269593d4a4c63d5f68dc11102b1033eef8a3e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.time_a_b_from_spectrogram",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Time A/B from Spectrogram",
+      "new_english": "Time A/B from Spectrogram",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4dc49b69f821b1ed1fad6eace8ff98e0a8fe77eb304b968d6b7c0b491a8ccdac",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.time_end_s_ch_samples_hz_pt_dc",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Time %{i} · end %{sample_rate} s · CH %{channel} · samples %{start}..%{end} · %{sample_rate_2} Hz · %{size} pt · %{name} · %{name_2} · DC %{retained}",
+      "new_english": "Time %{i} · end %{sample_rate} s · CH %{channel} · samples %{start}..%{end} · %{sample_rate_2} Hz · %{size} pt · %{name} · %{name_2} · DC %{retained}",
+      "variables": [
+        "channel",
+        "end",
+        "i",
+        "name",
+        "name_2",
+        "retained",
         "sample_rate",
+        "sample_rate_2",
+        "size",
         "start"
       ],
       "translation": null,
-      "source_hash": "cf579ed063d29423a695710ec193d4a738ddfc757686d3a4d4bd1db0d5873c33",
+      "source_hash": "6a71c80f90a3819121f48462222f92db8702ea6e0fcf5c4bcf4d7f0359f4d931",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.invalid_value",
-      "group": "oscilloscope",
+      "key": "spectrum.time_nearest_bin_acquired_samples_hz_points_no_average",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "— · invalid value",
-      "new_english": "— · invalid value",
+      "old_english": "Time %{selected} · nearest bin %{value} %{linear_unit} · acquired samples %{start}..%{end} · %{sample_rate} Hz · %{size} points · %{name} · %{name_2} · no average, no calibration",
+      "new_english": "Time %{selected} · nearest bin %{value} %{linear_unit} · acquired samples %{start}..%{end} · %{sample_rate} Hz · %{size} points · %{name} · %{name_2} · no average, no calibration",
+      "variables": [
+        "end",
+        "linear_unit",
+        "name",
+        "name_2",
+        "sample_rate",
+        "selected",
+        "size",
+        "start",
+        "value"
+      ],
+      "translation": null,
+      "source_hash": "0fac2e7896248b09925c6715ee2c6612803f8c6b0f8d58db1cee58cabaed64f7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.to",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "To",
+      "new_english": "To",
       "variables": [],
       "translation": null,
-      "source_hash": "f31f04a3f03530f3da192f8599c91c7e9af7cbe1c203072b30cc9c4f5cb09ba5",
+      "source_hash": "f4b06ef6d3c81436f60a318c81c42f8f7e2d774d45a22f3b9b5f3b6980d28146",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.level",
-      "group": "oscilloscope",
+      "key": "spectrum.to_uses_nyquist_inclusive_bin_centres_whole_bins_band",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Level",
-      "new_english": "Level",
+      "old_english": "To = 0 uses Nyquist. Inclusive bin centres; whole bins. Band changes read the held PSD without resetting the average.",
+      "new_english": "To = 0 uses Nyquist. Inclusive bin centres; whole bins. Band changes read the held PSD without resetting the average.",
       "variables": [],
       "translation": null,
-      "source_hash": "1709305c9fa966d14f56f0da3c3614bbc10adcf53d72f90341bb96d24afcfca3",
+      "source_hash": "8bd24f3d5b9d8523f18d11d7f83ca0cf4a078a95547fc3618b6dfc23e6faadb6",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.markers",
-      "group": "oscilloscope",
+      "key": "spectrum.to_uses_nyquist_narrow_ranges_show_individual_bins",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Markers",
-      "new_english": "Markers",
+      "old_english": "To = 0 uses Nyquist. Narrow ranges show individual bins.",
+      "new_english": "To = 0 uses Nyquist. Narrow ranges show individual bins.",
       "variables": [],
       "translation": null,
-      "source_hash": "4e8d1a7260782cb2cd2eafb4492345c19bf6a29d222ee7e8675e0f3cb25f4290",
+      "source_hash": "acaa53e220788645cbc834e11dbe719e35f4660a919e9c8a48be42fd08f4f1bc",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted",
-      "group": "oscilloscope",
+      "key": "spectrum.top",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Markers: T markers only. Guides: T markers and dotted time/level guides. Off: hide both. A horizontal guide appears while editing Level in any mode.",
-      "new_english": "Markers: T markers only. Guides: T markers and dotted time/level guides. Off: hide both. A horizontal guide appears while editing Level in any mode.",
+      "old_english": "Top",
+      "new_english": "Top",
       "variables": [],
       "translation": null,
-      "source_hash": "4aef3c09031b33aba73ffde8e3354cdd1aad351bf1ad3e08a3e87690b654ec84",
+      "source_hash": "d5cdfcf7ff75338fa974145a13378ee35f7ea04cfabd74b8f5fb6df350cfbcca",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.mode_names.auto",
-      "group": "oscilloscope",
+      "key": "spectrum.update_mode",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Auto",
-      "new_english": "Auto",
+      "old_english": "UPDATE MODE",
+      "new_english": "UPDATE MODE",
       "variables": [],
       "translation": null,
-      "source_hash": "0286249762f7c94349cdc0ba3bb2255baf9a80036e2193ead1d77696f888582f",
+      "source_hash": "dbe9e683d42db617d5dfcfdcbe6e66b6e9af897cfa102bf8daf603eaa20f7d4e",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.mode_names.normal",
-      "group": "oscilloscope",
+      "key": "spectrum.weight",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Normal",
-      "new_english": "Normal",
-      "variables": [],
+      "old_english": "Weight %{count}",
+      "new_english": "Weight %{count}",
+      "variables": [
+        "count"
+      ],
       "translation": null,
-      "source_hash": "a7248eeb45eb1ce247f81693283e22e8b39e8a50890cecd22d02e75025547d90",
+      "source_hash": "83238971c085f28649b21e40da70da7587eb7e8a0aaf5196c941fa063e67bbe6",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.mode_names.single",
-      "group": "oscilloscope",
+      "key": "spectrum.weight_2",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "Single",
-      "new_english": "Single",
-      "variables": [],
+      "old_english": "Weight %{average_weight}",
+      "new_english": "Weight %{average_weight}",
+      "variables": [
+        "average_weight"
+      ],
       "translation": null,
-      "source_hash": "8888a029aaf60b70574640efd1655343d1c46c692918c113c16f44f606477253",
+      "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.ms",
-      "group": "oscilloscope",
+      "key": "spectrum.window",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{index} %{seconds} ms · %{sample}",
-      "new_english": "%{index} %{seconds} ms · %{sample}",
+      "old_english": " · %{index} %{outside} window",
+      "new_english": " · %{index} %{outside} window",
       "variables": [
         "index",
-        "sample",
-        "seconds"
+        "outside"
       ],
       "translation": null,
-      "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
+      "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
       "translated_source_hash": null
     },
     {
-      "key": "oscilloscope.ms_div_waveform_raw_fs",
-      "group": "oscilloscope",
+      "key": "spectrum.window_duration_available_after_input_starts",
+      "group": "spectrum",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-      "new_english": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
+      "old_english": "Window duration available after input starts",
+      "new_english": "Window duration available after input starts",
+      "variables": [],
+      "translation": null,
+      "source_hash": "abf1a4b971d2174be4f0cd6bfbfd2b9f7212b72a44be7b37a2128b042861582f",
+      "translated_source_hash": null
+    },
+    {
+      "key": "spectrum.window_energy_s",
+      "group": "spectrum",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Window energy %{spectrum_energy} %{power_unit}·s",
+      "new_english": "Window energy %{spectrum_energy} %{power_unit}·s",
       "variables": [
-        "scope_display_ms_per_div"
+        "power_unit",
+        "spectrum_energy"
       ],
       "translation": null,
-      "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.no_acquired_samples_for_this_channel_and_interval",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "No acquired samples for this channel and interval",
-      "new_english": "No acquired samples for this channel and interval",
-      "variables": [],
-      "translation": null,
-      "source_hash": "12b75c8568817f8274950727a6e9e77616c482fa9ec6b934cb06e24e8c9bf20d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{channel} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
-      "new_english": "%{channel} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
-      "variables": [
-        "channel"
-      ],
-      "translation": null,
-      "source_hash": "ceff997455de4f81e86663a3a5cc73d4814d450c052e79adf95e20f00552b7db",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.no_samples_in_this_interval",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "— · no samples in this interval",
-      "new_english": "— · no samples in this interval",
-      "variables": [],
-      "translation": null,
-      "source_hash": "86e99220c3bcb0a818e5bee7265a76dab51451f6c0ce18d4d7125c7a4f81e5e2",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.normal",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Normal",
-      "new_english": "Normal",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a7248eeb45eb1ce247f81693283e22e8b39e8a50890cecd22d02e75025547d90",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.off",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Off",
-      "new_english": "Off",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ca7981b46ecf2c1787b6d76d81d9fd7fa0ca95842e2fcc2a452869891a9334d1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.out_of_range",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Out of range",
-      "new_english": "Out of range",
-      "variables": [],
-      "translation": null,
-      "source_hash": "312e9333f389bcb7c6eb6e2756f37911e5706afc03e643c5dd7db148a9fe4756",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.outside_input_channel_range",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": " · outside input channel range",
-      "new_english": " · outside input channel range",
-      "variables": [],
-      "translation": null,
-      "source_hash": "9beb00fecff5c7a89ae12f808ada679be081e4e0bf13c18e85751dbffd29da48",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.outside_input_channel_range_2",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{channel} · outside input channel range",
-      "new_english": "%{channel} · outside input channel range",
-      "variables": [
-        "channel"
-      ],
-      "translation": null,
-      "source_hash": "8f98c63f96c5ae12d69442c7f2aa2a74bafb8901f528921b3e05512431b16130",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.outside_sweep",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{index} #%{sample} · outside sweep",
-      "new_english": "%{index} #%{sample} · outside sweep",
-      "variables": [
-        "index",
-        "sample"
-      ],
-      "translation": null,
-      "source_hash": "b9393c5c76608100e55505bdfdccd825af6c7743a2949b8af8eb3f47e28a351d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.partial_missing_samples",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Partial · %{scope_missing} missing samples",
-      "new_english": "Partial · %{scope_missing} missing samples",
-      "variables": [
-        "scope_missing"
-      ],
-      "translation": null,
-      "source_hash": "0db1139b2c0df61f64212d41892533b30250b99686b6d77cb6956eac05575598",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.position",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Position",
-      "new_english": "Position",
-      "variables": [],
-      "translation": null,
-      "source_hash": "6d031af10da7a25e554bb21247f28f0e6cef77f1471175199e7fcc571964dc3d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.reset_time_position",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Reset time position",
-      "new_english": "Reset time position",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.rising_edge",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Rising edge",
-      "new_english": "Rising edge",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ddad45af406e0046bd19fc82778867ee3aef835d121b692d1720ac011a413907",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.rms_p_p",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit}",
-      "new_english": "RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit}",
-      "variables": [
-        "peak_to_peak",
-        "rms",
-        "unit"
-      ],
-      "translation": null,
-      "source_hash": "f0d816b5a34553e7fa65f0cc270cfa4d5025113bd48377a165dbaaabf57b2c4b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.rms_p_p_peak_acquired_samples",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit} · Peak %{peak} %{unit} · %{samples} acquired samples",
-      "new_english": "RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit} · Peak %{peak} %{unit} · %{samples} acquired samples",
-      "variables": [
-        "peak",
-        "peak_to_peak",
-        "rms",
-        "samples",
-        "unit"
-      ],
-      "translation": null,
-      "source_hash": "2eba37351c822b514d7e0253c0da75f768affd001aee8df9382df79443aef152",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.show_ch_waveform_keeps_selection_and_measurements",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Show CH%{index} waveform (keeps selection and measurements)",
-      "new_english": "Show CH%{index} waveform (keeps selection and measurements)",
-      "variables": [
-        "index"
-      ],
-      "translation": null,
-      "source_hash": "961d15920a71ee2ab8b774d9ba38752078d521cfc3d9dc13f2b32b5da837ee11",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.single",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Single",
-      "new_english": "Single",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8888a029aaf60b70574640efd1655343d1c46c692918c113c16f44f606477253",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.single_complete",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Single complete",
-      "new_english": "Single complete",
-      "variables": [],
-      "translation": null,
-      "source_hash": "801f6814b4db7826df3ffb5e802cb6cba00539a7964503141615fe4850bd3e47",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.source",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Source",
-      "new_english": "Source",
-      "variables": [],
-      "translation": null,
-      "source_hash": "0e570ca6fabe24f94e52c1833f3ffd25567022beb826fa16891f3322051bc221",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.source_level_raw_fs_the_level_follows_the_source",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{display}\n%{scope_trigger_marker_status} · source %{channel} · level %{level} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
-      "new_english": "%{display}\n%{scope_trigger_marker_status} · source %{channel} · level %{level} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
-      "variables": [
-        "channel",
-        "display",
-        "level",
-        "scope_trigger_marker_status"
-      ],
-      "translation": null,
-      "source_hash": "36e8de28ee92f6ce75298ff4141140d94f69d2766da27dadbec893489125aa27",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.spectrogram_time_hz_cursor",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Spectrogram · time / Hz cursor",
-      "new_english": "Spectrogram · time / Hz cursor",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.start_input_and_wait_for_a_single_triggered_capture",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Start input and wait for a single triggered capture",
-      "new_english": "Start input and wait for a single triggered capture",
-      "variables": [],
-      "translation": null,
-      "source_hash": "66f0436edf78fe6e103cd927a2748a1d4144219f94473bfd4f623e83d32331d4",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.start_single_capture",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Start single capture",
-      "new_english": "Start single capture",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a8d5bf0618eaf606dee759a890894499efe99511b9bdc89b5fc9faaa8716e002",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.t_markers_captured",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "T markers: captured",
-      "new_english": "T markers: captured",
-      "variables": [],
-      "translation": null,
-      "source_hash": "07d577d66fdc84977acf98b0d62d61ccdc318db4e6bf59417a21dd314fcd9857",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.t_markers_settings_only",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "T markers: settings only",
-      "new_english": "T markers: settings only",
-      "variables": [],
-      "translation": null,
-      "source_hash": "5498fef66e723df47d75e2a445552673a8cd8bdf89d885eb79a1f24f31b5e362",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.t_markers_top_ms_right_level",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "T markers: top = 0 ms · right = level",
-      "new_english": "T markers: top = 0 ms · right = level",
-      "variables": [],
-      "translation": null,
-      "source_hash": "2c68afa37fc08ba6d0a29bca65f0ed1c2a378e4e3841f32d10d266f651adb5c3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.time_scale",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Time scale",
-      "new_english": "Time scale",
-      "variables": [],
-      "translation": null,
-      "source_hash": "0cbc7c021ddc7296dede1b529acca097ab7ff7cd00115653ae0fe2166733cfca",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.time_trigger_edits_apply_on_next_start",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Time / trigger edits apply on next Start",
-      "new_english": "Time / trigger edits apply on next Start",
-      "variables": [],
-      "translation": null,
-      "source_hash": "db77c7447c35e316b040340c97a65ece5fe351bd3340606421025ebff52f635a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.trigger",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "TRIGGER",
-      "new_english": "TRIGGER",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f3bbca3a684e7f2d444140623724b2e48d741dcd44afeeae3ac4ee34f853c3f4",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.trigger_settings",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Trigger settings",
-      "new_english": "Trigger settings",
-      "variables": [],
-      "translation": null,
-      "source_hash": "17c982d8eb68e4222746c5ead854a02d128bfdd9218a9353f2cfe109b9a35b8f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.trigger_source_unavailable",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Trigger source unavailable",
-      "new_english": "Trigger source unavailable",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4d4b4daeaf32356594e2a8169b4132ed85a904bb6011678b91a1febafd463430",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.triggered",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Triggered",
-      "new_english": "Triggered",
-      "variables": [],
-      "translation": null,
-      "source_hash": "aeffb9182e3d7f3dee2c4e9582abbc2ec33be7c8d12a7497664694677e836a1b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.update_even_without_a_trigger_crossing",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Update even without a trigger crossing",
-      "new_english": "Update even without a trigger crossing",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ed149bd87c740c0a409eec846cf050b8a06713f7d8391ffa7de937d167ff5bea",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Update on trigger crossings; hold the last capture while waiting",
-      "new_english": "Update on trigger crossings; hold the last capture while waiting",
-      "variables": [],
-      "translation": null,
-      "source_hash": "14c8dc71bc614c180b8ae751814dd82a97de7fd70527439c8621170049894ede",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.vertical_ch",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "VERTICAL · CH%{index}",
-      "new_english": "VERTICAL · CH%{index}",
-      "variables": [
-        "index"
-      ],
-      "translation": null,
-      "source_hash": "7cc0908e73156f4837d26e010526b52be8f07a238ff35207be19155b0eb66463",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.vertical_range",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Vertical range",
-      "new_english": "Vertical range",
-      "variables": [],
-      "translation": null,
-      "source_hash": "42fb30843c9e7f5efa035f51f3d3fcb405943622a311a51a0bb36631721c8d68",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.waiting_for_sweep",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{index} · waiting for sweep",
-      "new_english": "%{index} · waiting for sweep",
-      "variables": [
-        "index"
-      ],
-      "translation": null,
-      "source_hash": "7c87e4f7280dfd2b39339acaaa75f044ada07ba599dbb11b211047231732f60d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.waiting_for_trigger",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Waiting for trigger",
-      "new_english": "Waiting for trigger",
-      "variables": [],
-      "translation": null,
-      "source_hash": "37123a7026801535dd14ff5c82d4e7c51f8bf6b56533989b9af8cd00a3382f7d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.waiting_previous_capture",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Waiting · previous capture",
-      "new_english": "Waiting · previous capture",
-      "variables": [],
-      "translation": null,
-      "source_hash": "200c7c4b2c0853e7544ab0b31c68b854678dc050584f665c4dd7267d902b18dd",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Wheel: time scale · Shift+wheel: selected channel scale",
-      "new_english": "Wheel: time scale · Shift+wheel: selected channel scale",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c401e82a95ddfa61c5763a08a7b32fae05d9f3b7caa9781fb6a4aea7f1e122ee",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{display}\n%{display_2}\nWheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view",
-      "new_english": "%{display}\n%{display_2}\nWheel: time scale · Shift+wheel: selected channel scale · Double-click: reset view",
-      "variables": [
-        "display",
-        "display_2"
-      ],
-      "translation": null,
-      "source_hash": "82e3f01ef3f744a04083a9244f56cc5fa8463b4000869e0e2d6ea94d7e56bf73",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.zero_level",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Zero level",
-      "new_english": "Zero level",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8e13fc6cda8918a62d28e2f395444ddf63f485dcceb4c70662fa4a046a5f6269",
-      "translated_source_hash": null
-    },
-    {
-      "key": "oscilloscope.zero_offset",
-      "group": "oscilloscope",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Zero offset",
-      "new_english": "Zero offset",
-      "variables": [],
-      "translation": null,
-      "source_hash": "bbe4278b46bf6f1d3c0fed2d1799046af975c03015efd828dc36d65701b0e44a",
+      "source_hash": "4511911f0058b6c20311f17392f286785de04f9b0ddde22e98afc67684ee7ebd",
       "translated_source_hash": null
     }
   ]
