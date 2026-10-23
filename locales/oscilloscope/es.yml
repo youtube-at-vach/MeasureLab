@@ -14,7 +14,7 @@ oscilloscope.autoset_held: Amplitud de la captura retenida ajustada; tiempo/disp
   se aplican en el siguiente inicio (%{frequency} Hz)
 oscilloscope.capture_once_on_the_next_trigger_crossing: Capturar una vez en el siguiente
   cruce del disparo
-oscilloscope.centre_offset: Desplazamiento central
+oscilloscope.centre_offset: Offset
 oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
 oscilloscope.ch_2: CH%{index}%{else}
 oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
@@ -36,9 +36,9 @@ oscilloscope.edge_names.falling: Descendente
 oscilloscope.edge_names.free: Libre
 oscilloscope.edge_names.rising: Ascendente
 oscilloscope.falling_edge: Flanco descendente
-oscilloscope.fit_amplitude: Ajustar amplitud
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajustar el pico sin calibrar
-  del canal seleccionado y centrar su desplazamiento
+oscilloscope.fit_amplitude: Ajustar escala
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajustar la escala vertical
+  al pico sin calibrar del canal seleccionado y poner el desplazamiento a cero.
 oscilloscope.free_run: Ejecución libre
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -85,7 +85,7 @@ oscilloscope.outside_input_channel_range_2: '%{channel} · fuera del rango del c
 oscilloscope.outside_sweep: '%{index} #%{sample} · fuera del barrido'
 oscilloscope.partial_missing_samples: Parcial · faltan %{scope_missing} muestras
 oscilloscope.position: Posición
-oscilloscope.reset_time_position: Reiniciar posición temporal
+oscilloscope.reset_time_position: Restablecer posición
 oscilloscope.rising_edge: Flanco ascendente
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · pico a pico %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · pico a pico %{peak_to_peak}
@@ -100,7 +100,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
   %{scope_trigger_marker_status} · fuente %{channel} · nivel %{level} FS sin calibrar.
   El nivel sigue el rango vertical del canal fuente, que puede diferir del eje del
   canal seleccionado.'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · cursor de tiempo / Hz
+oscilloscope.spectrogram_time_hz_cursor: Cursores de tiempo / frecuencia
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Inicie la entrada
   y espere una captura disparada única
 oscilloscope.start_single_capture: Iniciar captura única

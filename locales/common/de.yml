@@ -135,8 +135,7 @@ common.keep_held_result_as_reference: Gehaltenes Ergebnis als Referenz beibehalt
 common.known_sine_gain_phase_delay_noise_dut_common_input: Bekannter Sinus → Verstärkung
   / Phase / Verzögerung / Rauschen DUT → gemeinsamer Eingang. Bedingungen gelten ab
   „Start“.
-common.language_fallback: Nicht übersetzte Texte werden auf Englisch angezeigt. Die
-  Instrumentübersetzung wird vorbereitet.
+common.language_fallback: Nicht übersetzte Texte werden auf Englisch angezeigt.
 common.last_observed_output_nominal_hz_generation_revision_next_output: 'Zuletzt beobachteter
   Ausgang: %{label} | nominal %{nominal_sample_rate} Hz | %{pcm_label} | %{state}
   | Generation %{output_generation} Revision %{revision} | nächstes Ausgangssample

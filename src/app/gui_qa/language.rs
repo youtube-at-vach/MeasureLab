@@ -31,7 +31,14 @@ impl ScopeApp {
                 if width < 1180.0 {
                     driver.click(self, i18n::text("shell.menu"))?;
                 }
-                driver.click(self, i18n::text("shell.view"))?;
+                // View and the inspector's Display label share a translation
+                // in some locales. Select the menu at the top of the window.
+                let view = driver
+                    .text_positions(i18n::text("shell.view"))
+                    .into_iter()
+                    .min_by(|a, b| a.y.total_cmp(&b.y))
+                    .ok_or_else(|| "View menu is not visible".to_string())?;
+                driver.click_at(self, view);
                 driver.click(self, i18n::text("shell.language"))?;
                 driver.visible_text_rect(locale.native_name())?;
                 driver.click(self, locale.native_name())?;
@@ -48,7 +55,15 @@ impl ScopeApp {
                 assert_eq!(after.comparison, conditions.comparison);
                 assert_eq!(after.calibrations, conditions.calibrations);
                 assert!(!egui::Popup::is_any_open(&driver.ctx));
-                driver.text_position(i18n::text("generator.stop_output_2"))?;
+                driver.visible_text_rect(i18n::text("generator.stop_output_2"))?;
+                let input_action = if self.running() {
+                    i18n::text("io.stop_input")
+                } else if self.source.is_demo() {
+                    i18n::text("io.start_input_demo")
+                } else {
+                    i18n::text("io.start_input")
+                };
+                driver.visible_text_rect(input_action)?;
                 // Warm glyph/layout caches before comparing ordinary frame CPU time.
                 for _ in 0..2 {
                     driver.frame(self, vec![]);

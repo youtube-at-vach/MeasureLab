@@ -15,11 +15,16 @@ from i18n import (
     InvalidCatalog,
     check_calls,
     check_scope,
+    changed_keys,
     digest,
     git,
     load_catalog,
     make_diff,
+    make_review,
     read_json,
+    review_component,
+    review_source,
+    reviewed_source_paths,
     revision,
     snapshot,
     variables,
@@ -33,14 +38,18 @@ def json_text(value):
     return json.dumps(value, ensure_ascii=False, indent=2) + "\n"
 
 
-def prepare(root: Path, locale: str, group: str) -> dict:
+def prepare(root: Path, locale: str, group: str, review_keys: list[str] | None = None) -> dict:
     if git(root, "status", "--porcelain", "--untracked-files=all").strip():
         raise InvalidCatalog("prepare requires a clean working tree; commit or preserve existing work first")
     base = revision(root, "HEAD")
     files = snapshot(root)
     catalog = load_catalog(files)
     check_calls(files, catalog)
-    task = make_diff(catalog, catalog, locale, [group], base)
+    task = (
+        make_review(catalog, locale, [group], review_keys, base)
+        if review_keys is not None
+        else make_diff(catalog, catalog, locale, [group], base)
+    )
     if not task["entries"]:
         raise InvalidCatalog(f"no pending translation keys in {locale}/{group}")
     answers = {
@@ -61,6 +70,8 @@ def prepare(root: Path, locale: str, group: str) -> dict:
 
 def apply(root: Path) -> int:
     task = read_json((root / TASK).read_text(encoding="utf-8"))
+    if task.get("version") == 2:
+        raise InvalidCatalog("review bundles are read-only; prepare a locale/group task to revise translations")
     answers = read_json((root / ANSWERS).read_text(encoding="utf-8"))
     base = revision(root, "HEAD")
     old_files = snapshot(root, base)
@@ -144,9 +155,46 @@ def verify(root: Path) -> tuple[int, int]:
     check_calls(files, current)
     check_scope(root, base, load_catalog(snapshot(root, base)), current, task)
     warnings(current)
-    active = [entry["key"] for entry in task["entries"] if entry["new_english"] is not None]
-    completed = sum(current.state(task["locale"], key) == "current" for key in active)
+    tasks = task["tasks"] if task.get("version") == 2 else [task]
+    active = [
+        (item["locale"], entry["key"])
+        for item in tasks
+        for entry in item["entries"]
+        if entry["new_english"] is not None
+    ]
+    completed = sum(current.state(locale, key) == "current" for locale, key in active)
     return completed, len(active) - completed
+
+
+def bundle(root: Path, base: str) -> dict:
+    """Bundle completed explicit review tasks without changing any translations."""
+    base = revision(root, base)
+    original = load_catalog(snapshot(root, base))
+    files = snapshot(root)
+    current = load_catalog(files)
+    captured = review_source(original, current)
+    components = []
+    for locale in LOCALES[1:]:
+        changed = changed_keys(captured.texts[locale], current.texts[locale]) | changed_keys(
+            captured.records.get(locale, {}), current.records.get(locale, {})
+        )
+        for group in GROUPS:
+            keys = sorted(key for key in changed if key.split(".")[0] == group)
+            if keys:
+                reviewed = [key for key in keys if key in captured.english and captured.state(locale, key) == "current"]
+                components.append(review_component(original, captured, locale, group, reviewed, base))
+    task = dict(
+        version=2,
+        kind="visual_review",
+        base_revision=base,
+        source_paths=reviewed_source_paths(root, base),
+        tasks=components,
+    )
+    check_calls(files, current)
+    warnings(current)
+    check_scope(root, base, original, current, task)
+    (root / TASK).write_text(json_text(task), encoding="utf-8")
+    return task
 
 
 def main() -> int:
@@ -156,20 +204,30 @@ def main() -> int:
     prep = commands.add_parser("prepare", help="prepare one locale/group from clean HEAD")
     prep.add_argument("--locale", choices=LOCALES[1:], required=True)
     prep.add_argument("--group", choices=GROUPS, required=True)
+    prep.add_argument(
+        "--review-key", action="append", help="explicit current key to revise (repeatable, selected group only)"
+    )
     commands.add_parser("apply", help="validate answers, then write only scoped translations and hashes")
     commands.add_parser("verify", help="read-only check against the saved task base, including after committing")
+    grouped = commands.add_parser(
+        "bundle", help="bundle explicit visual reviews with their exact localization source hashes"
+    )
+    grouped.add_argument("--base", required=True)
     args = parser.parse_args()
     try:
         root = args.root.resolve()
         if args.command == "prepare":
-            task = prepare(root, args.locale, args.group)
+            task = prepare(root, args.locale, args.group, args.review_key)
             print(f"Prepared {len(task['entries'])} keys at {task['base_revision']}.")
             print(f"Edit only text fields in {ANSWERS}; null defers a key. Removed keys are cleaned by apply.")
         elif args.command == "apply":
             print(f"Applied {apply(root)} translations. Review the diff, then run translate.py verify.")
+        elif args.command == "bundle":
+            task = bundle(root, args.base)
+            print(f"Bundled {len(task['tasks'])} locale/group tasks. Catalogs and hashes were not changed.")
         else:
             completed, deferred = verify(root)
-            print(f"Translation task verified: {completed} current, {deferred} deferred; deferred keys use English.")
+            print(f"Translation task verified: {completed} current, {deferred} awaiting translation.")
     except (InvalidCatalog, OSError, ValueError, TypeError, KeyError, RecursionError) as error:
         print(f"translation error: {error}", file=sys.stderr)
         return 1

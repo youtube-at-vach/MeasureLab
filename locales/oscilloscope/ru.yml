@@ -35,9 +35,9 @@ oscilloscope.edge_names.falling: Спадающий
 oscilloscope.edge_names.free: Свободный
 oscilloscope.edge_names.rising: Нарастающий
 oscilloscope.falling_edge: Спадающий фронт
-oscilloscope.fit_amplitude: Подогнать амплитуду
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Подогнать необработанный
-  пик выбранного канала и центрировать смещение
+oscilloscope.fit_amplitude: Подогнать масштаб
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Подогнать вертикальный
+  масштаб под необработанный пик выбранного канала и сбросить смещение в ноль.
 oscilloscope.free_run: Свободный запуск
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -83,7 +83,7 @@ oscilloscope.outside_input_channel_range_2: '%{channel} · вне диапазо
 oscilloscope.outside_sweep: '%{index} #%{sample} · вне развёртки'
 oscilloscope.partial_missing_samples: 'Частично · отсутствует отсчётов: %{scope_missing}'
 oscilloscope.position: Положение
-oscilloscope.reset_time_position: Сбросить положение времени
+oscilloscope.reset_time_position: Сбросить позицию
 oscilloscope.rising_edge: Нарастающий фронт
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · от пика до пика %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: 'RMS %{rms} %{unit} · от пика до пика
@@ -98,7 +98,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
   %{scope_trigger_marker_status} · источник %{channel} · уровень %{level} необработанный
   FS. Уровень соответствует вертикальному диапазону исходного канала, который может
   отличаться от оси выбранного канала.'
-oscilloscope.spectrogram_time_hz_cursor: Курсор времени / Hz в Spectrogram
+oscilloscope.spectrogram_time_hz_cursor: Курсоры времени / частоты
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Запустите вход и
   дождитесь одиночного захвата по триггеру
 oscilloscope.start_single_capture: Запустить одиночный захват

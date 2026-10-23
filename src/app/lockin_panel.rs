@@ -304,9 +304,9 @@ impl ScopeApp {
                 let usable = !self.input_failed && matches!(r.state, lockin::State::Valid | lockin::State::Settling);
                 let read = |value| valid_reading(r, value).filter(|_| usable);
                 let cells = match self.lockin_display {
-                    LockinDisplay::Polar => vec![("R", "Amplitude · peak", read(r.amplitude_peak), false), ("θ", "Phase · leads REF", read(r.phase_degrees), true)],
-                    LockinDisplay::Cartesian => vec![("X", "In-phase · peak", read(r.x), false), ("Y", "Quadrature · peak", read(r.y), false)],
-                    LockinDisplay::All => vec![("R", "Amplitude · peak", read(r.amplitude_peak), false), ("θ", "Phase · leads REF", read(r.phase_degrees), true), ("X", "In-phase · peak", read(r.x), false), ("Y", "Quadrature · peak", read(r.y), false)],
+                    LockinDisplay::Polar => vec![("R", i18n::text("lockin.amplitude_peak"), read(r.amplitude_peak), false), ("θ", i18n::text("lockin.phase_leads_ref"), read(r.phase_degrees), true)],
+                    LockinDisplay::Cartesian => vec![("X", i18n::text("lockin.in_phase_peak"), read(r.x), false), ("Y", i18n::text("lockin.quadrature_peak"), read(r.y), false)],
+                    LockinDisplay::All => vec![("R", i18n::text("lockin.amplitude_peak"), read(r.amplitude_peak), false), ("θ", i18n::text("lockin.phase_leads_ref"), read(r.phase_degrees), true), ("X", i18n::text("lockin.in_phase_peak"), read(r.x), false), ("Y", i18n::text("lockin.quadrature_peak"), read(r.y), false)],
                 };
                 let columns = if cells.len() == 4 && ui.available_width() >= 560.0 { 2 } else { 1 };
                 let rows = cells.len().div_ceil(columns);

@@ -133,8 +133,7 @@ common.invalid_value: недопустимое значение
 common.keep_held_result_as_reference: Сохранить удерживаемый результат как эталон
 common.known_sine_gain_phase_delay_noise_dut_common_input: Известная синусоида → усиление
   / фаза / задержка / шум DUT → общий вход. Условия применяются при запуске.
-common.language_fallback: Непереведённый текст отображается на английском. Перевод
-  приборов готовится.
+common.language_fallback: Непереведённый текст отображается на английском.
 common.last_observed_output_nominal_hz_generation_revision_next_output: 'Последний
   наблюдаемый выход: %{label} | номинал %{nominal_sample_rate} Hz | %{pcm_label} |
   %{state} | поколение выхода %{output_generation} ревизия %{revision} | следующий

@@ -1,5 +1,6 @@
 _version: 1
 lockin.all_four: Все четыре
+lockin.amplitude_peak: Амплитуда · пиковая
 lockin.applying_settings_display_retains_its_captured_conditions: Применение настроек
   · отображение сохраняет захваченные условия
 lockin.averaged_samples_latest_window: Усреднённые отсчёты %{start}..%{end} · последнее
@@ -29,6 +30,7 @@ lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: частота долж
   0,45 × номинального Fs (%{rate} Hz)'
 lockin.fs_rms: ' FS RMS'
 lockin.gain: Усиление  %{gain}
+lockin.in_phase_peak: Синфазная составляющая · пик
 lockin.input_failed: СБОЙ ВХОДА
 lockin.input_gap: РАЗРЫВ ВХОДА
 lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: Вход или вычисление
@@ -47,10 +49,12 @@ lockin.no_valid_reading_no_bar_marker_is_shown: Допустимые показ�
   маркер столбца не отображается
 lockin.nominal_fs_hz_input_generation: Номинальный Fs %{sample_rate} Hz · поколение
   входа %{input_generation}
+lockin.phase_leads_ref: Фаза · опережение REF
 lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: Физические
   REF и синхронизация не проверены. Нет физического выхода генератора и выбора аппаратной
   чувствительности.
 lockin.poles_n: τ %{s}   ·   2 полюса   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.quadrature_peak: Квадратурная составляющая · пик
 lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R, X и Y — пиковые амплитуды.
   Положительная фаза опережает REF. Фильтр имеет два фиксированных полюса EMA и устанавливается
   за 10τ допустимых отсчётов. Настройки, изменённые в остановленном состоянии, применяются

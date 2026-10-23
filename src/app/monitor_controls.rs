@@ -277,7 +277,7 @@ impl ScopeApp {
         let before = self.spectrogram_channel;
         let channels = self.lockin_channel_count();
         ui.horizontal_wrapped(|ui| {
-            ui.label(i18n::text("oscilloscope.source"));
+            ui.label(i18n::text("spectrum.input_source"));
             channel_select(
                 ui,
                 "spectrogram_primary_source",

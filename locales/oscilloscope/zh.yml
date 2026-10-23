@@ -28,8 +28,8 @@ oscilloscope.edge_names.falling: 下降
 oscilloscope.edge_names.free: 自由运行
 oscilloscope.edge_names.rising: 上升
 oscilloscope.falling_edge: 下降沿
-oscilloscope.fit_amplitude: 拟合幅度
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 拟合所选通道的原始峰值并将偏移居中
+oscilloscope.fit_amplitude: 按幅度缩放
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 根据所选通道的原始峰值调整纵轴范围，并将偏移归零。
 oscilloscope.free_run: 自由运行
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -80,7 +80,7 @@ oscilloscope.source: 源
 oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
 
   %{scope_trigger_marker_status} · 源 %{channel} · 电平 %{level} 原始 FS。电平跟随源通道的垂直量程，该量程可能与所选通道的坐标轴不同。'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · 时间 / Hz 光标
+oscilloscope.spectrogram_time_hz_cursor: 时间／频率光标
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 启动输入并等待一次触发捕获
 oscilloscope.start_single_capture: 开始单次捕获
 oscilloscope.t_markers_captured: T 标记：已捕获

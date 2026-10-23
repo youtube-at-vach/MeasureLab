@@ -32,8 +32,8 @@ oscilloscope.edge_names.free: 자유 실행
 oscilloscope.edge_names.rising: 상승
 oscilloscope.falling_edge: 하강 에지
 oscilloscope.fit_amplitude: 진폭 맞춤
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 선택한 채널의 원시 피크에 맞추고 오프셋을
-  중심에 맞춥니다
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 선택한 채널의 원시 피크에 맞춰 세로
+  축척을 조정하고 오프셋을 0으로 되돌립니다.
 oscilloscope.free_run: 자유 실행
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -89,7 +89,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
 
   %{scope_trigger_marker_status} · 소스 %{channel} · 레벨 %{level} 원시 FS. 레벨은 소스 채널의 세로
   범위를 따르며, 선택한 채널의 축과 다를 수 있습니다.'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · 시간 / Hz 커서
+oscilloscope.spectrogram_time_hz_cursor: 시간 / 주파수 커서
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 입력을 시작하고 단일 트리거
   캡처를 기다립니다
 oscilloscope.start_single_capture: 단일 캡처 시작

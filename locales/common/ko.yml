@@ -122,7 +122,7 @@ common.invalid_value: 유효하지 않은 값
 common.keep_held_result_as_reference: 고정된 결과를 기준값으로 유지
 common.known_sine_gain_phase_delay_noise_dut_common_input: 기준 정현파 → 이득 / 위상 / 지연 /
   잡음 DUT → 공통 입력. 시작할 때 조건이 적용됩니다.
-common.language_fallback: 번역되지 않은 텍스트는 영어로 표시됩니다. 기기 번역을 준비 중입니다.
+common.language_fallback: 번역되지 않은 텍스트는 영어로 표시됩니다.
 common.last_observed_output_nominal_hz_generation_revision_next_output: '마지막으로 관찰된
   출력: %{label} | 공칭 %{nominal_sample_rate} Hz | %{pcm_label} | %{state} | 세대 %{output_generation}
   리비전 %{revision} | 다음 출력 샘플 %{next_sample}'

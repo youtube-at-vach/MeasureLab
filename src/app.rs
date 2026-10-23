@@ -1202,6 +1202,9 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if smoke {
             app.check_redesign_navigation()?;
+            if std::env::var_os("MEASURELAB_UI_SMOKE_LANGUAGE").is_some() {
+                app.check_language_controls()?;
+            }
             if std::env::var_os("MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY").is_some() {
                 app.check_spectrogram_display_interactions()?;
             }
@@ -3324,7 +3327,8 @@ impl ScopeApp {
                 let (outer, response) =
                     ui.allocate_exact_size(plot_size(ui), egui::Sense::click_and_drag());
                 let rect = egui::Rect::from_min_max(
-                    outer.min + vec2(42.0, 4.0),
+                    // Keep the color-bar unit and top tick below wrapped controls.
+                    outer.min + vec2(42.0, 16.0),
                     outer.max - vec2(70.0, 18.0),
                 );
                 self.spectrogram_interaction(ui, &response, rect);

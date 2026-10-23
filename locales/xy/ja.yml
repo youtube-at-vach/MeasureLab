@@ -11,7 +11,7 @@ xy.free_click_or_drag_to_fix_x_y_amplitudes: Free：クリックまたはドラ�
 xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: FreeではX/Yの振幅を固定し、ΔX/ΔYを読み取ります。モードを切り替えてもカーソル位置は保持されます。
 xy.free_outside_plot: Free · プロット外
 xy.free_run_moving_reference: ' · Free run（参照位置が移動）'
-xy.input_source: 入力元
+xy.input_source: 入力ソース
 xy.ms_samples: '%{sample_rate} ms · サンプル %{start}..%{end}%{else}%{auto_no_crossing}'
 xy.observation: 観測
 xy.observation_window: 観測時間
@@ -19,12 +19,12 @@ xy.outside_xy_window_or_unavailable: '%{index} · XYの観測範囲外、また�
 xy.point_limit: ' · 点数上限'
 xy.reset_xy_scales: XYスケールをリセット
 xy.shared_with_scope: スコープと共有
-xy.source_changes_apply_on_start_held_xy_keeps_its: 入力元の変更はStart時に適用されます。保持中のXYは取得時のチャンネルを維持します。
+xy.source_changes_apply_on_start_held_xy_keeps_its: 入力ソースの変更はStart時に適用されます。保持中のXYは取得時のチャンネルを維持します。
 xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
 xy.trace_snap: Trace Snap
 xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Trace Snapはトリガー基準のサンプルに追従します。Auto／Free
   runではマーカーが移動する場合があります。Stopすると固定されます。
-xy.trace_snap_selects_the_nearest_actual_pair_from_the: Trace Snap：割り当てたX/Yチャンネルの実サンプル対から最も近い点を選び、そのサンプルのXYトリガーからのオフセットを保ちます。スコープのトリガー元・エッジ・レベルを使います。トリガー交差がない場合は、参照位置が最新ウィンドウに合わせて移動します。点が重なる場合は最新サンプルを選びます。Stopすると取得結果を固定します。
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: Trace Snap：X/Yの実サンプル対から最も近い点を選び、XYトリガーからのサンプル差を保持します。スコープのトリガーソース・エッジ・レベルを使います。トリガー交差がなければ基準は最新窓に追従します。重なる点では最新サンプルを選択し、Stopで取得結果を固定します。
 xy.trigger: トリガー
 xy.triggered: ' · トリガー成立'
 xy.up_to_real_sample_pairs_longer_windows_show_the: 実サンプル対は最大%{xy}点です。観測時間が長い場合は最新部分を表示します。

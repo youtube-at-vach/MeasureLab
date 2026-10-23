@@ -27,11 +27,10 @@ spectrogram.fft_overlap: CHEVAUCHEMENT FFT
 spectrogram.frequency_hz: Fréquence / Hz
 spectrogram.frequency_scale: ÉCHELLE DE FRÉQUENCE
 spectrogram.from: De
-spectrogram.gestures: 'Spectrogramme : molette pour zoomer sur la fréquence ; glisser
-  pour déplacer la fréquence ou le temps ; Maj + molette ou molette sur l’axe temporel
-  pour parcourir l’historique ; cliquer pour maintenir et sélectionner une trame ;
-  faire glisser une ligne de curseur pour la déplacer ; En direct libère l’historique
-  ; double-cliquer réinitialise la position de fréquence et de temps.'
+spectrogram.gestures: 'Molette : zoom fréquentiel. Glisser : déplacer fréquence/temps.
+  Maj + molette, ou molette sur l’axe temporel : parcourir l’historique. Clic : maintenir
+  et sélectionner une trame. Glisser une ligne de curseur : la déplacer. En direct
+  : quitter le maintien. Double-clic : réinitialiser la position fréquence/temps.'
 spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: Un chevauchement
   plus important produit davantage de fenêtres FFT et consomme plus vite la capacité
   de l’historique.

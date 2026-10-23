@@ -1,5 +1,6 @@
 _version: 1
 lockin.all_four: Los cuatro
+lockin.amplitude_peak: Amplitud · pico
 lockin.applying_settings_display_retains_its_captured_conditions: Aplicando configuración
   · la pantalla conserva sus condiciones capturadas
 lockin.averaged_samples_latest_window: Muestras promediadas %{start}..%{end} · última
@@ -29,6 +30,7 @@ lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: la frecuencia debe ser 
   a 0,45 × Fs nominal (%{rate} Hz)'
 lockin.fs_rms: ' FS RMS'
 lockin.gain: Ganancia  %{gain}
+lockin.in_phase_peak: En fase · pico
 lockin.input_failed: FALLO DE ENTRADA
 lockin.input_gap: HUECO DE ENTRADA
 lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: La entrada o el
@@ -47,10 +49,12 @@ lockin.no_valid_reading_no_bar_marker_is_shown: No hay una lectura válida; no s
   ningún marcador de barra
 lockin.nominal_fs_hz_input_generation: Fs nominal %{sample_rate} Hz · generación de
   entrada %{input_generation}
+lockin.phase_leads_ref: Fase · adelanto respecto a REF
 lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: La REF física
   y la temporización siguen sin verificarse. No hay salida de oscilador física ni
   sensibilidad de hardware seleccionable.
 lockin.poles_n: τ %{s}   ·   2 polos   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.quadrature_peak: En cuadratura · pico
 lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R, X e Y son amplitudes de pico.
   La fase positiva adelanta a REF. El filtro tiene dos polos EMA fijos y se estabiliza
   tras 10τ de muestras válidas. La configuración cambiada mientras está detenido se

@@ -1,77 +1,79 @@
 _version: 1
-io.amplitude: "振幅"
-io.applies_to_both_while_stopped_held_results_keep_their: "停止中に入出力の両方へ適用します。保持結果のレートは変わりません。"
-io.audio_input: "オーディオ入力"
-io.audio_input_no_device_selected: "オーディオ入力 · デバイス未選択"
-io.audio_stream_stopped_check_device_connection_and_microphone_permission: "オーディオストリームが停止しました。デバイスの接続とマイク権限を確認してから、再開してください。"
-io.available_with_the_internal_loopback_output_device: "出力デバイスが「内部ループバック」の場合に利用できます。"
-io.captured_readout_condition: "取得時の測定値表示条件"
-io.ch: "%{channels}ch · %{label}"
-io.ch_gain: "CH 2 ゲイン"
-io.ch_phase_gain: "CH 2 位相／ゲイン"
-io.channel_unavailable_in_the_current_input: "現在の入力では利用できないチャンネルです"
-io.channels_pcm: "チャンネル数／PCM"
-io.default: "%{name}（既定）"
-io.degrees: "度"
-io.demo_signal_qa: "デモ信号（QA）"
-io.device: "デバイス"
-io.device_default: "デバイスの既定値"
-io.device_default_khz: "デバイスの既定値（%{sample_rate} kHz）"
-io.equal_amplitude_noise_free_sine_signals_for_xy_in: "XY用の等振幅・ノイズなしの正弦波信号：同相、直交位相、逆相。"
-io.frequency: "周波数"
-io.fs_peak: "FS ピーク"
-io.gain: "ゲイン"
-io.generator_input_stopped_check_output_status_stop_input_and: "信号発生器からの入力が停止しました。出力状態を確認し、入力を停止して出力をリセットしてから再開してください。"
-io.generator_loopback: "信号発生器ループバック"
-io.generator_loopback_out: "信号発生器ループバック · OUT 1 / 2"
-io.hz_2: "%{r} Hz"
-io.hz_3: "%{rate} Hz"
-io.hz_4: "%{rate} Hz · %{format}"
-io.input: "入力"
-io.input_channel: "入力チャンネル"
-io.input_output_hz: "入力：%{r} · 出力：%{rate} Hz"
-io.input_source: "入力元：%{source}"
-io.internal_loopback: "内部ループバック"
-io.internal_source_no_audio_output: "内部信号源 · オーディオ出力なし"
-io.khz: "%{rate} kHz"
-io.no_common_rate_for_these_devices_and_output_format: "これらのデバイスと出力形式で共通に使えるレートがありません。個別のサンプルレートを使用してください。"
-io.no_input_device: "入力デバイスなし"
-io.noise: "ノイズ"
-io.noise_2: "ノイズ"
-io.noise_amplitude_in_digital_full_scale_fs: "デジタルフルスケール（FS）を基準としたノイズ振幅。"
-io.offset: "オフセット"
-io.out_ch_out_ch_start_input_and_output_separately: "OUT 1 → CH 1 · OUT 2 → CH 2 · 入力と出力は個別に開始します。"
-io.output: "出力"
-io.output_device: "出力デバイス"
-io.physical_unit_e_g_v_a_pa: "物理単位（例：V、A、Pa）"
-io.queue_calibration: "次回開始時の校正を設定"
-io.queue_uncalibrated_fs: "次回開始時は未校正FSを使用"
-io.queued_definitions_apply_on_the_next_start_source_device: "設定した定義は次回の開始時に適用します。信号源／デバイスの選択やデバイス一覧の更新で適用待ちの設定は消去されます。係数は利用者が指定し、参照条件にはその有効範囲を記載します。"
-io.queued_for_next_start: "次回開始時に適用待ち"
-io.rate_changes_apply_on_start_held_results_keep_their: "レートの変更は開始時に適用します。保持結果のレートは変わりません。"
-io.reference_conditions: "参照条件"
-io.reference_device_range_date_uncertainty: "基準、デバイス／レンジ、日付、不確かさ"
-io.refresh_devices: "デバイス一覧を更新"
-io.sample_rate: "サンプルレート"
-io.sample_rate_channels_pcm: "サンプルレート／チャンネル数／PCM"
-io.sample_rate_input_output: "サンプルレート · 入力＋出力"
-io.scope_readouts_and_spectrum_use_y_gain_fs_offset: "スコープの測定値とスペクトラムには y = gain × FS + offset を使用します。スペクトラムのDC除去はオフセットを打ち消します。スコープの波形／トリガー、スペクトログラムとXYの軸にはFSを使用します。"
-io.select_common_rate: "共通レートを選択"
-io.separate_sample_rates: "サンプルレートを個別に設定"
-io.signal_changes_apply_when_input_restarts_captured_samples_stay: "信号の変更は入力を再開したときに適用します。取得済みサンプルは保持します。"
-io.software_loopback: "ソフトウェアループバック"
-io.source: "信号源"
-io.start_input: "▶  入力を開始"
-io.start_input_demo: "▶  入力を開始（デモ）"
-io.start_or_stop_the_shared_input_for_all_instruments: "全計器の共通入力を開始・停止します。出力は独立しています。ショートカット：Space"
-io.start_stop_is_always_in_the_top_bar: "開始／停止は常に上部バーから操作できます。"
-io.stop_input: "■  入力を停止"
-io.stop_input_and_output_and_select_a_supported_common: "入力と出力を停止し、対応する共通レートを選択してください。"
-io.stop_input_and_output_to_change_the_device_or: "デバイスや形式を変更するには、入力と出力を停止してください。"
-io.supported_device_rates_up_to_khz: "デバイスが対応するレート · 最大768 kHz"
-io.unavailable: "利用不可"
-io.unit: "単位"
-io.unit_fs: "単位/FS"
-io.waveform: "波形"
-io.demo_harmonics: "正弦波＋高調波"
-io.demo_square: "帯域制限矩形波"
+io.amplitude: 振幅
+io.applies_to_both_while_stopped_held_results_keep_their: 停止中に入出力の両方へ適用します。保持結果のレートは変わりません。
+io.audio_input: オーディオ入力
+io.audio_input_no_device_selected: オーディオ入力 · デバイス未選択
+io.audio_stream_stopped_check_device_connection_and_microphone_permission: オーディオストリームが停止しました。デバイスの接続とマイク権限を確認してから、再開してください。
+io.available_with_the_internal_loopback_output_device: 出力デバイスが「内部ループバック」の場合に利用できます。
+io.captured_readout_condition: 取得時の測定値表示条件
+io.ch: '%{channels}ch · %{label}'
+io.ch_gain: CH 2 ゲイン
+io.ch_phase_gain: CH 2 位相／ゲイン
+io.channel_unavailable_in_the_current_input: 現在の入力では利用できないチャンネルです
+io.channels_pcm: チャンネル数／PCM
+io.default: '%{name}（既定）'
+io.degrees: 度
+io.demo_harmonics: 正弦波＋高調波
+io.demo_signal_qa: デモ信号（QA）
+io.demo_square: 帯域制限矩形波
+io.device: デバイス
+io.device_default: デバイスの既定値
+io.device_default_khz: デバイスの既定値（%{sample_rate} kHz）
+io.equal_amplitude_noise_free_sine_signals_for_xy_in: XY用の等振幅・ノイズなしの正弦波信号：同相、直交位相、逆相。
+io.frequency: 周波数
+io.fs_peak: FS ピーク
+io.gain: ゲイン
+io.generator_input_stopped_check_output_status_stop_input_and: 信号発生器からの入力が停止しました。出力状態を確認し、入力を停止して出力をリセットしてから再開してください。
+io.generator_loopback: 信号発生器ループバック
+io.generator_loopback_out: 信号発生器ループバック · OUT 1 / 2
+io.hz_2: '%{r} Hz'
+io.hz_3: '%{rate} Hz'
+io.hz_4: '%{rate} Hz · %{format}'
+io.input: 入力
+io.input_channel: 入力チャンネル
+io.input_output_hz: 入力：%{r} · 出力：%{rate} Hz
+io.input_source: 入力ソース：%{source}
+io.internal_loopback: 内部ループバック
+io.internal_source_no_audio_output: 内部信号源 · オーディオ出力なし
+io.khz: '%{rate} kHz'
+io.no_common_rate_for_these_devices_and_output_format: これらのデバイスと出力形式で共通に使えるレートがありません。個別のサンプルレートを使用してください。
+io.no_input_device: 入力デバイスなし
+io.noise: ノイズ
+io.noise_2: ノイズ
+io.noise_amplitude_in_digital_full_scale_fs: デジタルフルスケール（FS）を基準としたノイズ振幅。
+io.offset: オフセット
+io.out_ch_out_ch_start_input_and_output_separately: OUT 1 → CH 1 · OUT 2 → CH 2 ·
+  入力と出力は個別に開始します。
+io.output: 出力
+io.output_device: 出力デバイス
+io.physical_unit_e_g_v_a_pa: 物理単位（例：V、A、Pa）
+io.queue_calibration: 次回開始時の校正を設定
+io.queue_uncalibrated_fs: 次回開始時は未校正FSを使用
+io.queued_definitions_apply_on_the_next_start_source_device: 設定した定義は次回の開始時に適用します。信号源／デバイスの選択やデバイス一覧の更新で適用待ちの設定は消去されます。係数は利用者が指定し、参照条件にはその有効範囲を記載します。
+io.queued_for_next_start: 次回開始時に適用待ち
+io.rate_changes_apply_on_start_held_results_keep_their: レートの変更は開始時に適用します。保持結果のレートは変わりません。
+io.reference_conditions: 参照条件
+io.reference_device_range_date_uncertainty: 基準、デバイス／レンジ、日付、不確かさ
+io.refresh_devices: デバイス一覧を更新
+io.sample_rate: サンプルレート
+io.sample_rate_channels_pcm: サンプルレート／チャンネル数／PCM
+io.sample_rate_input_output: サンプルレート · 入力＋出力
+io.scope_readouts_and_spectrum_use_y_gain_fs_offset: スコープの測定値とスペクトラムには y = gain ×
+  FS + offset を使用します。スペクトラムのDC除去はオフセットを打ち消します。スコープの波形／トリガー、スペクトログラムとXYの軸にはFSを使用します。
+io.select_common_rate: 共通レートを選択
+io.separate_sample_rates: サンプルレートを個別に設定
+io.signal_changes_apply_when_input_restarts_captured_samples_stay: 信号の変更は入力を再開したときに適用します。取得済みサンプルは保持します。
+io.software_loopback: ソフトウェアループバック
+io.source: 信号源
+io.start_input: ▶  入力を開始
+io.start_input_demo: ▶  入力を開始（デモ）
+io.start_or_stop_the_shared_input_for_all_instruments: 全計器の共通入力を開始・停止します。出力は独立しています。ショートカット：Space
+io.start_stop_is_always_in_the_top_bar: 開始／停止は常に上部バーから操作できます。
+io.stop_input: ■  入力を停止
+io.stop_input_and_output_and_select_a_supported_common: 入力と出力を停止し、対応する共通レートを選択してください。
+io.stop_input_and_output_to_change_the_device_or: デバイスや形式を変更するには、入力と出力を停止してください。
+io.supported_device_rates_up_to_khz: デバイスが対応するレート · 最大768 kHz
+io.unavailable: 利用不可
+io.unit: 単位
+io.unit_fs: 単位/FS
+io.waveform: 波形

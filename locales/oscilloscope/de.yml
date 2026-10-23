@@ -35,9 +35,9 @@ oscilloscope.edge_names.falling: Fallend
 oscilloscope.edge_names.free: Frei
 oscilloscope.edge_names.rising: Steigend
 oscilloscope.falling_edge: Fallende Flanke
-oscilloscope.fit_amplitude: Amplitude anpassen
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Rohspitze des ausgewählten
-  Kanals anpassen und Offset zentrieren
+oscilloscope.fit_amplitude: Skala anpassen
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Vertikalskala an die
+  Rohspitze des gewählten Kanals anpassen und den Offset auf null setzen.
 oscilloscope.free_run: Dauerbetrieb
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -83,7 +83,7 @@ oscilloscope.outside_input_channel_range_2: '%{channel} · außerhalb des Eingan
 oscilloscope.outside_sweep: '%{index} #%{sample} · außerhalb des Sweeps'
 oscilloscope.partial_missing_samples: Teilweise · %{scope_missing} fehlende Samples
 oscilloscope.position: Position
-oscilloscope.reset_time_position: Zeitposition zurücksetzen
+oscilloscope.reset_time_position: Position zurücksetzen
 oscilloscope.rising_edge: Steigende Flanke
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak}
@@ -98,7 +98,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
   %{scope_trigger_marker_status} · Quelle %{channel} · Pegel %{level} rohes FS. Der
   Pegel folgt dem Vertikalbereich des Quellkanals, der sich von der Achse des ausgewählten
   Kanals unterscheiden kann.'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · Zeit-/Hz-Cursor
+oscilloscope.spectrogram_time_hz_cursor: Zeit-/Frequenzcursor
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Eingang starten
   und auf eine einzelne getriggerte Erfassung warten
 oscilloscope.start_single_capture: Einzelerfassung starten

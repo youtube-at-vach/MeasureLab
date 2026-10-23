@@ -26,7 +26,7 @@ spectrogram.fft_overlap: FFTオーバーラップ
 spectrogram.frequency_hz: 周波数／Hz
 spectrogram.frequency_scale: 周波数スケール
 spectrogram.from: 下限
-spectrogram.gestures: スペクトログラム：ホイールで周波数をズーム、ドラッグで周波数／時間をパンします。Shift＋ホイールまたは時間軸上のホイールで履歴をスクロールします。クリックで履歴を保持してフレームを選択し、カーソル線のドラッグで位置を移動します。ライブで履歴固定を解除します。ダブルクリックで周波数／時間位置をリセットします。
+spectrogram.gestures: ホイール：周波数ズーム。ドラッグ：周波数／時間のパン。Shift＋ホイール（時間軸上はホイール）：履歴スクロール。クリック：保持してフレーム選択。カーソル線をドラッグ：位置変更。「ライブ」で保持解除。ダブルクリック：周波数／時間位置をリセット。
 spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: オーバーラップを大きくするとFFT窓が増え、履歴容量を早く使い切ります。
 spectrogram.history_available_s_unavailable_time_stays_blank: 利用可能な履歴：%{retained_seconds}／%{spectrogram_seconds}
   s · 利用できない時間は空白のままです

@@ -7,8 +7,8 @@ oscilloscope.auto_free: オート／フリー
 oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: 周期信号に合わせて時間軸・振幅・トリガーを自動設定
 oscilloscope.autoset: オートセット
 oscilloscope.autoset_frequency: オートセット：生サンプルの交差から %{frequency} Hzを検出
-oscilloscope.autoset_held: 保持中の捕捉波形に振幅を合わせました。時間軸／トリガーは次回開始時に適用します（%{frequency} Hz）
-oscilloscope.capture_once_on_the_next_trigger_crossing: 次のトリガー交差で1回捕捉
+oscilloscope.autoset_held: 保持波形に縦軸を合わせました。時間軸／トリガーは次回開始時に適用します（%{frequency} Hz）
+oscilloscope.capture_once_on_the_next_trigger_crossing: 次のトリガー交差で1回取得
 oscilloscope.centre_offset: 中心オフセット
 oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
 oscilloscope.ch_2: CH%{index}%{else}
@@ -28,8 +28,8 @@ oscilloscope.edge_names.falling: 立ち下がり
 oscilloscope.edge_names.free: フリーラン
 oscilloscope.edge_names.rising: 立ち上がり
 oscilloscope.falling_edge: 立ち下がりエッジ
-oscilloscope.fit_amplitude: 振幅を合わせる
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 選択したチャンネルの生ピークに振幅を合わせ、オフセットを中央に設定
+oscilloscope.fit_amplitude: 振幅に合わせる
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 選択CHの生ピークに縦軸レンジを合わせ、オフセットを0に戻します。
 oscilloscope.free_run: フリーラン
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -39,11 +39,11 @@ oscilloscope.guides: ガイド
 oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: 保持中の条件を維持
   · 適用待ちの測定設定は次回開始時に反映
 oscilloscope.horizontal: 水平
-oscilloscope.input_source: 入力元
+oscilloscope.input_source: 入力ソース
 oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
   · %{reading}
 
-  区間 %{start}..%{end}（終端を含まない） · 入力世代 %{input_generation} · 公称 %{sample_rate} Hz。%{channel_2}。波形とトリガーには生FSを使用します。'
+  区間 %{start}..%{end}（終端を含まない） · 入力世代 %{input_generation} · 公称 %{sample_rate} Hz。%{channel_2}。波形とトリガーには校正前のFSを使用します。'
 oscilloscope.invalid_value: — · 無効な値
 oscilloscope.level: レベル
 oscilloscope.markers: マーカー
@@ -52,12 +52,12 @@ oscilloscope.mode_names.auto: オート
 oscilloscope.mode_names.normal: ノーマル
 oscilloscope.mode_names.single: シングル
 oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
-oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · 波形：生FS'
+oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · 波形：FS（校正前）'
 oscilloscope.no_acquired_samples_for_this_channel_and_interval: このチャンネル・区間に取得サンプルがありません
 oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
   · 取得サンプルなし
 
-  入力条件は未取得です。波形とトリガーの設定には生FSを使用します。'
+  入力条件は未取得です。波形とトリガーの設定には校正前のFSを使用します。'
 oscilloscope.no_samples_in_this_interval: — · この区間にサンプルなし
 oscilloscope.normal: ノーマル
 oscilloscope.off: オフ
@@ -75,29 +75,29 @@ oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · P-P %{peak_to_
 oscilloscope.show_ch_waveform_keeps_selection_and_measurements: CH%{index}の波形を表示（選択と測定値は維持）
 oscilloscope.single: シングル
 oscilloscope.single_complete: シングル取得完了
-oscilloscope.source: トリガー元
+oscilloscope.source: ソース
 oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
 
-  %{scope_trigger_marker_status} · トリガー元 %{channel} · レベル %{level} 生FS。レベルはトリガー元チャンネルの縦軸レンジに従います。選択中のチャンネルの軸とは異なる場合があります。'
-oscilloscope.spectrogram_time_hz_cursor: スペクトログラム · 時間／周波数カーソル
-oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 入力を開始して、トリガーで1回捕捉するまで待ちます
-oscilloscope.start_single_capture: シングル捕捉を開始
-oscilloscope.t_markers_captured: Tマーカー：捕捉済み
+  %{scope_trigger_marker_status} · ソース %{channel} · レベル %{level} FS（校正前）。レベルはソースCHの縦軸に従い、選択中CHの軸とは異なる場合があります。'
+oscilloscope.spectrogram_time_hz_cursor: 時間／周波数カーソル
+oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 入力を開始して、トリガーで1回取得するまで待ちます
+oscilloscope.start_single_capture: シングル取得を開始
+oscilloscope.t_markers_captured: Tマーカー：取得済み
 oscilloscope.t_markers_settings_only: Tマーカー：設定位置
 oscilloscope.t_markers_top_ms_right_level: Tマーカー：上端＝0 ms · 右端＝レベル
 oscilloscope.time_scale: 時間軸
 oscilloscope.time_trigger_edits_apply_on_next_start: 時間軸／トリガーの変更は次回開始時に適用
 oscilloscope.trigger: トリガー
 oscilloscope.trigger_settings: トリガー設定
-oscilloscope.trigger_source_unavailable: トリガー元を利用できません
+oscilloscope.trigger_source_unavailable: トリガーソースを利用できません
 oscilloscope.triggered: トリガー成立
 oscilloscope.update_even_without_a_trigger_crossing: トリガー交差がなくても更新
-oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: トリガー交差で更新し、待機中は最後の捕捉を保持
+oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: トリガー交差で更新し、待機中は最後の取得を保持
 oscilloscope.vertical_ch: 垂直 · CH%{index}
 oscilloscope.vertical_range: 垂直レンジ
 oscilloscope.waiting_for_sweep: '%{index} · 掃引待ち'
 oscilloscope.waiting_for_trigger: トリガー待ち
-oscilloscope.waiting_previous_capture: 待機中 · 前回の捕捉を保持
+oscilloscope.waiting_previous_capture: 待機中 · 前回の取得を保持
 oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale: ホイール：時間軸 · Shift＋ホイール：選択中CHの縦軸
 oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double: '%{display}
 

@@ -1,5 +1,6 @@
 _version: 1
 lockin.all_four: 4개 모두
+lockin.amplitude_peak: 진폭 · 피크
 lockin.applying_settings_display_retains_its_captured_conditions: 설정 적용 중 · 화면에는 캡처
   시 조건이 유지됩니다
 lockin.averaged_samples_latest_window: 평균 샘플 %{start}..%{end} · 최신 윈도우 %{start_2}..%{end_2}
@@ -24,6 +25,7 @@ lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: 주파수는 공칭 Fs�
   (%{rate} Hz)'
 lockin.fs_rms: ' FS RMS'
 lockin.gain: 이득  %{gain}
+lockin.in_phase_peak: 동상 성분 · 피크
 lockin.input_failed: 입력 실패
 lockin.input_gap: 입력 간격
 lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: 입력 또는 계산 결과가 유한하지
@@ -40,9 +42,11 @@ lockin.next_start_settings_changed_display_retains_captured_conditions: 다음 �
 lockin.no_capture: 캡처 없음
 lockin.no_valid_reading_no_bar_marker_is_shown: 유효한 판독값이 없어 막대 마커를 표시하지 않습니다
 lockin.nominal_fs_hz_input_generation: 공칭 Fs %{sample_rate} Hz · 입력 세대 %{input_generation}
+lockin.phase_leads_ref: 위상 · REF 대비 앞섬
 lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: 물리적 REF와
   타이밍은 아직 검증되지 않았습니다. 물리 오실레이터 출력이나 선택 가능한 하드웨어 감도는 없습니다.
 lockin.poles_n: τ %{s}   ·   폴 2개   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.quadrature_peak: 직교 성분 · 피크
 lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R, X 및 Y는 피크 진폭입니다. 양의 위상은 REF보다
   앞섭니다. 필터는 고정된 EMA 폴 2개를 사용하며 유효 샘플로 10τ 후 안정화됩니다. 중지 상태에서 변경한 설정은 다음 시작 시 적용됩니다.
 lockin.ref: REF

@@ -10,12 +10,15 @@ import shutil
 import subprocess
 import time
 
+from i18n import LOCALES
+
 ROOT = Path(__file__).resolve().parent.parent
 PREFIX = "MEASURELAB_UI_SMOKE_"
 
 
 def cases(devices=()):
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
+    yield "language-demo-controls", False, {"LANGUAGE": "1", "VIEW": "scope"}
     yield "language-ja-wide", False, {"VIEW": "scope", "IDLE": "1", "LOCALE": "ja"}
     yield "language-ja-compact", True, {"SETTINGS": "io", "IDLE": "1", "ZOOM": "1.25", "LOCALE": "ja"}
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
@@ -87,6 +90,7 @@ def main():
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/gui-redesign-qa")
     parser.add_argument("--case", action="append", help="Run only the named case (repeatable)")
+    parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
         "--assertions-only",
         action="store_true",
@@ -105,6 +109,8 @@ def main():
     selected = [case for case in cases(dict.fromkeys(args.device)) if args.case is None or case[0] in args.case]
     if args.case and set(args.case) - {case[0] for case in selected}:
         parser.error("Unknown case name")
+    if args.locale:
+        selected = [(name, compact, options | {"LOCALE": args.locale}) for name, compact, options in selected]
     if not binary.is_file():
         parser.error(f"Build a QA binary first: {binary}")
     git = shutil.which("git")
@@ -159,6 +165,8 @@ def main():
             log = result.stdout + result.stderr
             display_ok = "UI assertions only OK:" in log if args.assertions_only else screenshot.is_file()
             passed = result.returncode == 0 and display_ok and "GUI navigation OK:" in log
+            if "LANGUAGE" in options:
+                passed = passed and "Language UI OK: nine locales" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:

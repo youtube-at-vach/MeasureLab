@@ -28,10 +28,10 @@ spectrogram.fft_overlap: SOBREPOSIÇÃO FFT
 spectrogram.frequency_hz: Frequência / Hz
 spectrogram.frequency_scale: ESCALA DE FREQUÊNCIA
 spectrogram.from: De
-spectrogram.gestures: 'Spectrogram: use a roda para ampliar a frequência; arraste
-  para deslocar frequência/tempo; Shift+roda ou roda no eixo de tempo para percorrer
-  o histórico; clique para reter e selecionar um quadro; arraste uma linha de cursor
-  para movê-la; Ao vivo libera o histórico; clique duplo redefine a posição de frequência/tempo.'
+spectrogram.gestures: 'Roda: zoom de frequência. Arrastar: deslocar frequência/tempo.
+  Shift+roda, ou roda no eixo de tempo: percorrer o histórico. Clique: reter e selecionar
+  um quadro. Arrastar uma linha de cursor: movê-la. Ao vivo: liberar a retenção. Clique
+  duplo: redefinir a posição de frequência/tempo.'
 spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: Maior sobreposição
   produz mais janelas FFT e consome a capacidade do histórico mais rapidamente.
 spectrogram.history_available_s_unavailable_time_stays_blank: 'Histórico disponível:
