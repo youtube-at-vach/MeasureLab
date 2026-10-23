@@ -9053,6 +9053,346 @@
         "source": "Waiting for a complete synchronous input window.",
         "source_hash": "38a13276b3f715c2d9794d7ae54824f20e09a3e659a08409c88fb391413305e8",
         "translation_hash": "af9f9bd4c1e1a2672b7761f1b33d2ad0068863fab1af573218d3a9bef0679a09"
+      },
+      "comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags": {
+        "source": "AC comparison · positive phase leads REF; positive delay lags REF. Stopped edits apply on the next Start.",
+        "source_hash": "849635e04bd615dd2337a411ee2e40f5e86b5b0c482f6b16080a7f88cee2ca8a",
+        "translation_hash": "eee1c1a8b1376ae37861fbc90a702ca8c264353aaeafe92452c288b26f2c510c"
+      },
+      "comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs": {
+        "source": "%{name} · AC mean removed · disjoint arithmetic batches · REF floor %{reference_min_psd_fs2_hz} FS²/Hz · coherence ≥%{minimum_coherence}",
+        "source_hash": "dc597c2eebb9e4eae0a5faabcf795730d3b0ac58a3d42d71ac763230e6745569",
+        "translation_hash": "63accd24d9a9032f589ebe80d802ea69708af54265a724211eac7e7d59fcc06e"
+      },
+      "comparison.around_reading": {
+        "source": "Around reading",
+        "source_hash": "c3282ce89567af063e57a96812a478c0a0844b45c61344f6a79e1107c47bbfa5",
+        "translation_hash": "9651c5cb1b5dbc8332e7103c7d0af0bdb654b24486be7a19ee17c8174c524053"
+      },
+      "comparison.average_windows": {
+        "source": "Average windows ",
+        "source_hash": "82a915b0392f23fbf5aa5cb1b6e24daffe718884e5b25ae0bf654c7ccc21fa6f",
+        "translation_hash": "73eaf8c0779268bae77e7d2b8a9b638f43afb5ed3e4e7700eb6f970499f3918b"
+      },
+      "comparison.averaged_windows_processed_missing_invalid_samples": {
+        "source": "%{averaged_windows} averaged windows · %{processed_windows} processed · %{missing_samples} missing · %{invalid_samples} invalid samples",
+        "source_hash": "d4a13275dc89e92c42baade2e8370d4172357fe5e1c81e8e164467102c9fb4ea",
+        "translation_hash": "824e22af57f85cd0e7f726ed4de5edbaec62f732c56c2742c279db25881d492c"
+      },
+      "comparison.bin_hz": {
+        "source": "Bin %{k} · %{bin_width_hz} Hz · %{state}",
+        "source_hash": "aa8c40181fc59f9fad9c0be8bb32f583e9387beb007c2f9c27ef2188a49b9fc2",
+        "translation_hash": "aa8c40181fc59f9fad9c0be8bb32f583e9387beb007c2f9c27ef2188a49b9fc2"
+      },
+      "comparison.bin_states.averaging": {
+        "source": "Averaging",
+        "source_hash": "687df0b852a36e61eaac0ff3ef6ad85a8d0c8c319e480ba0d6c9fd94cb74bdb7",
+        "translation_hash": "884f43f4a7e139e2d403a7370338b6266e9e22aab4d3c67cef8ce60dcff620ff"
+      },
+      "comparison.bin_states.incoherent": {
+        "source": "Incoherent",
+        "source_hash": "4a32c9fb49be4f5be91ec27e84be2239358e49a43ed4dcd5db0c1dbbd3bed354",
+        "translation_hash": "a634fc6cab67dca62cbe203bbb044e79f47fbb5445fa23b6c073eb197faf8fe9"
+      },
+      "comparison.bin_states.reference_lost": {
+        "source": "ReferenceLost",
+        "source_hash": "bca7e65e599cdb217c6085a764ba06e339c5cf18ad0f6dd5f49c9e68567d75cc",
+        "translation_hash": "f45bed14b0a83c878f9141b599bb8615d17dd3f170cc3a99d14e84a482d7111f"
+      },
+      "comparison.bin_states.response_lost": {
+        "source": "ResponseLost",
+        "source_hash": "906a2d2434d3cfa61e2d34617baf0e39d0417069cf011346f82775444a14f2c3",
+        "translation_hash": "b1be03f671b86aa02447352908220e4a2a6d0df084c1dbfc389f26b856b3bac7"
+      },
+      "comparison.bin_states.valid": {
+        "source": "Valid",
+        "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
+        "translation_hash": "8b8cc56f68f77339d767246c65c1ddb1a79f0011394fa20a861d339046b14274"
+      },
+      "comparison.captured_conditions": {
+        "source": "Captured conditions",
+        "source_hash": "47bab890ad28a3ba805e4c4c1c008f60a582480c327d875cd0f2266091225fb3",
+        "translation_hash": "2e95198f92018ccd4d8ca2431ec53853ca40da668ed5804c512b3d78cf202697"
+      },
+      "comparison.ch_revision_fs": {
+        "source": "CH %{ch}: %{id} / revision %{revision} · %{gain} %{unit} / FS",
+        "source_hash": "50742159ea88143a83bcd855db0c19a78f1865443432a30f86ef0d417038967d",
+        "translation_hash": "134c3a78b359679c29ef9f5f8b3748e8570cf56f05579255156f8c119b772b00"
+      },
+      "comparison.check_ref_sig_channels_fft_and_nominal_fs_settings": {
+        "source": "Check REF / SIG channels, FFT and nominal Fs settings.",
+        "source_hash": "9a7fef1925df13d90eb57d6add39ea1c9929940ee7eb6c1e0ed900fe35a5600e",
+        "translation_hash": "b1fca7e869ef1c0ebd17b41e2e79591a1fbc9a739c8043be893c38aa5dd9102d"
+      },
+      "comparison.coherence": {
+        "source": "Coherence γ²",
+        "source_hash": "f418486f71510320162dbcc5d07575195d7f04543dd40962e9ff6b3b5cc4469d",
+        "translation_hash": "49142c0340827fa7c8ce3e2102d157552600c741a7f14f5a9ae0731ddd606168"
+      },
+      "comparison.custom": {
+        "source": "Custom",
+        "source_hash": "494ca78f7374e46fb2de9ad9f2dbd4aaae89b50b2ca044177a1566a59e06627e",
+        "translation_hash": "2b6b4f6ab31b4b47a5971d1e4514134f6d897881f92617b0e5ffbf06bf506305"
+      },
+      "comparison.display_only_captured_analysis_validity_thresholds_and_the_phase": {
+        "source": "Display only: captured analysis, validity thresholds and the phase-slope band are unchanged. Log Hz omits DC.",
+        "source_hash": "051a0536aefd367db9a50e84ac6889a18e2c4f3c666bf36746ee5f60a2204e17",
+        "translation_hash": "fbb24a58a08825004e1b55a6177c71654bafc684d61e602541262d6d0030e0fc"
+      },
+      "comparison.display_range": {
+        "source": "Display range",
+        "source_hash": "7c1540cb135c9fe28cf259bf8d5e52d8a32f108b9f1c9915591a521911372300",
+        "translation_hash": "dad76eaaf42095bdcbd361a6218ab37bc09cb052584e41b98a36e43e1ab1f606"
+      },
+      "comparison.finishing_analysis_before_holding_the_result": {
+        "source": "Finishing analysis before holding the result.",
+        "source_hash": "0e2a31120745ccf5f4a81dfdc910f3819e1f78519eabae70ed2496bdfd6ed0c6",
+        "translation_hash": "932d8c2a1a32109727b6cf4236c062211d0e066494d531bdfc676e8566446889"
+      },
+      "comparison.from": {
+        "source": "From ",
+        "source_hash": "e484a95dcc85865b7e2bf8a9726935f1a5d9f90a056afcea487f88756039cc17",
+        "translation_hash": "3444f206c9e67f579e59cd3a0b833252be543aae798d599f9d0ef54b21d43029"
+      },
+      "comparison.fs_hz": {
+        "source": " FS²/Hz",
+        "source_hash": "8ab07b56deb066cd8f2c1310da544ee686382093bfb606200b91139303c6b210",
+        "translation_hash": "8ab07b56deb066cd8f2c1310da544ee686382093bfb606200b91139303c6b210"
+      },
+      "comparison.full_nyquist": {
+        "source": "Full / Nyquist",
+        "source_hash": "c72ac558bb67db6413fb8859ec89c90da2597b7c22fb4e033449be27b747c29e",
+        "translation_hash": "9022c5e9a90fbfa1193fb920f251c0df8a3ff08533793defa183efacc39fcb93"
+      },
+      "comparison.gain": {
+        "source": "Gain",
+        "source_hash": "4e125a3ef68a00b029459c9aa8aa94aa07e74cc54188ffef7f60f38f016e61ca",
+        "translation_hash": "4e125a3ef68a00b029459c9aa8aa94aa07e74cc54188ffef7f60f38f016e61ca"
+      },
+      "comparison.gain_db": {
+        "source": "Gain dB",
+        "source_hash": "f6da0953508c7b318c8dec06de0dab55859b30d6c150cad90e50b1be592add99",
+        "translation_hash": "f6da0953508c7b318c8dec06de0dab55859b30d6c150cad90e50b1be592add99"
+      },
+      "comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain": {
+        "source": "H1 = Pxy/Pxx. Scope, Spectrum and comparison each retain their own intervals. Slope fit assumes adjacent phase steps below π; periodic/wrapped data cannot determine absolute latency.",
+        "source_hash": "7d4f361c12e8da0f54b91a650e24b35c3cf6bbffd70bb8db0d84b32bdfa1c8db",
+        "translation_hash": "726edabc87b92496cf34c1a00fb4aab66b2be5424a3ad12c4efdf24acea3bafa"
+      },
+      "comparison.held_conditions_retained_queued_analysis_settings_apply_on_next": {
+        "source": "HELD conditions retained · queued analysis settings apply on next Start",
+        "source_hash": "56fb11bb8b06a061d81eae2512943e23a9f892dfb2d46a6e4a210ade91aa4c6d",
+        "translation_hash": "dc7a24a0f3ec025933affa03cc5ea024cd5831f1f78879bf34f523f9dfdfe1ff"
+      },
+      "comparison.hz": {
+        "source": "%{selected_hz} Hz",
+        "source_hash": "33276a15f6a87aacc765c617cdae50285e248d651045e4c3af7f1d04bb29afc5",
+        "translation_hash": "33276a15f6a87aacc765c617cdae50285e248d651045e4c3af7f1d04bb29afc5"
+      },
+      "comparison.hz_2": {
+        "source": "%{fraction} Hz",
+        "source_hash": "2f19044b1656de9eb975de295330122254e5456868b25eea4341c19698810615",
+        "translation_hash": "2f19044b1656de9eb975de295330122254e5456868b25eea4341c19698810615"
+      },
+      "comparison.input_gap_press_start_input_to_acquire_again": {
+        "source": "Input gap · press Start input to acquire again.",
+        "source_hash": "488c2d4328ef6803413591ee3518c0c018e49cdbd9063996ea0fa812191a796b",
+        "translation_hash": "2b086e2db7b018870cf24d1b2db9332d992132422b7203b85a2b4608cb9138a8"
+      },
+      "comparison.input_gap_waiting_for_a_new_complete_average": {
+        "source": "Input gap · waiting for a new complete average.",
+        "source_hash": "a1ff83b724a3a6529d46ddbc84c1a70d86bbbcbdb016d8edef79c1a9a9a64892",
+        "translation_hash": "3e61a005e30a6c6d66557971fd885368ce1602238473af17c5d42ecb1f3fc694"
+      },
+      "comparison.input_generation_analysis_revision_hz_nominal_f64": {
+        "source": "Input generation %{generation} · analysis revision %{analysis_revision} · %{nominal_sample_rate_hz} Hz nominal · f64",
+        "source_hash": "c50693963f23c73c41bb00bebaeb5ae587a6bde2f58d51d105c0531cff21e9ef",
+        "translation_hash": "4324f9072ae425fe3ef04b44901dfae52b6516479b93b81ef7139ee991004dfb"
+      },
+      "comparison.invalid_input_no_valid_comparison_is_available": {
+        "source": "Invalid input · no valid comparison is available.",
+        "source_hash": "9cadda887f9d413d19ab498004e166ba0ccf75f0accf4dfd4be087042d649e3e",
+        "translation_hash": "28e4e8859bcaefd65b1b208fed130d23246cc09db815f5c4fce1be17653d7e09"
+      },
+      "comparison.linear_hz": {
+        "source": "Linear Hz",
+        "source_hash": "d35293c5b6027d55300797c15a83bdd1c89c75b00947f5fa7afcb2fa92932fbf",
+        "translation_hash": "c060aacae89a9da305c7d5b0ccde2603f906bb3d01799e8822df8925a2894909"
+      },
+      "comparison.log_hz": {
+        "source": "Log Hz",
+        "source_hash": "7b91026010d597a53c425c595786148a71e5a567e1427bb7f5925143f270d734",
+        "translation_hash": "9671e0e877502f891ad6d62c4ff19a707e6a64688249d9b1c71fb5c1fc44c642"
+      },
+      "comparison.min_coherence": {
+        "source": "Min coherence ",
+        "source_hash": "1d16eca5bca303648987a81a85bbd242d48051bf53ba8ee00aedd2170adbf392",
+        "translation_hash": "6024a90bb721c92a31a25a61d017453afb2f2f33fa827370b07efac5dea7f60d"
+      },
+      "comparison.min_ref": {
+        "source": "Min REF ",
+        "source_hash": "f9847355d20c1fdf11caed7d373bfefedf729038bc887a146b22cf9cb01e44c3",
+        "translation_hash": "117edee055c760b1cb9d9b5e53e325eb795cdd4ef5779188db0813bf4fa88628"
+      },
+      "comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps": {
+        "source": "Nominal Fs · CH phase/timing calibration unverified · delay wraps by 1/f",
+        "source_hash": "277ca326a6c092e2388f4979870d1fb2f49c4edd92e6413395f61563834affe9",
+        "translation_hash": "9a508732294d072706107f2d408881d184e02de27a3f31c5858b90c27f005a68"
+      },
+      "comparison.phase": {
+        "source": "Phase °",
+        "source_hash": "26305faffcd48209829558a71db6a7dc390fbde05877a9efe0d7c6f06a6c8166",
+        "translation_hash": "26305faffcd48209829558a71db6a7dc390fbde05877a9efe0d7c6f06a6c8166"
+      },
+      "comparison.phase_lead": {
+        "source": "Phase lead",
+        "source_hash": "9bffba7a09a6995aaf857276ae7c9cc5539bced73ae247600cb0a92a716d898b",
+        "translation_hash": "76a66063397731653bfddd3c9c173a5f9ec520e4c69831a4560bfa0628703d4e"
+      },
+      "comparison.phase_slope_needs_contiguous_excited_coherent_bins": {
+        "source": "Phase slope: — · needs ≥8 contiguous excited, coherent bins",
+        "source_hash": "9f9b28fea91312f4033d371f10d3d72479126096051396975fab9da2dbc6ff58",
+        "translation_hash": "7e0c24f4b05080202595b3879dd3d21186abbeaa1b3d857c01dd6dfffa6969af"
+      },
+      "comparison.phase_slope_s_hz_residual_rms": {
+        "source": "Phase slope: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2} Hz · residual %{phase_residual_rms_degrees}° RMS",
+        "source_hash": "54ef18b4f14df9175edf4faa2cddfe9042e5bfb63a4e95a37b6b70f7a01b152e",
+        "translation_hash": "bfb923de7b16a6f3ffd93fe631d2d627a5259ff1485805937585b12e816647f3"
+      },
+      "comparison.press_start_input_to_acquire_a_complete_average": {
+        "source": "Press Start input to acquire a complete average.",
+        "source_hash": "baf80dd07e31ccb4e21986ebce52eb0fdd176be4325cc58f010f01d166add7cc",
+        "translation_hash": "004f56742e5db6d7d30e1faa17a9280e0957333e8c05f12493f42af88fcda726"
+      },
+      "comparison.read_at": {
+        "source": "Read at",
+        "source_hash": "a4874894d75434e94dde904dd97e3ce58a17ad621b1d9c50b79edce8f3421ce6",
+        "translation_hash": "e68b75c57bb35256a94784285eb9bad50fe89c11c2dd91c95365eb2dd0abca65"
+      },
+      "comparison.ref": {
+        "source": "REF",
+        "source_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b",
+        "translation_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b"
+      },
+      "comparison.ref_ch_sig_ch_n_f_hz": {
+        "source": "%{state} · REF CH %{reference_channel} / SIG CH %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz",
+        "source_hash": "5794389025b279a9e186a7412117ddb796674c462c6714d2b6a69cea0fca5760",
+        "translation_hash": "5794389025b279a9e186a7412117ddb796674c462c6714d2b6a69cea0fca5760"
+      },
+      "comparison.samples": {
+        "source": "%{size} samples",
+        "source_hash": "26e308cd3e4ef1205e2d91e376b26401ed276a1c0b5a7f56fa4f5b371d2c6c3a",
+        "translation_hash": "31cb17ba8fa4761f8fc25003f8a4638f2e6115b91193c88b7db83e9916021416"
+      },
+      "comparison.samples_latest_input_end": {
+        "source": "Samples %{start}..%{end} · latest %{start_2}..%{end_2} · input end %{input_end}",
+        "source_hash": "c7b0aedcdeabdf1d92d865b65cc7a0413810c5ea817668a7e2f56927d74459c1",
+        "translation_hash": "9a2314b6384640034a3a8cf4504a2a65020453a24d970ae3c8aa26b39be4fcfe"
+      },
+      "comparison.select_ref_sig_channels_then_press_start_analysis": {
+        "source": "Select REF / SIG channels, then press Start analysis.",
+        "source_hash": "6285b18b86c0a4bd8360b14ebead298cd3e90f5d53b9cfc1730418d1f6281cb3",
+        "translation_hash": "496d7b7b09aae1cc0e917d34d1231ca3d489939c3ca19756cb4c2a150f790e28"
+      },
+      "comparison.selected_frequency_is_outside_the_captured_result": {
+        "source": "Selected frequency is outside the captured result.",
+        "source_hash": "77d3ac91d539ca5110b135fe0d3c9ceef5545f5c6d56c086faa819145a5823d4",
+        "translation_hash": "178b950b7b7126b5f43960d7430b7caa78e5f9cf18c9e91d5bbe51a7c75478f5"
+      },
+      "comparison.sig": {
+        "source": "SIG",
+        "source_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce",
+        "translation_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce"
+      },
+      "comparison.slope_from": {
+        "source": "Slope from ",
+        "source_hash": "ca79d068aa32c49467052ddc238d4a9822b78520c82ee48b25b401d7293df4ce",
+        "translation_hash": "f7fcb4391da0b1effe1ca226c6d8134f93f317929970c4d2ab0014442c76868f"
+      },
+      "comparison.slope_to": {
+        "source": "Slope to ",
+        "source_hash": "d08a0b06290a451205f42de4f96a7cd255307b581520960ce3c3b65c4e9b95f7",
+        "translation_hash": "0885d3c9fdc482a83c89f0b1a4a43229bd22950cdea29e708e523689ccaf6fd0"
+      },
+      "comparison.start_analysis": {
+        "source": "Start analysis",
+        "source_hash": "fd46355dd422d985735b936e6b8c43efce52da6a0aa54a7882c3f784f9feec98",
+        "translation_hash": "4c95a5b3a79e444a8aff9a63112da877ca27f9e7dd8c7df7042d6ae3505a4ba4"
+      },
+      "comparison.state_names.averaging": {
+        "source": "Averaging",
+        "source_hash": "687df0b852a36e61eaac0ff3ef6ad85a8d0c8c319e480ba0d6c9fd94cb74bdb7",
+        "translation_hash": "884f43f4a7e139e2d403a7370338b6266e9e22aab4d3c67cef8ce60dcff620ff"
+      },
+      "comparison.state_names.disabled": {
+        "source": "Disabled",
+        "source_hash": "75081b593d15cf6e631971bc6768723f593b88b172477e40ae7d363e4829816d",
+        "translation_hash": "da60ff35b212a8aa4758f2a8bf63f12cdc79fb2f84d64ab2ed2689d80417bdf5"
+      },
+      "comparison.state_names.filling": {
+        "source": "Filling",
+        "source_hash": "7fcb95a3a3dc4070b34692d1a70c316d0892655315b1f8bc48cc9fb68f03aaa6",
+        "translation_hash": "49d59e3b9650f85bb9c0237257bae2c665c9786c1c49f833f597c96962473465"
+      },
+      "comparison.state_names.missing": {
+        "source": "Missing",
+        "source_hash": "6be36ca49ee85210c5d1ad9c377d90a9859c66d889110a2a5b0dccd390d12e20",
+        "translation_hash": "d4f8b6191f1fd626f4ec5f3d060b129e0e6a5a99bf37c51fc87ab78a84b85c57"
+      },
+      "comparison.state_names.non_finite": {
+        "source": "NonFinite",
+        "source_hash": "5cc9c7200631482f91b1b5d48900c1fb069d49cc06004a2bb7421b0e3d9dc64c",
+        "translation_hash": "654b7af1395e4b697edb79d42ece0d99a541a5d14c051275d032ee7c509637db"
+      },
+      "comparison.state_names.unavailable": {
+        "source": "Unavailable",
+        "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+        "translation_hash": "dae75cff3b98f53d37c26f899f387d55dc3d2b7cf530a107612c1afe17ee72f4"
+      },
+      "comparison.state_names.valid": {
+        "source": "Valid",
+        "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
+        "translation_hash": "8b8cc56f68f77339d767246c65c1ddb1a79f0011394fa20a861d339046b14274"
+      },
+      "comparison.stop_analysis": {
+        "source": "Stop analysis",
+        "source_hash": "658fada64b415b3626449cf4d1982c2e74c5f465f5431f2eff2917f5c4d337f7",
+        "translation_hash": "83f3e24e9b15d4e0345a4bb013e9ee79536075101a13f049f59b02383e63ac01"
+      },
+      "comparison.synchronous_comparison": {
+        "source": "Synchronous comparison",
+        "source_hash": "7884d1c3c2e2d3681248eb45639ac4db3c12f32a67d3c6d8ae0af3ea2e1cb181",
+        "translation_hash": "cd199b84e85980dc9e8c1fb7cbcedac11b84471b24bb4251f682310c03e1c806"
+      },
+      "comparison.to": {
+        "source": "To ",
+        "source_hash": "81dcbe958121a9b1eceb8ab2bd605ab0dfaed3482e5e4266fdcba6ade2343086",
+        "translation_hash": "1c6637cbbcae3276688211c03f391143d1df60f4a063abc22504988c615387ad"
+      },
+      "comparison.valid_band": {
+        "source": "Valid band",
+        "source_hash": "99e83a6ef2f9bddbf823b52ca67c24a82b5f6d2953e54e40c4b488e480e0f071",
+        "translation_hash": "ceec9c0d5e90636ab0798f5e77e4508817894f8636efedcdddfa302507c1b34c"
+      },
+      "comparison.valid_transfer_bins_gaps_are_not_interpolated": {
+        "source": "%{valid} valid transfer bins · gaps are not interpolated",
+        "source_hash": "a9aa769f0efeaff709f9345e4a52c2c797c5cf7640557abda0aa32ef34a14230",
+        "translation_hash": "8d709e9da8873187fba6f4efae5fdab837f4022f4251a6d94ec48614490176cb"
+      },
+      "comparison.waiting_for_a_complete_average": {
+        "source": "Waiting for a complete average.",
+        "source_hash": "b3b41682bda6afe169a2da8b70ddaa81239471effecf3e4166708cae018acd3c",
+        "translation_hash": "b0160fca3a1087c8da376bb96127a8dc9b9375968084d366843ac0d33d202052"
+      },
+      "comparison.window_averaging": {
+        "source": "WINDOW / AVERAGING",
+        "source_hash": "551f916bcab6bae8ad5171d95f75ee8d7c45bdf6e73584ec32df5ec304564abf",
+        "translation_hash": "5699bda1fc24729aceb849f8f76a85b7aee128578873984c79a56845a69d9a26"
+      },
+      "comparison.wrapped_delay": {
+        "source": "Wrapped delay",
+        "source_hash": "4b36dc4d6910aef6d886b106dc560c2cc1c0c4630bd71bbf44fd4a741f4c43e5",
+        "translation_hash": "066ca201e2a2d2ebdb9c316138cf0f417b1196d5767d7a3a781ba1a892d70e8d"
       }
     }
   }
