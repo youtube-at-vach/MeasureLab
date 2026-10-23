@@ -8315,6 +8315,586 @@
         "source": "Zero offset",
         "source_hash": "bbe4278b46bf6f1d3c0fed2d1799046af975c03015efd828dc36d65701b0e44a",
         "translation_hash": "e786fdf3b03e126b6cb2d640a6f421d1e8265e1cbb2455aabe89b34cda5e6167"
+      },
+      "spectrum.advanced_analysis_diagnostics": {
+        "source": "Advanced analysis / diagnostics",
+        "source_hash": "a891e3cd14ba67918093d1413968bac0f2df9d1e7b8bc7be22c777ac851e0033",
+        "translation_hash": "490a728bce9a969bc42eee4ca6f4e257b105d2e444338d1b869349f0e6e96f92"
+      },
+      "spectrum.amplitude": {
+        "source": "Amplitude",
+        "source_hash": "af20d3048029ab28a06aa6826c3df53393accb3c57e3ff9c0219b2a9e8696489",
+        "translation_hash": "af20d3048029ab28a06aa6826c3df53393accb3c57e3ff9c0219b2a9e8696489"
+      },
+      "spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum": {
+        "source": "Analysis changes apply when input restarts. The captured spectrum stays held.",
+        "source_hash": "e02f27009c51cb39529267d6d1423c297054101d2dd583598ba2d9939bddf01f",
+        "translation_hash": "6460df9a70657efbcd3f35ff4149bf1042b5d88e8d2027d09ca1a089f748be5d"
+      },
+      "spectrum.auto": {
+        "source": "Auto",
+        "source_hash": "0286249762f7c94349cdc0ba3bb2255baf9a80036e2193ead1d77696f888582f",
+        "translation_hash": "4c2a3993c15df5918ed140a3ea63cf8f45fb449cfe32254767dea894675c2cf4"
+      },
+      "spectrum.average": {
+        "source": "Average",
+        "source_hash": "b38ae2c5b84529e8027b43a69c8ce9426a3cb081dae97b77bdcd2fdc5a9df742",
+        "translation_hash": "a50c916b389585ec8b88e37346156c47ad0bf6ab45f57452b869376e8d529ec0"
+      },
+      "spectrum.averaging": {
+        "source": "AVERAGING",
+        "source_hash": "dd41f9c8cfbf36f85ee3e1c0ea5fda3444708b55fd861df5e2c9a42e6e279583",
+        "translation_hash": "d29145a55479ad683eb688a0dcc1d8f3fde95801b792a2cf981d821d8ddeeda0"
+      },
+      "spectrum.avg_off": {
+        "source": "AVG OFF",
+        "source_hash": "bb177600ad11b4380c4259902269cbb2f876d48600400141d57c037c5361fca9",
+        "translation_hash": "df40ae8e4a5b6e3de9ed8fa514a37af877258e7b2a763b76843243b1c6874e89"
+      },
+      "spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum": {
+        "source": "Band power unavailable · invalid window, range or nonfinite sum",
+        "source_hash": "eeb09abc50c86a9626aae22ce7f870a578d36e23715d4bae224932dad991a8fd",
+        "translation_hash": "36596f0b20d91d41eab5a1b6464c3e1d69316718d656dc6006f4bba38ecfa998"
+      },
+      "spectrum.band_rms": {
+        "source": "Band RMS %{rms} %{unit}",
+        "source_hash": "d2f2ec0134c00629078ad4202362bf2d8316a4ae43fbe2a0a56e4a93bf02844b",
+        "translation_hash": "81e1a9c44121377aafb2a1c708d46ae766984021140f0d82ad1da02053b20b57"
+      },
+      "spectrum.before_input_began_no_stft_frame": {
+        "source": "Before input began · no STFT frame",
+        "source_hash": "691108b4ed9c04913467395a4405f364238b8fe53eb5082df1f87b2d0330ba50",
+        "translation_hash": "df03fd5dfd210b8b68796d64329e07f7373f379352387df6d616d28ae601b645"
+      },
+      "spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin": {
+        "source": "Bin amplitude · 0 dBFS = 1 FS peak sine at a bin centre. Window coherent gain corrected; off-bin tones have scalloping loss.",
+        "source_hash": "eb30b51a491735c4574a5f70678ba412760b4967571de7577ff2c65a086f6435",
+        "translation_hash": "18142b7584562928660169c3769949c3727c279cefc270ca3a8b88d67e10ca18"
+      },
+      "spectrum.bottom": {
+        "source": "Bottom",
+        "source_hash": "479ad21ac9096236e921c228a511f12cc84758e21d9edda03ae82c501d367c93",
+        "translation_hash": "39c51de751117c570f538946eab714663a43a429bc6f2c86955e7359961b456b"
+      },
+      "spectrum.calibration_rev": {
+        "source": "Calibration %{id} · rev %{revision}",
+        "source_hash": "b96e35337395daf4649f3550fa34a565ab8cbed064b3af14e6f8db59859d63b4",
+        "translation_hash": "1f002b2d494c68772b19d01aa45770257749d02e33f13309a6913ebe32098079"
+      },
+      "spectrum.captured_fft_source_units_and_averaging_are_read_only": {
+        "source": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
+        "source_hash": "791c826af16c642a880363aac3af9e1ffd1f5f868f5009c13718e931c6872cd7",
+        "translation_hash": "ee0a03b369cb00701407085cf5ca1515c22500c079e53cee61d3f391bb0bdefe"
+      },
+      "spectrum.ch": {
+        "source": "CH%{index}",
+        "source_hash": "236889a28c78d514daab7ee0f54624362975b5c8a9a62528969979cc1f11bda3",
+        "translation_hash": "236889a28c78d514daab7ee0f54624362975b5c8a9a62528969979cc1f11bda3"
+      },
+      "spectrum.ch_input": {
+        "source": "CH%{shown_spectrum_index} · Input %{channel} · %{db_unit}",
+        "source_hash": "28f01719449c6b70d2397e0245f2763103ff746f83241452d058a2cf7dfa51b9",
+        "translation_hash": "825f028c42aa5c68b19ad840ec46aa4985530cf6913742faa6cee5d81618d34a"
+      },
+      "spectrum.ch_input_select_for_peak_cursor_and_export_display": {
+        "source": "CH%{index} · input %{source} · %{db_unit}\nSelect for peak/cursor and export. Display ON/OFF is independent. Re-enabling starts a fresh average.",
+        "source_hash": "468ba2c0245ce04487a4c280885ba7289f52e95d089ff5068926737f59d5464f",
+        "translation_hash": "c8ca085444ee314f6250531a6374ab90d33d0468041ef0947c07e0abbac15fc5"
+      },
+      "spectrum.choose_which_cursor_the_next_spectrum_click_or_drag": {
+        "source": "Choose which cursor the next spectrum click or drag places; selecting A or B does not place it. Both cursors read the selected channel's nearest FFT bin.",
+        "source_hash": "2e6957a55e0e4d958cdbada96d978353aebc98d55fc8c677017bd625c12abd35",
+        "translation_hash": "b9e17da2aa520dd83e2d5da7e1a118dcc2e051cfd0d03366f5a56368021fb9a3"
+      },
+      "spectrum.clear_both_frequency_cursors_shared_by_spectrum_and_spectrogram": {
+        "source": "Clear both frequency cursors shared by Spectrum and Spectrogram. Time cursors, Spectrogram frame selections, XY Free points and acquired data are kept.",
+        "source_hash": "bdc17ac781e786d2532273f583a8c2265b19511a6e11f26949ce84e433bb8026",
+        "translation_hash": "f107e71283010c953aaefb345df29e6724302bf1c66163c55d106f6465079a2b"
+      },
+      "spectrum.clear_frequency": {
+        "source": "Clear frequency",
+        "source_hash": "1d6f3393f3c52365433dcdd6d2b1dd4d1ac1fdd7a26755c5d58d03d1e6e83c29",
+        "translation_hash": "820d2b520c21d2d283dcf0b70a7fb695e91cdc2f3b1f06ec3a347383eda99703"
+      },
+      "spectrum.clear_hold": {
+        "source": "Clear hold",
+        "source_hash": "0282f89ffe113f7a85d306e94bb91156c3871e9350aa17e1783cfc789523802e",
+        "translation_hash": "eab03ac683ecca9edec468ffe807f34671aced3e2233a13d6382b4e619364951"
+      },
+      "spectrum.click_drag_the_plot_to_place_a_cursor": {
+        "source": "Click / drag the plot to place a cursor",
+        "source_hash": "7dc8358e80651048895ef0c4594410aac7210c0c98713a687e713b915da1ce9c",
+        "translation_hash": "cb191e07a424050403f2a35df9d9c0b97e47b370baf1dd9261dca8266d10fb2a"
+      },
+      "spectrum.continuous_hop_ms": {
+        "source": "Continuous · hop %{sample_rate} ms",
+        "source_hash": "623431f15bed6a1565c7a9781705ae29c29cc60717361d45462c341a6c4cfa7c",
+        "translation_hash": "e5719e0a7582fc9848facb08a4f525bbecfcc18768094098e889ca0d6630f4e3"
+      },
+      "spectrum.continuous_process_every_window": {
+        "source": "Continuous · process every window",
+        "source_hash": "c3e5ca9c65b95cc473c75d042a2c2d876e5a25eff2b6224678820996fb6e432c",
+        "translation_hash": "d1ddd68bd536aeedfed621f380cda0a379301c7f2784009f58a01c2959802e5a"
+      },
+      "spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch": {
+        "source": "Cursor %{index} · nearest bin: %{value} %{linear_unit}. Latest window: samples %{start}..%{end} (exclusive end), CH %{channel}, %{sample_rate} Hz, %{size} points, %{name}, %{name_2}. EMA α = 1/%{averages}; %{updates} processed windows, contribution envelope %{start_2}..%{end_2} (exponential weights). Input generation %{input_generation}; missing windows %{missing_windows}.%{times}",
+        "source_hash": "460823b003f3fe7c9b2bf393d20e88920873ddca3e79011234e557677f185238",
+        "translation_hash": "fc6a633372da7092312739daa9a3dd6c8256ed0df1b8b2eb9d0c27fb45bc36f5"
+      },
+      "spectrum.custom_frequency_range": {
+        "source": "Custom frequency range",
+        "source_hash": "b6b4d59e1988169c5b2156910f87b7c2c3acd7fb7e9362d023f8cecd08c58906",
+        "translation_hash": "e758d7083bb16d0937a8df2ce6db626bdbe08b88196116d42047c72d8fa226bc"
+      },
+      "spectrum.ema": {
+        "source": "EMA 1/%{averages}",
+        "source_hash": "de3017bb1f2974b8e03854ea554eb3bb60c948daa6ce774d2f9067965f0d0c35",
+        "translation_hash": "de3017bb1f2974b8e03854ea554eb3bb60c948daa6ce774d2f9067965f0d0c35"
+      },
+      "spectrum.ema_settling": {
+        "source": "EMA settling",
+        "source_hash": "58ced3fac0411f9dabda9c1355086b50d43de97dfcdfb16be9166a35118e393c",
+        "translation_hash": "681ff522a014ee6e24db24963d8b0aa0b8508b72c9713aa8c3a0171f53381e9f"
+      },
+      "spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets": {
+        "source": "Energy spectral density · energy per Hz. Selecting ESD presets Rectangular, Average OFF and Remove DC OFF for a single transient.",
+        "source_hash": "1330dca07d26e4223ecee73ec0494c5abed6c67fe815718a3e09e9604903472c",
+        "translation_hash": "aa4a0338d6611db713b1ca03824034761d8d61864f130fe7e7998c1fb642f587"
+      },
+      "spectrum.exponential_average_of_linear_power_off_uses_the_latest": {
+        "source": "Exponential average of linear power. OFF uses the latest processed window.",
+        "source_hash": "26c721fc3276176d06f752a46c3a6895f8b8d4ca56a1afb193525c3f2e61e0c6",
+        "translation_hash": "b0eb778b68bfe98c14751c04190f777a8613622c331665f862e8b79640abe0fe"
+      },
+      "spectrum.exponential_power_average_approximately_settled_after_weight_windows": {
+        "source": "Exponential power average · α = 1/%{averages}. Approximately 95% settled after 3 × weight windows.",
+        "source_hash": "78746733de2d58f84d6b87cec6248876b7d83fc462bd4ead30e9e79fb0a3e656",
+        "translation_hash": "919f44b80164864d8f24e9884ab54dd4d0c9eadc2c6b8d6c903d98eae4535430"
+      },
+      "spectrum.export_reason": {
+        "source": "History Spectrum export is unavailable. Scope-only JSON / CSV / PNG remain available after input stops; Normal Spectrum restores combined export.",
+        "source_hash": "ece5087363ca18015422ed79d7e3ac69fdfb57eed18ed9d9813bc8e919573a2a",
+        "translation_hash": "39bc79dee2fb78ccc39de23f628eecd5d9b99a3f572d859ccf4fa9d9764a3c03"
+      },
+      "spectrum.f_hz": {
+        "source": "Δf %{bin_hz} Hz",
+        "source_hash": "c7de7e2839ae7ee7a1332a61da32996cd1e8390dddbae75ca5e374cdd5e452f2",
+        "translation_hash": "c7de7e2839ae7ee7a1332a61da32996cd1e8390dddbae75ca5e374cdd5e452f2"
+      },
+      "spectrum.f_hz_l_db": {
+        "source": "Δf %{frequency_hz} Hz · ΔL %{delta_level} dB",
+        "source_hash": "9e547bcc9003389764897c7538352c991a35d297f604ae536e74a6893d9ed734",
+        "translation_hash": "9e547bcc9003389764897c7538352c991a35d297f604ae536e74a6893d9ed734"
+      },
+      "spectrum.f_hz_rbw_hz_window_ms_processed_windows": {
+        "source": "Δf %{bin_hz} Hz · RBW %{rbw_hz} Hz\nWindow %{sample_rate} ms · %{updates} processed windows",
+        "source_hash": "b3f4ce1470fca717d7e2cc23c3968a54dbc7588500fd05b3601bcecca8e573e9",
+        "translation_hash": "25cb8942dc05c746d1f320fad4d948d3b880b25e0967b8f1b395c687d48787d0"
+      },
+      "spectrum.fft": {
+        "source": "FFT",
+        "source_hash": "94fa3fe96ddeefe8e4e7f203318826a72c95c5ebe448ebb244268b1380f6a700",
+        "translation_hash": "94fa3fe96ddeefe8e4e7f203318826a72c95c5ebe448ebb244268b1380f6a700"
+      },
+      "spectrum.fft_edits_apply_on_next_start_captured_results_retain": {
+        "source": "FFT edits apply on next Start; captured results retain their conditions.",
+        "source_hash": "463700be116634a557c6ed4d87afe610e92ba5f6edffa0230c03f3c992200c90",
+        "translation_hash": "861ba128241089282b344d2313a0c2445d16f842682f5cd72c9c6f91b33eace5"
+      },
+      "spectrum.fft_end_acquired_end": {
+        "source": "FFT end #%{end} · acquired end #%{end_2}",
+        "source_hash": "77bb7592a139cb12a68dc50f4b8f678a7429deced5e20d07fc23a15986ec133d",
+        "translation_hash": "e64cd7b83f9e5c2b4754116465229a1f33fa213946ff3b0de9cd82ae14911439"
+      },
+      "spectrum.filling_window_samples": {
+        "source": "Filling window · %{filled_samples} / %{size} samples",
+        "source_hash": "1064af1bc2839eeca01423f8b0a74708b385e45714b8909cb11674a75ad211fd",
+        "translation_hash": "5fd4d3b0de8365a796f65b31cd18e3cf9b3af4e7baa5e0056227a96f65717456"
+      },
+      "spectrum.fit_the_entire_transient_inside_one_fft_window_trigger": {
+        "source": "Fit the entire transient inside one FFT window. Trigger capture is not linked.",
+        "source_hash": "e0c1c39895968d86afbb168a4be7f72b260929828c3faaf20890010db3d727b4",
+        "translation_hash": "bddb3b51b21aecec6763fc24fbbcce587de3d1f5c16396d908757b47bc021c12"
+      },
+      "spectrum.frequency_scale": {
+        "source": "FREQUENCY / SCALE",
+        "source_hash": "6c3bbc8a09c8ce5324ed391e2457290d8cd93a11c6d7d28463e5bfebe97aba57",
+        "translation_hash": "4114b4de1c776c7b0a584a9f602b36f06127613a9d1923f5922fe9efb689adad"
+      },
+      "spectrum.from": {
+        "source": "From",
+        "source_hash": "218197693424e0154cefc0af31aed96c084b987e08136e91d5528ddbb5461e24",
+        "translation_hash": "640e86cbc2447fed82ec5fcc3ae5b8fc414247b51b1a1e442a52740fc9a849fe"
+      },
+      "spectrum.full_nyquist": {
+        "source": "Full / Nyquist",
+        "source_hash": "c72ac558bb67db6413fb8859ec89c90da2597b7c22fb4e033449be27b747c29e",
+        "translation_hash": "75d04aba14128d735c47ff7c3ec7c84a6859209d76a386a9565f147f07af5059"
+      },
+      "spectrum.history_read_only": {
+        "source": "History · read-only",
+        "source_hash": "f6bd2607646f067a011169b07e412115618b405b358712cac5cfd23c7fa53afa",
+        "translation_hash": "8d7b846b952d47467e54d041b6e1ba0e05a973a5da253bd274e66e0a139423dc"
+      },
+      "spectrum.hz_ch_samples": {
+        "source": "%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "a7a2ae244c7fb539d6fd4fb89b5437b83909b37a108faf3bdaf953755961bf87",
+        "translation_hash": "f9f3261d175a1e3a084f297b5309b3a9e7bf8ec2d50a5b4bf65fe0084f1aaa9b"
+      },
+      "spectrum.hz_no_complete_window": {
+        "source": "%{index} %{frequency} Hz · no complete window",
+        "source_hash": "1350e0cc299a6cdd48d785a2cf7a9d81077e45469906e453ae44039453b1c355",
+        "translation_hash": "746805ce816e2db8bb6d2939215b318b9a0b80517f28ca269da5bec21995fbe2"
+      },
+      "spectrum.hz_power": {
+        "source": "%{first_hz}–%{last_hz} Hz · power %{power} %{power_unit}",
+        "source_hash": "8b9eae60cb3e971f5495137f50c857b5272bf1a773c14dac45f5fca70e995181",
+        "translation_hash": "783a48088e295d5ceec2f493619b298f8e60c379035dd285ea0c77c4be97d859"
+      },
+      "spectrum.input_source": {
+        "source": "Input source",
+        "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+        "translation_hash": "6b69f328361b136be91856114422eb71c734a62ec20fb3a01506dc89af7a0109"
+      },
+      "spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power": {
+        "source": "Invalid FFT window · nonfinite sample or calibrated power",
+        "source_hash": "e54fc3e08d62d27f6abfbbb388d42d3ec146a062fcdaee8f795ef6e39df15a00",
+        "translation_hash": "180c71bbd9424b11cae8494be5d77163aaf0969dd12c600cf50b5a0e8798d475"
+      },
+      "spectrum.invalid_stft_window_nonfinite_input": {
+        "source": "Invalid STFT window · nonfinite input",
+        "source_hash": "9c4ba4047538338c9b5a837068aee0b95b3a6bcce5a8e9635367cefb8dd2cdc6",
+        "translation_hash": "8d4925da5548f4dc0f5714a898b8e4dbec0f337e805bea081ce082d3e8ddf365"
+      },
+      "spectrum.json_csv_png_use_the_selected_trace": {
+        "source": "JSON / CSV / PNG use the selected trace.",
+        "source_hash": "c482e3660b28750bfe151bd9b481409b6f61340b839c9342beaa749d64a740dd",
+        "translation_hash": "bfa1de5d5041205ac4ca4417670be2d7352c3a30451e7a0786205ad62ae8fdd2"
+      },
+      "spectrum.latest_observe_at_a_limited_rate": {
+        "source": "Latest · observe at a limited rate",
+        "source_hash": "43ad79b870f187968f2d98ba23b5cd003060ee0901b51af0898391f448bcbdaf",
+        "translation_hash": "158ab3dbe60531a4df88818e065000b2f742db7e01d8337eef908da1f0047924"
+      },
+      "spectrum.latest_target_ms": {
+        "source": "Latest · target %{observation_ms} ms",
+        "source_hash": "40dbc283f8bd510f05215173ef38ec2d60f870829ad83f10c5c7ef18b5e63316",
+        "translation_hash": "611eba32e33cd98cd974f28aef68ad12b6bbfd84983af457595978fc7af34372"
+      },
+      "spectrum.level_axis": {
+        "source": "Level axis",
+        "source_hash": "fff0f3a43acf44c95f34fa184d73f216f1f16c3de5fb5058b1f975aeacf1393c",
+        "translation_hash": "1ee63b2a5af7ec0a9d22fa7f95ffaeeb75ca9041b43fa0242f59b8b145d1e0b9"
+      },
+      "spectrum.linear_hz": {
+        "source": "Linear Hz",
+        "source_hash": "d35293c5b6027d55300797c15a83bdd1c89c75b00947f5fa7afcb2fa92932fbf",
+        "translation_hash": "d35293c5b6027d55300797c15a83bdd1c89c75b00947f5fa7afcb2fa92932fbf"
+      },
+      "spectrum.live_observe_newest_window": {
+        "source": "Live · observe newest window",
+        "source_hash": "0f85bff6549ed70dbf4590d546696f07a4e557f5e5412b55c4a43d31d3e90ca5",
+        "translation_hash": "b6045e4a69a055bb411dae44f747d0a216a4b0c59df684668ba4701c1dd8a9d3"
+      },
+      "spectrum.live_target_ms": {
+        "source": "Live · target %{observation_ms} ms",
+        "source_hash": "f1ef01e53553c22154c6680729cf73f289719e38a432c08420e22eb456b6c7b2",
+        "translation_hash": "74cd538beef9bd6c0af36e07647c9a555ed966ec7df935b23d24c1395bed6912"
+      },
+      "spectrum.live_up_to_updates_s": {
+        "source": "Live · up to 60 updates/s",
+        "source_hash": "f9e4ead149619fa3fb5166d8f26604ecfc1d0c9ffe436de3493c5e0aab616d1a",
+        "translation_hash": "95df8abece53ba40419d172a800ffab12f68a3fd29652022a83bb268486d6c58"
+      },
+      "spectrum.log_hz": {
+        "source": "Log Hz",
+        "source_hash": "7b91026010d597a53c425c595786148a71e5a567e1427bb7f5925143f270d734",
+        "translation_hash": "38f583089f2aa80cf9e21aa267335a8e36f995a05e585c6dc28ce24ce7aada59"
+      },
+      "spectrum.manual": {
+        "source": "Manual",
+        "source_hash": "b0b9fe24ffa9629125bdc59b122f80d605ab604eb1b74485c2f2ecfde26576ae",
+        "translation_hash": "961cacaa6e41b6f58a04ef46702d982be7fb681038cf0f67211cb9e4d8dd008b"
+      },
+      "spectrum.measurement_ch": {
+        "source": "MEASUREMENT · CH%{index}",
+        "source_hash": "22f25daa7ac50b5820487513b931f4c4627757f2baeffc3dcb55949ba763c01d",
+        "translation_hash": "9f2e7ab6d4b6db7e19375287351d51a3fc40f42cf987b112b4840d784981d226"
+      },
+      "spectrum.missing_input_invalid_windows_missed_observations": {
+        "source": "%{cadence} · missing input %{input_missing} · invalid windows %{invalid_windows} · missed observations %{missed_observations}",
+        "source_hash": "9b4cbf9161fde480a05fcd75100ebd679b35f011c621169a003d462626c6b181",
+        "translation_hash": "34c29160702a7002c75f771ac1c55ecff55684f4ea39453b32f956b2e62ebbde"
+      },
+      "spectrum.mixed_level_references_units_shown_per_channel": {
+        "source": "Mixed level references · units shown per channel",
+        "source_hash": "d0546d52b4d99894c409141ddf0c4f85dad6f9e7638d3951d65d2cf67b4dee36",
+        "translation_hash": "7ef77841d45ecd27009850f888f0220f73fd0eed628955340ef5a598a11fa9f4"
+      },
+      "spectrum.mode_names.continuous": {
+        "source": "Continuous",
+        "source_hash": "04f13cecbc50590b68a8c4866c8e622c3bc69fb2f8caeeba894cf5c7819315f5",
+        "translation_hash": "0b0a7f3ae8006b1783662786f0fe955382c28abd82e29c570c4335708476da23"
+      },
+      "spectrum.mode_names.latest": {
+        "source": "Latest",
+        "source_hash": "8730d3c2022abf1f9665e4ca1da43e4d068843482053675af19176b0f6f51a3e",
+        "translation_hash": "fde024e19118273c5573e67431857c5cf30434bc449c0f21a72642cdc17275d3"
+      },
+      "spectrum.mode_names.live": {
+        "source": "Live",
+        "source_hash": "b64ac05f17e64d037db81a98f51e2688216e292ae9748f979f04dfbac49fd7fc",
+        "translation_hash": "b64ac05f17e64d037db81a98f51e2688216e292ae9748f979f04dfbac49fd7fc"
+      },
+      "spectrum.newest_complete_window_only_intermediate_windows_can_be_skipped": {
+        "source": "Newest complete window only; intermediate windows can be skipped. At least 33 ms / N/4 for small FFTs, 100 ms for large FFTs. Does not guarantee transient capture.",
+        "source_hash": "f8a77bee0d9bfe7d42df929270a57fac1563a32d11e104fa420b90d651f6a6da",
+        "translation_hash": "2ef8e35387307bfecbec982a3e76be8c535619dd3801a2ce847dc88f0ec1f0da"
+      },
+      "spectrum.no_input": {
+        "source": "No input",
+        "source_hash": "6e69efde182aea688b0d1755856a46c9112ecbf491a927f0b968ab9eaf0d7e75",
+        "translation_hash": "5454109566d2769c85b664a8952281b02181a62c28f6133e6a91cd1d65a98cff"
+      },
+      "spectrum.no_stft_frame_gap_unavailable_or_different_generation": {
+        "source": "No STFT frame · gap, unavailable or different generation",
+        "source_hash": "7d21305d578cd61f62fbb6b01b465f27b665a65b477d3ee47932e525efe4cecb",
+        "translation_hash": "7f5e4ef83e2eae9e589db738fda14ae64388234bbcd555346d63417ba5a61769"
+      },
+      "spectrum.normal_spectrum": {
+        "source": "Normal Spectrum",
+        "source_hash": "dd764d18104fad5e9e69766f8e31980c0738421d9321e91a4b116d90dce8698e",
+        "translation_hash": "3c1318241c2183d28caf2223c7a6ac9b2e6d457f00c868e5c0d101ea24caff48"
+      },
+      "spectrum.observe_the_newest_complete_window_with_a_processing_time": {
+        "source": "Observe the newest complete window with a processing-time budget. Average and hold update per observed window, independently of drawing. Use Continuous to process every N/4 window.",
+        "source_hash": "dd64526c48367a75ffb044f47b203ccdd7a9ac93a67bd3ba4ca2d439439ca2f0",
+        "translation_hash": "ad1295109ef8bed128800e0707878f6cf0ae06102bda58f9f258e37b253d3fc3"
+      },
+      "spectrum.off": {
+        "source": "OFF",
+        "source_hash": "38cca6bea010af8adaf4be7d270456fa9adef8c0252db91f2767c607d077319b",
+        "translation_hash": "537ae3b1762dceb86cf2a4891ecc0ff3e0566621396f8c217be34112b41c7268"
+      },
+      "spectrum.one_complete_window_s_continuous_step_s_n": {
+        "source": "One complete window: %{sample_rate} s · continuous step: %{sample_rate_2} s (N/4)",
+        "source_hash": "55e1d9517876332bcfcb3fc3be912c71ca764dcb4e01d0d8fb7fdbcd982e2468",
+        "translation_hash": "77e0eff56a42c7049b735f38088205a92d2c6575f7a5ccdf71441a888f701d01"
+      },
+      "spectrum.peak_bin_hz": {
+        "source": "Peak bin %{frequency} Hz",
+        "source_hash": "9004e99084b18491e8f6fa33fae4dc84d9d18e40c568928284a0af422b968a48",
+        "translation_hash": "c08db96145267391d82202541ee22115ef672e992221f5e89d1a66b26ca4fa37"
+      },
+      "spectrum.peak_hold": {
+        "source": "Peak hold",
+        "source_hash": "7af3e1b50bc9afb8786cde12f32d492ef605d287b3658368e558a37e1e170fed",
+        "translation_hash": "a2d76bdc3adaa29ce11ac876ce2ee078dbaae36c3957f272cb5c35498f45540c"
+      },
+      "spectrum.peak_markers": {
+        "source": "Peak markers",
+        "source_hash": "e2412b6df75b35a92ada79ed2cac0d4195b56ede9e5bbe3b76bec9c00c6d7ab7",
+        "translation_hash": "c1571e3daaba14c052c7f3557b9184a162baf31585bb502fdc8cbd9969a1f474"
+      },
+      "spectrum.place_cursor": {
+        "source": "Place cursor:",
+        "source_hash": "aeab96caf722280489829d478a2ee0fee2492f4d800c795dee6b58e8013704de",
+        "translation_hash": "c982fb7d1b1b1ce69d550f378b2b95fc59b1855d76d9ffe5d19f450dcde0ff23"
+      },
+      "spectrum.place_frequency_cursor": {
+        "source": "Place frequency cursor:",
+        "source_hash": "0dd9049fe0e7e821a11397adeb645e6571240d3c795097edf15895e3c9cf5d44",
+        "translation_hash": "98146b6954681550d481754c174071472e7805a55108c9e07342e2375c6965fd"
+      },
+      "spectrum.points": {
+        "source": "%{size} points",
+        "source_hash": "9aaa22b3e64d8f96b49cd1cca8a4a3ddc4cb5f5ab2d623952fe1847032e0792b",
+        "translation_hash": "5bc9ed702a12b14e974a0354ba8171e74159751dff1c3da1f74fae545c91eb94"
+      },
+      "spectrum.power_in_band": {
+        "source": "Power in band",
+        "source_hash": "71216c73e97129b783f19996409669cd0e273df9307833a9468dd9aefed29383",
+        "translation_hash": "2473e9da20b23438a3809246cec1407c199f2c50c05afdd34322d0fc94d4a496"
+      },
+      "spectrum.power_spectral_density_power_per_hz_with_window_noise": {
+        "source": "Power spectral density · power per Hz, with window noise-bandwidth correction",
+        "source_hash": "5dd3c33dfc0984be84af96736c4a2bcd65edb6975bbbc3c9ced5f3ab7d1b9de6",
+        "translation_hash": "013dd421ed6c48c14ad01cb4a53d48ac4eab78d8c12b488467dfe14ab61ef972"
+      },
+      "spectrum.psd": {
+        "source": "PSD",
+        "source_hash": "6558038e726e98cc4604570a467525f203ad5f5a2e9eba6e1b769fa55f46fa70",
+        "translation_hash": "6558038e726e98cc4604570a467525f203ad5f5a2e9eba6e1b769fa55f46fa70"
+      },
+      "spectrum.pt_fs_hz_f_hz": {
+        "source": "%{size} pt · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz} Hz · %{averaging}",
+        "source_hash": "5d7dfe0f8b3c200f0d7914a2b83de5a8701a09ae87c816fbfe3241809e1ed446",
+        "translation_hash": "3e8833a4fa93bdb01a58e1b8e6227f2d09674127dd83a584e01df8ae56d794d8"
+      },
+      "spectrum.quantity.amplitude": {
+        "source": "Bin amplitude",
+        "source_hash": "bcc61655cda4542c0539a5ad50e0edac35e6414218b96307ad3859d72ac60a9b",
+        "translation_hash": "817f1448027d621e557dcea236545afbfbf44b8ff0def15a9fa873fd14675a3b"
+      },
+      "spectrum.quantity.esd": {
+        "source": "Transient (ESD)",
+        "source_hash": "4cab4360048de2c17e361758eb57be7d367c951aa6a0b322ab4a88cf87589f9d",
+        "translation_hash": "4cab4360048de2c17e361758eb57be7d367c951aa6a0b322ab4a88cf87589f9d"
+      },
+      "spectrum.quantity.psd": {
+        "source": "Power spectral density",
+        "source_hash": "1299e6807fbf1e9b6dfb191db07f90eb076110da6f8af6cab3c9161906d85ab1",
+        "translation_hash": "7fe921ec53290b2d586d0a467f368edd50d82e967337c1f05b39be2aa11a8e67"
+      },
+      "spectrum.rectangular_recommended_other_windows_attenuate_energy_without_correction": {
+        "source": "Rectangular recommended: other windows attenuate energy without correction.",
+        "source_hash": "a4578b35e1e604313a6c37b3206c5d8f5eccb1e52c3b7e3bf8adb4dff238da3a",
+        "translation_hash": "5821f6489fb89186172a843fe4ec501ee00e2e578302230d155523347a1f15bf"
+      },
+      "spectrum.remove_dc_offset": {
+        "source": "Remove DC offset",
+        "source_hash": "ab2c3442179ca283844b06668bf22596d8a844ad757a4fdb5e1c7e983a6e8a0d",
+        "translation_hash": "2f496d0468733422992aca5acb357e2664bd89a1b2c49a63d052561a6f21df9b"
+      },
+      "spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64": {
+        "source": "Requested %{requested_hz}–%{requested_hz_2} Hz, inclusive centres of bins %{first_bin}..=%{last_bin}. Sum of f64 PSD × Δf; full weight at DC/Nyquist. CH %{channel}, generation %{input_generation}, %{updates} processed windows, contribution envelope %{start}..%{end}. Input loss %{dropped}; missing windows %{missing_windows}. Windowed mean-square after optional DC removal; not the Scope observation interval.",
+        "source_hash": "c9bdcb2cb881ba38643cd928db127edd06af964d70e176bc1c5ecda3eabb3638",
+        "translation_hash": "603ac60e4f270422136be6df3a83e4c5e3266fc36b483ade4fa4dee67264459a"
+      },
+      "spectrum.reset": {
+        "source": "Reset",
+        "source_hash": "daee7606b339f3c339076fe2c9f372a3ff40c8ee896005d829c7481b64ca5303",
+        "translation_hash": "1ba0463c46e6cafa39baed6d955cc01ba0d6f615ff2846100415370e38c83442"
+      },
+      "spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces": {
+        "source": "Reset averaging and peak hold for all Spectrum traces",
+        "source_hash": "6353f0a4ed4731189797eb836f785a5d82ed982c9c9b70e7e45187e047175149",
+        "translation_hash": "8c80316fc8c90cbfcd8dc7ca3b98e28ba12c5ec9f78ff9ea8a2701e5c25e94e9"
+      },
+      "spectrum.select_a_time_frame_in_spectrogram": {
+        "source": "Select a time frame in Spectrogram",
+        "source_hash": "1d6f011644ccf639fcc19bf9fa1550fa99693d132a4b30f4a2ab1409d774c304",
+        "translation_hash": "c9d32a476f7f4f08a4b413e647f8a184ad4672e596af77105b91bbd3102adc26"
+      },
+      "spectrum.show_ch_spectrum": {
+        "source": "Show CH%{index} spectrum",
+        "source_hash": "733dfc7307c0c61b3928d5e3ff226f53e64a0320a9fbc4da9f4b91502a937546",
+        "translation_hash": "af9d7797897defdb3b14deab0ca80b50e2085521331d07f1c444f939baf327e6"
+      },
+      "spectrum.span": {
+        "source": "Span %{hz}",
+        "source_hash": "e4f4c39837ddca3283f7596841d2ae61aa7a6a27d6a0d5add3bc900d03c98e75",
+        "translation_hash": "cad97c3cec27657a57007d47b9844824e74e22dece227a2d98ea994ebf011b41"
+      },
+      "spectrum.span_2": {
+        "source": "Span %{span_hz}",
+        "source_hash": "04f025c68bb596dcd24603c920998494119b79d91a893159faa8feaebfc6f5c0",
+        "translation_hash": "6fe515968fd3cb79cecee32dc7b7d3b404f4537a71f8fb5ad47843af562ee884"
+      },
+      "spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated": {
+        "source": "Spectrogram history · Bin amplitude · FS / dBFS · AVG OFF · uncalibrated",
+        "source_hash": "295008dd65753beb8dc2ed2b28ed52c04e6ce8c7aaf52009e2fee44994a9ade3",
+        "translation_hash": "11f3d438b8050e3d854998e92e41ced901e615901bed5fa5d52680540eb71f0a"
+      },
+      "spectrum.spectrum_analyzer": {
+        "source": "Spectrum Analyzer",
+        "source_hash": "6f77fb0399a06324228305621fcb010348d386e9d8c99337e22a500aeb15606f",
+        "translation_hash": "6f77fb0399a06324228305621fcb010348d386e9d8c99337e22a500aeb15606f"
+      },
+      "spectrum.spectrum_and_scope_xy_have_independent_sample_intervals_fft": {
+        "source": "Spectrum and Scope/XY have independent sample intervals. FFT processing time and the age of this window are separate conditions.",
+        "source_hash": "3d33eb0e4d60fa21dac807aaba8e5e0877a16bf3c9b8710220d8569b4acc5511",
+        "translation_hash": "3f7b532f0b46b7a0709978e7040f0514041529d1fe1ee95aa3613bf11c5fcc89"
+      },
+      "spectrum.stopping_finishing_spectrum_windows": {
+        "source": "Stopping · finishing Spectrum windows",
+        "source_hash": "f9fd7328644e61ddf428b294312195c7ffe4264e03983487a73d273c944087b8",
+        "translation_hash": "a64f2446bb601ecff4e0af610cf78c0de8b74c78b9c064901f80a4cec2a62125"
+      },
+      "spectrum.subtracts_each_window_s_mean_before_windowing_in_esd": {
+        "source": "Subtracts each window's mean before windowing. In ESD this changes transient energy and its dependence on window length.",
+        "source_hash": "9761c469be954e52e6b62ae892332b1df5d40a1c94de8a4f629c7d7c551520d2",
+        "translation_hash": "2348cf69fa73fd98b60491facfe31b9798ddeab8bf21b6f532acf107026f140d"
+      },
+      "spectrum.sum_of_f64_esd_f_over_all_bins_including": {
+        "source": "Sum of f64 ESD × Δf over all bins, including DC/Nyquist. Energy of the windowed waveform after optional DC removal. Averaging gives an EMA of window energies, not cumulative energy. Nominal input sample clock.",
+        "source_hash": "d47867f580a0b62c06dbf4e33a1b6f411d94c5adda1329240d689d7435e82abb",
+        "translation_hash": "7150a9b91dc9f2022e2395bcd4f50df8e3628db800c827a206fd9457836fda25"
+      },
+      "spectrum.time": {
+        "source": "Time %{i}",
+        "source_hash": "1a12fb1ec52bf208ca4c50c1ea64028625b1757774fea6e61718babd28cb796d",
+        "translation_hash": "774aa9bd7413bc73660168076f085fdec0101b3a883f907a236138415e247106"
+      },
+      "spectrum.time_2": {
+        "source": "Time %{i} · %{i_2}",
+        "source_hash": "45e8c2775a53ef8ded0f85d3bd7269593d4a4c63d5f68dc11102b1033eef8a3e",
+        "translation_hash": "d84ff7ab0210c8dc3add77de70b26ae7183c244074a7b52372141a50dd23f584"
+      },
+      "spectrum.time_a_b_from_spectrogram": {
+        "source": "Time A/B from Spectrogram",
+        "source_hash": "4dc49b69f821b1ed1fad6eace8ff98e0a8fe77eb304b968d6b7c0b491a8ccdac",
+        "translation_hash": "25b73e34c6fff63095fc803c0251c0603e138d372bf1f8c681d8480579e66fd7"
+      },
+      "spectrum.time_end_s_ch_samples_hz_pt_dc": {
+        "source": "Time %{i} · end %{sample_rate} s · CH %{channel} · samples %{start}..%{end} · %{sample_rate_2} Hz · %{size} pt · %{name} · %{name_2} · DC %{retained}",
+        "source_hash": "6a71c80f90a3819121f48462222f92db8702ea6e0fcf5c4bcf4d7f0359f4d931",
+        "translation_hash": "787c53f987eee54cc392caea8d84c0ced2d67032533edf2d8fad12668b78646c"
+      },
+      "spectrum.time_nearest_bin_acquired_samples_hz_points_no_average": {
+        "source": "Time %{selected} · nearest bin %{value} %{linear_unit} · acquired samples %{start}..%{end} · %{sample_rate} Hz · %{size} points · %{name} · %{name_2} · no average, no calibration",
+        "source_hash": "0fac2e7896248b09925c6715ee2c6612803f8c6b0f8d58db1cee58cabaed64f7",
+        "translation_hash": "79f63579533fa83917de503d905f8d8ca06e2a19f908369a954c99d7a7bb1835"
+      },
+      "spectrum.to": {
+        "source": "To",
+        "source_hash": "f4b06ef6d3c81436f60a318c81c42f8f7e2d774d45a22f3b9b5f3b6980d28146",
+        "translation_hash": "078a815372afc201037e8503f586aa518c39c53de0f865984800c52f7e7f339b"
+      },
+      "spectrum.to_uses_nyquist_inclusive_bin_centres_whole_bins_band": {
+        "source": "To = 0 uses Nyquist. Inclusive bin centres; whole bins. Band changes read the held PSD without resetting the average.",
+        "source_hash": "8bd24f3d5b9d8523f18d11d7f83ca0cf4a078a95547fc3618b6dfc23e6faadb6",
+        "translation_hash": "69eb700badf25499a8c03f22533c88d7f080a944b33e83f106cb9f9de37a0dbc"
+      },
+      "spectrum.to_uses_nyquist_narrow_ranges_show_individual_bins": {
+        "source": "To = 0 uses Nyquist. Narrow ranges show individual bins.",
+        "source_hash": "acaa53e220788645cbc834e11dbe719e35f4660a919e9c8a48be42fd08f4f1bc",
+        "translation_hash": "817782f8620901835a8f6395f8f998d3996301ef4c3f142db39d3b17cb0df420"
+      },
+      "spectrum.top": {
+        "source": "Top",
+        "source_hash": "d5cdfcf7ff75338fa974145a13378ee35f7ea04cfabd74b8f5fb6df350cfbcca",
+        "translation_hash": "0d7d94fb8e0944421ff432989c4773f70615757f0f5c428efb891158795c39f0"
+      },
+      "spectrum.update_mode": {
+        "source": "UPDATE MODE",
+        "source_hash": "dbe9e683d42db617d5dfcfdcbe6e66b6e9af897cfa102bf8daf603eaa20f7d4e",
+        "translation_hash": "294f634da530ce90103ddb7f0ec2933c296be763cdd5977c650dd3c07c8a1a1f"
+      },
+      "spectrum.weight": {
+        "source": "Weight %{count}",
+        "source_hash": "83238971c085f28649b21e40da70da7587eb7e8a0aaf5196c941fa063e67bbe6",
+        "translation_hash": "2a14aacd1f1509f98ec3eb5b1454e3f6ba3b977800e8ad9ee57d4b66b1bfeb67"
+      },
+      "spectrum.weight_2": {
+        "source": "Weight %{average_weight}",
+        "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
+        "translation_hash": "4d4b2996bbd6c3467661caf0666a41cfd6ab78638b8c73b7bcc16d0fb4258bbf"
+      },
+      "spectrum.window": {
+        "source": " · %{index} %{outside} window",
+        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
+        "translation_hash": "e187f1dc01cef3ed731728eef44e99ef9b9552ae7fcedbb3e29669137bde0f26"
+      },
+      "spectrum.window_duration_available_after_input_starts": {
+        "source": "Window duration available after input starts",
+        "source_hash": "abf1a4b971d2174be4f0cd6bfbfd2b9f7212b72a44be7b37a2128b042861582f",
+        "translation_hash": "208d41df1f8e518efe7cb9517d1a744a7769254d95fd57aab0bfc5c934ed6145"
+      },
+      "spectrum.window_energy_s": {
+        "source": "Window energy %{spectrum_energy} %{power_unit}·s",
+        "source_hash": "4511911f0058b6c20311f17392f286785de04f9b0ddde22e98afc67684ee7ebd",
+        "translation_hash": "d7486d344fc74f0839e5c68894f99397341ea5323334da8810bd5932d8b44bb9"
       }
     }
   }
