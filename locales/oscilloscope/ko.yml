@@ -1,0 +1,121 @@
+_version: 1
+oscilloscope.acquiring_post_trigger: 트리거 이후 취득 중
+oscilloscope.acquisition: 취득
+oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: 취득 또는 보정된 값이 유한하지
+  않아 유효한 숫자 판독값이 없습니다
+oscilloscope.auto: 자동
+oscilloscope.auto_free: 자동 / 자유 실행
+oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: 주기 신호의 시간 축,
+  진폭 및 트리거를 자동으로 설정합니다
+oscilloscope.autoset: 자동 설정
+oscilloscope.autoset_frequency: '자동 설정: 원시 교차점에서 %{frequency} Hz'
+oscilloscope.autoset_held: 고정 캡처 진폭 피팅됨; 시간/트리거는 다음 시작 시 적용 (%{frequency} Hz)
+oscilloscope.capture_once_on_the_next_trigger_crossing: 다음 트리거 교차점에서 한 번 캡처
+oscilloscope.centre_offset: 중심 오프셋
+oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
+oscilloscope.ch_2: CH%{index}%{else}
+oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
+
+  %{index_2}
+
+  이 채널을 편집하려면 선택하세요. Scope 설정에서 표시 여부를 변경할 수 있습니다.
+
+  %{display}'
+oscilloscope.channel_out_of_range: — · 채널 범위 초과
+oscilloscope.cursor: 커서 %{index} · %{join}
+oscilloscope.display: 표시
+oscilloscope.drag_the_slider_or_value_to_adjust_double_click: 슬라이더나 값을 드래그해 조정하세요.
+  숫자를 입력하려면 값을 두 번 클릭하세요.
+oscilloscope.edge: 에지
+oscilloscope.edge_names.falling: 하강
+oscilloscope.edge_names.free: 자유 실행
+oscilloscope.edge_names.rising: 상승
+oscilloscope.falling_edge: 하강 에지
+oscilloscope.fit_amplitude: 진폭 맞춤
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 선택한 채널의 원시 피크에 맞추고 오프셋을
+  중심에 맞춥니다
+oscilloscope.free_run: 자유 실행
+oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
+oscilloscope.fs_div: '%{fs_per_div} FS/div'
+oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = 풀 스케일 · Fs = 샘플
+  레이트 · div = 격자 한 칸
+oscilloscope.guides: 가이드
+oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: HELD
+  조건이 유지됩니다 · 대기 중인 측정 설정은 다음 시작 시 적용됩니다
+oscilloscope.horizontal: 가로
+oscilloscope.input_source: 입력 소스
+oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
+  · %{reading}
+
+  구간 %{start}..%{end} (끝 제외) · 세대 %{input_generation} · 공칭 %{sample_rate} Hz. %{channel_2}.
+  파형과 트리거는 원시 FS입니다.'
+oscilloscope.invalid_value: — · 유효하지 않은 값
+oscilloscope.level: 레벨
+oscilloscope.markers: 마커
+oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted: '마커: T 마커만 표시합니다.
+  가이드: T 마커와 점선 시간/레벨 가이드를 표시합니다. 끄기: 둘 다 숨깁니다. 어느 모드에서든 레벨을 편집하면 가로 가이드가 표시됩니다.'
+oscilloscope.mode_names.auto: 자동
+oscilloscope.mode_names.normal: 일반
+oscilloscope.mode_names.single: 단일
+oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
+oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · 파형: 원시
+  FS'
+oscilloscope.no_acquired_samples_for_this_channel_and_interval: 이 채널과 구간에서 취득한 샘플이
+  없습니다
+oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
+  · 취득한 샘플 없음
+
+  입력 조건은 취득되지 않았습니다. 파형과 트리거 설정은 원시 FS를 사용합니다.'
+oscilloscope.no_samples_in_this_interval: — · 이 구간에 샘플 없음
+oscilloscope.normal: 일반
+oscilloscope.off: 끄기
+oscilloscope.out_of_range: 범위 초과
+oscilloscope.outside_input_channel_range: ' · 입력 채널 범위 밖'
+oscilloscope.outside_input_channel_range_2: '%{channel} · 입력 채널 범위 밖'
+oscilloscope.outside_sweep: '%{index} #%{sample} · 스윕 범위 밖'
+oscilloscope.partial_missing_samples: 부분 · 누락 샘플 %{scope_missing}개
+oscilloscope.position: 위치
+oscilloscope.reset_time_position: 시간 위치 초기화
+oscilloscope.rising_edge: 상승 에지
+oscilloscope.rms_p_p: RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit}
+oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · P-P %{peak_to_peak}
+  %{unit} · 피크 %{peak} %{unit} · 취득 샘플 %{samples}개
+oscilloscope.show_ch_waveform_keeps_selection_and_measurements: CH%{index} 파형 표시 (선택
+  및 측정값 유지)
+oscilloscope.single: 단일
+oscilloscope.single_complete: 단일 캡처 완료
+oscilloscope.source: 소스
+oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
+
+  %{scope_trigger_marker_status} · 소스 %{channel} · 레벨 %{level} 원시 FS. 레벨은 소스 채널의 세로
+  범위를 따르며, 선택한 채널의 축과 다를 수 있습니다.'
+oscilloscope.spectrogram_time_hz_cursor: Spectrogram · 시간 / Hz 커서
+oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 입력을 시작하고 단일 트리거
+  캡처를 기다립니다
+oscilloscope.start_single_capture: 단일 캡처 시작
+oscilloscope.t_markers_captured: 'T 마커: 캡처됨'
+oscilloscope.t_markers_settings_only: 'T 마커: 설정만 표시'
+oscilloscope.t_markers_top_ms_right_level: 'T 마커: 상단 = 0 ms · 오른쪽 = 레벨'
+oscilloscope.time_scale: 시간 축
+oscilloscope.time_trigger_edits_apply_on_next_start: 시간 / 트리거 변경은 다음 시작 시 적용됩니다
+oscilloscope.trigger: 트리거
+oscilloscope.trigger_settings: 트리거 설정
+oscilloscope.trigger_source_unavailable: 트리거 소스를 사용할 수 없습니다
+oscilloscope.triggered: 트리거됨
+oscilloscope.update_even_without_a_trigger_crossing: 트리거 교차점이 없어도 업데이트
+oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: 트리거 교차점에서 업데이트하고
+  대기 중에는 마지막 캡처를 유지합니다
+oscilloscope.vertical_ch: 세로 · CH%{index}
+oscilloscope.vertical_range: 세로 범위
+oscilloscope.waiting_for_sweep: '%{index} · 스윕 대기 중'
+oscilloscope.waiting_for_trigger: 트리거 대기 중
+oscilloscope.waiting_previous_capture: 대기 중 · 이전 캡처
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale: '휠: 시간 축 · Shift+휠:
+  선택한 채널 축'
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double: '%{display}
+
+  %{display_2}
+
+  휠: 시간 축 · Shift+휠: 선택한 채널 축 · 두 번 클릭: 보기 초기화'
+oscilloscope.zero_level: 영 레벨
+oscilloscope.zero_offset: 영 오프셋
