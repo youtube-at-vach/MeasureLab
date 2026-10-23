@@ -89,7 +89,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
 
   %{scope_trigger_marker_status} · 소스 %{channel} · 레벨 %{level} 원시 FS. 레벨은 소스 채널의 세로
   범위를 따르며, 선택한 채널의 축과 다를 수 있습니다.'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · 시간 / Hz 커서
+oscilloscope.spectrogram_time_hz_cursor: 시간 / 주파수 커서
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 입력을 시작하고 단일 트리거
   캡처를 기다립니다
 oscilloscope.start_single_capture: 단일 캡처 시작
