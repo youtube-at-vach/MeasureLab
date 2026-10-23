@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "base_revision": "ae97230b1896595c024c80c74ced4548b173087c",
-  "locale": "pt",
+  "base_revision": "1b03534eb72dc0314396af38dfbb1535571fea31",
+  "locale": "ru",
   "groups": [
     "oscilloscope"
   ],
@@ -18,7 +18,7 @@
       "old_english": "Reset time position",
       "new_english": "Reset time position",
       "variables": [],
-      "translation": "Redefinir posição de tempo",
+      "translation": "Сбросить положение времени",
       "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
       "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
     }

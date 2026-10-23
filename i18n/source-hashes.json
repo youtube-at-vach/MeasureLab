@@ -25910,7 +25910,7 @@
       "oscilloscope.reset_time_position": {
         "source": "Reset time position",
         "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
-        "translation_hash": "54ec7479b132c4b2c62108bc90724e1d16628088b97011010c7f0d9d8f242bf6"
+        "translation_hash": "3bd9ef6111e3b9b944cf7ec001ef9dec3de006028dc9d76ff19cf62cd5d01d47"
       },
       "oscilloscope.rising_edge": {
         "source": "Rising edge",

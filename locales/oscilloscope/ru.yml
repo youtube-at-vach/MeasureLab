@@ -83,7 +83,7 @@ oscilloscope.outside_input_channel_range_2: '%{channel} · вне диапазо
 oscilloscope.outside_sweep: '%{index} #%{sample} · вне развёртки'
 oscilloscope.partial_missing_samples: 'Частично · отсутствует отсчётов: %{scope_missing}'
 oscilloscope.position: Положение
-oscilloscope.reset_time_position: Сбросить положение времени
+oscilloscope.reset_time_position: Сбросить позицию
 oscilloscope.rising_edge: Нарастающий фронт
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · от пика до пика %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: 'RMS %{rms} %{unit} · от пика до пика
