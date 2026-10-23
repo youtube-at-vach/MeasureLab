@@ -21,7 +21,7 @@ comparison.custom: カスタム
 comparison.display_only_captured_analysis_validity_thresholds_and_the_phase: 表示範囲だけを変更します。取得済み解析、妥当性のしきい値、位相傾斜の帯域は変わりません。Log
   HzではDCを除外します。
 comparison.display_range: 表示範囲
-comparison.finishing_analysis_before_holding_the_result: 結果を保持する前に解析を完了しています。
+comparison.finishing_analysis_before_holding_the_result: 解析の完了処理中です。完了後に結果を保持します。
 comparison.from: '下限 '
 comparison.fs_hz: ' FS²/Hz'
 comparison.full_nyquist: 全域／ナイキスト
