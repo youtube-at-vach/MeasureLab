@@ -1,0 +1,78 @@
+_version: 1
+lockin.all_four: 全部四个
+lockin.applying_settings_display_retains_its_captured_conditions: 正在应用设置 · 显示保留其捕获条件
+lockin.averaged_samples_latest_window: 平均样本 %{start}..%{end} · 最新窗口 %{start_2}..%{end_2}
+lockin.calibrated: 已校准
+lockin.captured_hint_ref_threshold: 捕获提示 %{hz_2} · τ %{s} · REF 阈值 %{fs}
+lockin.ch_calibration_revision_gain_fs: CH %{ch} 校准 %{id} / 修订 %{revision} · 增益 %{gain}
+  %{unit} / FS
+lockin.ch_settings_unavailable: CH / 设置不可用
+lockin.check_sig_ref_channel_availability_and_frequency_against_nominal: 检查 SIG /
+  REF 通道是否可用，以及频率是否符合标称 Fs。
+lockin.complete_windows_missing_samples: '%{processed_windows} 个完整窗口 · 缺少 %{missing_samples}
+  个样本'
+lockin.disabled: 已禁用
+lockin.display_bars_auto_scale_they_do_not_change_input: 显示条会自动缩放；不会改变输入灵敏度。周期 Hann
+  拟合 + 两个 EMA 极点。物理 REF / 定时尚未验证。
+lockin.display_scale_only: '%{v} %{unit} · 仅显示刻度'
+lockin.ema_poles_settling_fundamental_only: 2 个 EMA 极点 · 10τ 稳定时间 · 仅基波
+lockin.experimental: 实验性
+lockin.experimental_input_reference: 实验性 · 输入参考
+lockin.f_ref: f REF  %{hz_2}
+lockin.fixed_frequency: 固定频率
+lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: 频率必须低于 0.45 × 标称 Fs (%{rate}
+  Hz)'
+lockin.fs_rms: ' FS RMS'
+lockin.gain: 增益  %{gain}
+lockin.input_failed: 输入失败
+lockin.input_gap: 输入间隙
+lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: 输入或计算不是有限值。没有有效的测量结果。
+lockin.input_samples_are_missing_the_filter_clears_and_settles: 输入样本缺失。滤波器已清空，恢复后将重新稳定。
+lockin.integration_samples: 积分：%{integration_samples} 个样本
+lockin.invalid_input: 输入无效
+lockin.lock_in_amplifier: Lock-in 放大器
+lockin.measurement_details: 测量详细信息
+lockin.min_ref: '最小 REF '
+lockin.next_start_settings_changed_display_retains_captured_conditions: 下次启动设置已更改
+  · 显示保留捕获条件
+lockin.no_capture: 没有捕获
+lockin.no_valid_reading_no_bar_marker_is_shown: 没有有效读数；不会显示柱状标记
+lockin.nominal_fs_hz_input_generation: 标称 Fs %{sample_rate} Hz · 输入代次 %{input_generation}
+lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: 物理 REF 和定时仍未经验证。没有物理振荡器输出或可选的硬件灵敏度。
+lockin.poles_n: τ %{s}   ·   2 个极点   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R、X 和 Y 为峰值幅度。正相位超前 REF。滤波器有两个固定的
+  EMA 极点，并在 10τ 的有效样本后稳定。停止时更改的设置会在下次启动时应用。
+lockin.ref: REF
+lockin.ref_ac_rms_sinusoid_fit: REF AC RMS %{fs} · 正弦拟合 %{v}
+lockin.ref_and_signal_use_the_same_input_sample_clock: REF 和信号使用相同的输入采样时钟。
+lockin.ref_hint: 'REF 提示 '
+lockin.ref_is_below_its_ac_rms_threshold_values_clear: REF 低于其 AC RMS 阈值。在 REF 恢复前会清除数值。
+lockin.ref_lost: REF 丢失
+lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within: REF 需要每个窗口 ≥3 个周期、≥98%
+  的正弦拟合，并且频率位于提示范围内。
+lockin.ref_unstable: REF 不稳定
+lockin.ref_valid: REF 有效
+lockin.reference_filter: 参考和滤波器
+lockin.reference_validity: 参考有效性
+lockin.samples: '%{n} 个样本'
+lockin.select_sig_ref_channels_press_start_analysis_then_start: 选择 SIG / REF 通道，按“启动分析”；如果输入已停止，再按“启动输入”。
+lockin.settling: 稳定中
+lockin.settling_of: 稳定中 · %{progress}% / 10τ
+lockin.sig: SIG
+lockin.sig_ch_ref_ch: SIG CH %{response_channel}   /   REF CH %{reference_channel}
+lockin.start_analysis: 启动分析
+lockin.start_input_to_acquire_a_synchronous_sig_ref_window: 启动输入以采集同步的 SIG / REF 窗口。
+lockin.state_names.disabled: 已禁用
+lockin.state_names.missing: 缺失
+lockin.state_names.non_finite: 非有限值
+lockin.state_names.reference_lost: 参考丢失
+lockin.state_names.reference_unstable: 参考不稳定
+lockin.state_names.settling: 稳定中
+lockin.state_names.unavailable: 不可用
+lockin.state_names.valid: 有效
+lockin.stop_analysis: 停止分析
+lockin.time_constant_presets: 时间常数预设
+lockin.track_input_ref_hint: 跟踪输入 REF（提示 ±10%）
+lockin.track_ref: 跟踪 REF
+lockin.uncalibrated_fs: 未校准 · FS
+lockin.waiting_for_a_complete_synchronous_input_window: 正在等待完整的同步输入窗口。

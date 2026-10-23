@@ -9845,6 +9845,351 @@
         "source": "White noise · uniform · peak bounded",
         "source_hash": "1d10f26f7581a16bc01f54266a61f908f090b4e1feeb87373eaac8bf8d454bc2",
         "translation_hash": "5a67fa8de3f8a074626e3e05039639f4f621e3d1134553e9cb245254b5d46c11"
+      },
+      "lockin.all_four": {
+        "source": "All four",
+        "source_hash": "e5b50efb51e139314e6cd3e96a34b3471697984635529b86bef22413dfd7e962",
+        "translation_hash": "2ee1f52329f981507397312c537edd0bc4bd93bb7d46e0bdc9e68fb7787235a5"
+      },
+      "lockin.applying_settings_display_retains_its_captured_conditions": {
+        "source": "Applying settings · display retains its captured conditions",
+        "source_hash": "58a77c71f25a19abcc8122327eb340d925d98f18b7ffb20eac6555740d644d27",
+        "translation_hash": "6c9a0b16e8e47fddb1a0a14c8d659c7a5c790288e649de025537fbf4c10ef4c4"
+      },
+      "lockin.averaged_samples_latest_window": {
+        "source": "Averaged samples %{start}..%{end} · latest window %{start_2}..%{end_2}",
+        "source_hash": "19d6eb91dc9389da3e849d96e174e000e76c4d067e16240f69c53f6ae84241be",
+        "translation_hash": "ee9d891d6724d3c8b85b5bc5b9cfb0667f80f2fda8e0fc467e873f86f1062013"
+      },
+      "lockin.calibrated": {
+        "source": "CALIBRATED",
+        "source_hash": "b71f2fdd9e5f38df73e5c896dec624bdc93b701a20a66b05baf530ca5d1e1e66",
+        "translation_hash": "ab8c61ed5275de0f3d4e27765af5db39c37a3e67131e9d95b82500c7473e554f"
+      },
+      "lockin.captured_hint_ref_threshold": {
+        "source": "Captured hint %{hz_2} · τ %{s} · REF threshold %{fs}",
+        "source_hash": "b1c2bef16eb919333354089fbdf7183ccc82883d4750cdeb614c1b2bb678af3c",
+        "translation_hash": "03191baecca901c31e23508b745f9fe1bcc63f5efe5725ba0160befc41607c56"
+      },
+      "lockin.ch_calibration_revision_gain_fs": {
+        "source": "CH %{ch} calibration %{id} / revision %{revision} · gain %{gain} %{unit} / FS",
+        "source_hash": "560349fef9e4d09af14e70aedd5f0ec479fc78add0cf6b6106639614c22d338b",
+        "translation_hash": "def76e551690ef762c1aa475cb84195b82aad46538642a8c3d9106f4abef15cc"
+      },
+      "lockin.ch_settings_unavailable": {
+        "source": "CH / SETTINGS UNAVAILABLE",
+        "source_hash": "e23447c656421de2d35be048f4b6e7bd05fe97e29b619c03e6f48a08a0d0369d",
+        "translation_hash": "861202538f4afb1cd6f037ba72413e68277e1aac3fce5be2df1511bda6b95c72"
+      },
+      "lockin.check_sig_ref_channel_availability_and_frequency_against_nominal": {
+        "source": "Check SIG / REF channel availability and frequency against nominal Fs.",
+        "source_hash": "e8009d86c647693a9d8997a6f11ec8e38c2c5953d0f833c7464f3694c47735ad",
+        "translation_hash": "70afdb3a60ecfdbe91ea1b9e2fc0ca882e281804372782124c0c9770df0472e1"
+      },
+      "lockin.complete_windows_missing_samples": {
+        "source": "%{processed_windows} complete windows · %{missing_samples} missing samples",
+        "source_hash": "301a7b73e63a3e70ae96b56e59cb8107daa17af3001b6022b47204e5d267439a",
+        "translation_hash": "6bbedb1f6b3d6910e9c0ba456fad4673e59c54d6055d06ecf52860da3b19e59d"
+      },
+      "lockin.disabled": {
+        "source": "DISABLED",
+        "source_hash": "0c7ef33e451eadb5c230e83d5155fe481df0dccf42529851a31110a88a776d12",
+        "translation_hash": "bc5a87a757a557d91ab153a8e500d490fdad9b1e88108603f25f48ed681ab365"
+      },
+      "lockin.display_bars_auto_scale_they_do_not_change_input": {
+        "source": "Display bars auto-scale; they do not change input sensitivity. Periodic Hann fit + two EMA poles. Physical REF / timing unverified.",
+        "source_hash": "a1d07184d7c638b6820086ed7a3295e2ee7de2c1c3be198a20884f97898a0cac",
+        "translation_hash": "e1f433dac94ec86debaa3b4f19010eb8692282275f95dfc69e7f060d17c21324"
+      },
+      "lockin.display_scale_only": {
+        "source": "%{v} %{unit} · display scale only",
+        "source_hash": "58af75a0855d06edb33d8dc90834ecf94a7f2f9ce6ab6ee681a13632301c602b",
+        "translation_hash": "58cc29cdf667efddeac69cc4f6f5eba82eda5101b79c2ad00ebf02cc97ab7152"
+      },
+      "lockin.ema_poles_settling_fundamental_only": {
+        "source": "2 EMA poles · 10τ settling · fundamental only",
+        "source_hash": "48ec18b634303a2713ca0d8335de9b49e0a5061b0d999ca63ef6078028eb7392",
+        "translation_hash": "2d12484e3eb720b5f3c21ca6ba3957c968e42ff4d9fe9129c61d588128a454e1"
+      },
+      "lockin.experimental": {
+        "source": "EXPERIMENTAL",
+        "source_hash": "da8d62a8d6ae22a3b0d58296336a2eae8860a7665f33931fa12f44f33a72a80b",
+        "translation_hash": "b08a439d537a93ae75839aff69b151154b13f3f741b68111c70eee3e4f758c5e"
+      },
+      "lockin.experimental_input_reference": {
+        "source": "EXPERIMENTAL · INPUT REFERENCE",
+        "source_hash": "ec577715bfe01a0a3b00e336ef695eaf54c4a4319ab922b2412ff740bcfae93b",
+        "translation_hash": "166576cd5ce9e20aa21fcb018ba2d6c2d52661b6b87536ea756d58ab0ed8dd22"
+      },
+      "lockin.f_ref": {
+        "source": "f REF  %{hz_2}",
+        "source_hash": "9b9d7d322f846220a3d208131b6e0a10efa53b19fcab8f444e1356498fd44caa",
+        "translation_hash": "9b9d7d322f846220a3d208131b6e0a10efa53b19fcab8f444e1356498fd44caa"
+      },
+      "lockin.fixed_frequency": {
+        "source": "FIXED FREQUENCY",
+        "source_hash": "61c461b58b22d28485e15f1c9b88be32be9be3141ec64e700b1ee903ad247f8d",
+        "translation_hash": "e76b045241f48379171fa9098f4c666e61503011bcaf973d5b950553a7c81172"
+      },
+      "lockin.frequency_must_be_below_nominal_fs_hz": {
+        "source": "%{error}: frequency must be below 0.45 × nominal Fs (%{rate} Hz)",
+        "source_hash": "f5b1399ad7f237fbe3e20aa859fb4b79e367029d90a391ba66f9f0989acf91c8",
+        "translation_hash": "d04dcdc4ed79c7c5e30fdb8f761ba5544261e62e96c05b80ea76a5c530cc7158"
+      },
+      "lockin.fs_rms": {
+        "source": " FS RMS",
+        "source_hash": "019172d433d62e0cc34c687aa6f3398a90567b5b602b9e5e705d6ae8c3aeefc2",
+        "translation_hash": "019172d433d62e0cc34c687aa6f3398a90567b5b602b9e5e705d6ae8c3aeefc2"
+      },
+      "lockin.gain": {
+        "source": "Gain  %{gain}",
+        "source_hash": "b027d790ec6bb66000ef184e85da22e42a61550ddf41cbe3a943d067c38e08be",
+        "translation_hash": "93babacc6d26426e612f704a6456cd79f051155a49138845eafb1e5ba2d8e128"
+      },
+      "lockin.input_failed": {
+        "source": "INPUT FAILED",
+        "source_hash": "aa17b9fb21bf159e747220162bb56fe17c5d1b149648dc85114056a6e09a6d13",
+        "translation_hash": "3e24dfe46b30d80b7e8438d95f8d34942f28adcefdb633fb6cc3260ecb94c094"
+      },
+      "lockin.input_gap": {
+        "source": "INPUT GAP",
+        "source_hash": "23fba561104a5fe80c0e6fae346214728655c28d9ae944f936bfd34456287e27",
+        "translation_hash": "8e17d764b85f2a63025a4ea4c4566f231f9acba67cf6344fe96da75d36f10108"
+      },
+      "lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is": {
+        "source": "Input or calculation is nonfinite. No valid measurement is available.",
+        "source_hash": "4fa1f20ef6f934387c91063a4a65dcf8bbad42d7a501addac6ae53897bfde0e6",
+        "translation_hash": "7c1068e470da3b57f5056c7f3deb8e496e6d0bdfcdafd3f397b68378af769ee3"
+      },
+      "lockin.input_samples_are_missing_the_filter_clears_and_settles": {
+        "source": "Input samples are missing. The filter clears and settles again after recovery.",
+        "source_hash": "38670e1ad909f544b7b2e559fed2f80565aad10494daa6de5363d5c604eb02b4",
+        "translation_hash": "edd059c2b62f5a2c417d16be571af961eb3917cb61d367dcbcaaf73c93585fdd"
+      },
+      "lockin.integration_samples": {
+        "source": "Integration: %{integration_samples} samples",
+        "source_hash": "17560e61dc22bfa42f5a6527ef8c277e07b7a71f6e8359acaaa1890e2b105302",
+        "translation_hash": "db54259d9c053e51455b69bb755faf2d551bc4d7bc47414b247faef2e68919ff"
+      },
+      "lockin.invalid_input": {
+        "source": "INVALID INPUT",
+        "source_hash": "d0f66ac4568a3581e5a7f777fb27c9ffdb5485941875e6ac5cb648e30ce576a0",
+        "translation_hash": "619fce373c81c9352ef66845d6509b71fea730fd35e265716cbf956de881929a"
+      },
+      "lockin.lock_in_amplifier": {
+        "source": "Lock-in amplifier",
+        "source_hash": "fd18f54bfb11f9060f10a41f1718be309beaf095fa30e113733d44b5b07a7b1a",
+        "translation_hash": "056049aa29274d989e3c25294e2791f3bc5857b83c469a15a1bde1c4ad4e1b61"
+      },
+      "lockin.measurement_details": {
+        "source": "Measurement details",
+        "source_hash": "f36cfff6c97e2c228a1d55145150c784552f4baf5804585fac7fdb4813ca9b71",
+        "translation_hash": "a6127be05a0c0130d2f662e63608bd9113c7bd7f3fa81f697ec56ef67138e066"
+      },
+      "lockin.min_ref": {
+        "source": "Min REF ",
+        "source_hash": "f9847355d20c1fdf11caed7d373bfefedf729038bc887a146b22cf9cb01e44c3",
+        "translation_hash": "5a5eded1cabfdd6f60477b0ed6df74a94b5bd8255da6d798091a8e90bf73eb33"
+      },
+      "lockin.next_start_settings_changed_display_retains_captured_conditions": {
+        "source": "Next Start settings changed · display retains captured conditions",
+        "source_hash": "e70e895e91294b145237a99c1761ec51fb4ab0dc7dff0d5a50fce4b459533d5f",
+        "translation_hash": "af6dc1e95e11dbf41a80806cb297df3effb7f13ad1503f3e1286e9c370075ac7"
+      },
+      "lockin.no_capture": {
+        "source": "NO CAPTURE",
+        "source_hash": "81679ab818274cd4c9d87dcedb55d9433d9563a0ab78822c1c80d6127031df57",
+        "translation_hash": "ab47e3f0bdff7f7a4b9ad01f3df56ceb755deaf843ac80ed453e4a41e4d139c8"
+      },
+      "lockin.no_valid_reading_no_bar_marker_is_shown": {
+        "source": "No valid reading; no bar marker is shown",
+        "source_hash": "1b39be3e2a41a7e05c884132be1623c91943e93c615060bb99dfc604abec85c6",
+        "translation_hash": "b5d36a655ce8dd7860daee8e08163f3124bf0d77ef56556397478b2e90283d8a"
+      },
+      "lockin.nominal_fs_hz_input_generation": {
+        "source": "Nominal Fs %{sample_rate} Hz · input generation %{input_generation}",
+        "source_hash": "491fa1c0dd9b31e7b6592f0b73c9ba4068b80ca09425066ee330bae2b81a3ba5",
+        "translation_hash": "d395d2fc6481a2ceb3fa5e2dc956030e8a17739474a54df714653bf2a328ae99"
+      },
+      "lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator": {
+        "source": "Physical REF and timing remain unverified. No physical oscillator output or selectable hardware sensitivity.",
+        "source_hash": "4fdb62ac260cd32154eecc2d5c77954298f3e84751d1b9d6540dcabd02671671",
+        "translation_hash": "c65063608126bdd7b937635d39475c9dec217c3698e0407614f6e820a9bafc3c"
+      },
+      "lockin.poles_n": {
+        "source": "τ %{s}   ·   2 poles   ·   N %{integration_samples}   ·   %{fixed_frequency}",
+        "source_hash": "77023899bb2652d270f1968eb99a77c293e635ebb90ec0b979d1cc37259f086b",
+        "translation_hash": "0fa0c6857ebac2c74596f875cd3aed4b0330d873a585babdc6f47804edd86317"
+      },
+      "lockin.r_x_and_y_are_peak_amplitudes_positive_phase": {
+        "source": "R, X and Y are peak amplitudes. Positive phase leads REF. The filter has two fixed EMA poles and settles after 10τ of valid samples. Settings changed while stopped apply on the next Start.",
+        "source_hash": "696842b78c7c8664c300a8397c73041dc53448919d1e14b6aaca10779be2daa2",
+        "translation_hash": "253cd67ce9ed0b529821e76a4f835ea40916a2f6bdcef1dcbb8ad393bc942437"
+      },
+      "lockin.ref": {
+        "source": "REF",
+        "source_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b",
+        "translation_hash": "4943e8f40e898cf65a89387defce6ac48c7f3701870945d3d33757aee614ea2b"
+      },
+      "lockin.ref_ac_rms_sinusoid_fit": {
+        "source": "REF AC RMS %{fs} · sinusoid fit %{v}",
+        "source_hash": "16d24c427a55de17f5e98edce74d4b42a8a3f55d7ef4ddf9ebeda3721735ee27",
+        "translation_hash": "136cbefccab542f91764b952776711004941dd5395a727614afe726ca2cc90b6"
+      },
+      "lockin.ref_and_signal_use_the_same_input_sample_clock": {
+        "source": "REF and signal use the same input sample clock.",
+        "source_hash": "8b87925bfa6ebc6ac0cd25dddefbddc2be6142017ae06fad8ae35115e16d70a8",
+        "translation_hash": "5dc1109054a2e9361338a0f9289553b5ee9424d1cf78a588fe892b20dce9f638"
+      },
+      "lockin.ref_hint": {
+        "source": "REF hint ",
+        "source_hash": "573aa933ca4a53b73d90dd496edb5f7a8093772117064e4ab6fcf18db78dfb17",
+        "translation_hash": "bd8ac87d5cf30d409f0643eee3daa129bc05baea4ce6308cdbbb3cd22d026f25"
+      },
+      "lockin.ref_is_below_its_ac_rms_threshold_values_clear": {
+        "source": "REF is below its AC RMS threshold. Values clear until REF recovers.",
+        "source_hash": "65fcd1b0d6594a90034deadd370f58f4915b2bb2aa325f71c60125ac5e1e511d",
+        "translation_hash": "567af4fc158f65152ff8f21c533663296be7dee1320225a5e5c92ebb60781168"
+      },
+      "lockin.ref_lost": {
+        "source": "REF LOST",
+        "source_hash": "5a5d3b40f7b7e7377c9d3307c02a4af3999477ff55d4dc62d3c81ee5aae6d344",
+        "translation_hash": "b4421a784cdd568d0565e9d667b484641ed157f4db90679eb797306d14586c89"
+      },
+      "lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within": {
+        "source": "REF needs ≥3 cycles/window, ≥98% sinusoid fit and frequency within the hint range.",
+        "source_hash": "f96a41192cab331648f03f0ac1c3d5e355e6072855e91c24731ff6709b2b1ae2",
+        "translation_hash": "7bdb65f1a7ddef5476eda42f4426f8bfc4fe2bcdcc779aceaae7e40a5d3c94eb"
+      },
+      "lockin.ref_unstable": {
+        "source": "REF UNSTABLE",
+        "source_hash": "d7d688a9d49f87aac457b8eb30db867b40b7d59f406707229bd4bba173b8bc30",
+        "translation_hash": "30b578b3578a1fe166d0fd72af5d5f1f9ea529e35c608b27ec652d0431546d54"
+      },
+      "lockin.ref_valid": {
+        "source": "REF VALID",
+        "source_hash": "af9b761c4ce500e256c84bae586ece57081f6911e3fa20d7407a7aa0a8a89ddd",
+        "translation_hash": "c250d3d73b448bf55b4636cd74a361f83b534dac104539f443fcd3e26dbd1006"
+      },
+      "lockin.reference_filter": {
+        "source": "REFERENCE & FILTER",
+        "source_hash": "e2479dcee7fec078f73c9aeb64b0c4348c298fd304ca59ec484f65956d3ae5d1",
+        "translation_hash": "297f9b0e2f9dcd4efe32241c03355f9e0ec2016f0bf2b0d015789cafb93e66ed"
+      },
+      "lockin.reference_validity": {
+        "source": "REFERENCE VALIDITY",
+        "source_hash": "39aec79525893adb02172aa98be81fc07507cdd0ff682cbbd7fb06f5594de3a9",
+        "translation_hash": "2d8e0ca36d76b274b9764e43be8460a10bf6f6a8d145d772f9cf720510f6b802"
+      },
+      "lockin.samples": {
+        "source": "%{n} samples",
+        "source_hash": "d6373315ba1e8ea7ed6450746df8a4b14f02bc5282b73a70e710d9e780cf7726",
+        "translation_hash": "1d019e2cebf30c1a2b5b92a65722bbe9d8247187796be33c3301569d63e79958"
+      },
+      "lockin.select_sig_ref_channels_press_start_analysis_then_start": {
+        "source": "Select SIG / REF channels, press Start analysis, then Start input if input is stopped.",
+        "source_hash": "b66c2df415a1c81206a41ed72b5c72c7a40743d5433221860554befc8c3c365e",
+        "translation_hash": "358740a0e0a276ed47ed0725a15d95f2e12a10ce63269dd361edae22825f5c08"
+      },
+      "lockin.settling": {
+        "source": "SETTLING",
+        "source_hash": "fd754227f33333495f545ee8fa326a7398a82b37d46fd9578b3d6b2dd9a0e3ce",
+        "translation_hash": "e3a0a555d239a718fe1c130d878190aca1b6a00df2ae454e0f906791ed066085"
+      },
+      "lockin.settling_of": {
+        "source": "Settling · %{progress}% of 10τ",
+        "source_hash": "501134ec0571793e47eada23c7182e882cf4ebecc5178aa05f3773431a96bfd0",
+        "translation_hash": "47f5c9a05cddea2fbc967980c2494bfd91e9f72affd220f2485b06a5ea0c9419"
+      },
+      "lockin.sig": {
+        "source": "SIG",
+        "source_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce",
+        "translation_hash": "cc71096a4704326ea71ccc01985f841a8219653132992dede069d092971c61ce"
+      },
+      "lockin.sig_ch_ref_ch": {
+        "source": "SIG CH %{response_channel}   /   REF CH %{reference_channel}",
+        "source_hash": "a66a0bb657b1ee9312a445da14a90f6ad8aa73a6f8de88d916743260c20444c5",
+        "translation_hash": "a66a0bb657b1ee9312a445da14a90f6ad8aa73a6f8de88d916743260c20444c5"
+      },
+      "lockin.start_analysis": {
+        "source": "Start analysis",
+        "source_hash": "fd46355dd422d985735b936e6b8c43efce52da6a0aa54a7882c3f784f9feec98",
+        "translation_hash": "4670926c1a99749ed6a9e9524ffb292637413a322f933070b0b9ed39c278bea0"
+      },
+      "lockin.start_input_to_acquire_a_synchronous_sig_ref_window": {
+        "source": "Start input to acquire a synchronous SIG / REF window.",
+        "source_hash": "249cfcea81a3b09184f1634e674fb69428b62d496b80300347892d60c0645fce",
+        "translation_hash": "9040abdf473894130432d742154ac229ccdee84561d2a83ee01bad4b0bc32e6a"
+      },
+      "lockin.state_names.disabled": {
+        "source": "Disabled",
+        "source_hash": "75081b593d15cf6e631971bc6768723f593b88b172477e40ae7d363e4829816d",
+        "translation_hash": "bc5a87a757a557d91ab153a8e500d490fdad9b1e88108603f25f48ed681ab365"
+      },
+      "lockin.state_names.missing": {
+        "source": "Missing",
+        "source_hash": "6be36ca49ee85210c5d1ad9c377d90a9859c66d889110a2a5b0dccd390d12e20",
+        "translation_hash": "65364e6fd8c7b5f19a8d86c13e6cd685ec5eeb267cac0faf18b8755e6b0e8089"
+      },
+      "lockin.state_names.non_finite": {
+        "source": "NonFinite",
+        "source_hash": "5cc9c7200631482f91b1b5d48900c1fb069d49cc06004a2bb7421b0e3d9dc64c",
+        "translation_hash": "3df0913c0a32237a9114f46049bf3c0f13fcf1ddef0d02abd177475d64ca56ee"
+      },
+      "lockin.state_names.reference_lost": {
+        "source": "ReferenceLost",
+        "source_hash": "bca7e65e599cdb217c6085a764ba06e339c5cf18ad0f6dd5f49c9e68567d75cc",
+        "translation_hash": "2ef4eabbc4424e7ac7509a894c6527a4f8b33894cccbadf67557eb57c5a42c02"
+      },
+      "lockin.state_names.reference_unstable": {
+        "source": "ReferenceUnstable",
+        "source_hash": "3c6d1ade0e240d294b3ebcc2e857b4b55eab5f90afa8253a2edfea91d154587b",
+        "translation_hash": "0e88800184ae7dd7cc844bdcc2194ed1920588d14da62004fc4d31622eb725c7"
+      },
+      "lockin.state_names.settling": {
+        "source": "Settling",
+        "source_hash": "c5fd7cc168faf8cf8bccca1021a3960d8613b2199a17929a5aea94124f04be05",
+        "translation_hash": "e3a0a555d239a718fe1c130d878190aca1b6a00df2ae454e0f906791ed066085"
+      },
+      "lockin.state_names.unavailable": {
+        "source": "Unavailable",
+        "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+        "translation_hash": "460b3574e4bdb8ca1d4605109904168e010d6a9b81d9bb6960b28fc14b046c83"
+      },
+      "lockin.state_names.valid": {
+        "source": "Valid",
+        "source_hash": "f5162206318ee96491108354ae7361db244d6a013aa32185216b5f15ac544f4c",
+        "translation_hash": "11afd2a534395b181392145ea7dd3441fad2db2ccd8a3768be26275ae633d1ca"
+      },
+      "lockin.stop_analysis": {
+        "source": "Stop analysis",
+        "source_hash": "658fada64b415b3626449cf4d1982c2e74c5f465f5431f2eff2917f5c4d337f7",
+        "translation_hash": "546be3ab7e6722e7b264fc44cf6c136c2ac784cef69f4bda3c11564ab9dfad54"
+      },
+      "lockin.time_constant_presets": {
+        "source": "Time constant presets",
+        "source_hash": "c1014c9ccd408eea60e77dd472be968d33dab73a97cd99a2bfec28b2064bb687",
+        "translation_hash": "16761f169076b1affa9d5d4b724ac186d0bc92b1a22655470173630fb74c7e83"
+      },
+      "lockin.track_input_ref_hint": {
+        "source": "Track input REF (hint ±10%)",
+        "source_hash": "5a8c1830108dfb05536a3ec69d04e8c54920c3833f57f09e536f16d58a5d1dee",
+        "translation_hash": "b3d91b5a5283f32c53cd3e4a5765ff51501ddd77642dd183e8ab4246503e85de"
+      },
+      "lockin.track_ref": {
+        "source": "TRACK REF",
+        "source_hash": "e8c226dde224bc8dd2eda8e0be867a36ac1ce0305b6d4c3a1ed5ad3c1425ea46",
+        "translation_hash": "0551d7bd3b1e68373eea4c6bae00a1e96122bbb313e7a785dc0b8fd730087178"
+      },
+      "lockin.uncalibrated_fs": {
+        "source": "UNCALIBRATED · FS",
+        "source_hash": "8b681436a1153a9e2ca513af14cb4bced4306d06923cb0b301d0be830d33d5dd",
+        "translation_hash": "5aa869be0ea5bec0f286e4d4f1d80abb4c6baddf4eae67d9a08362a6029ce5fa"
+      },
+      "lockin.waiting_for_a_complete_synchronous_input_window": {
+        "source": "Waiting for a complete synchronous input window.",
+        "source_hash": "38a13276b3f715c2d9794d7ae54824f20e09a3e659a08409c88fb391413305e8",
+        "translation_hash": "3262fc94d15e71b8806b8543a5e8dcec1dfa6bae9a326d3b8ad126b307024479"
       }
     }
   }
