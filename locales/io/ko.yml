@@ -1,0 +1,91 @@
+_version: 1
+io.amplitude: 진폭
+io.applies_to_both_while_stopped_held_results_keep_their: 중지 상태에서 두 항목 모두에 적용됩니다.
+  고정된 결과는 해당 레이트를 유지합니다.
+io.audio_input: 오디오 입력
+io.audio_input_no_device_selected: 오디오 입력 · 선택된 장치 없음
+io.audio_stream_stopped_check_device_connection_and_microphone_permission: 오디오 스트림이
+  중지되었습니다. 장치 연결과 마이크 권한을 확인한 뒤 다시 시작하세요.
+io.available_with_the_internal_loopback_output_device: Internal Loopback 출력 장치에서 사용할
+  수 있습니다.
+io.captured_readout_condition: 캡처된 판독 조건
+io.ch: '%{channels}채널 · %{label}'
+io.ch_gain: CH 2 이득
+io.ch_phase_gain: CH 2 위상 / 이득
+io.channel_unavailable_in_the_current_input: 현재 입력에서 채널을 사용할 수 없습니다
+io.channels_pcm: 채널 / PCM
+io.default: '%{name} (기본값)'
+io.degrees: 도
+io.demo_harmonics: 정현파 + 고조파
+io.demo_signal_qa: 데모 신호 (QA)
+io.demo_square: 대역 제한 사각파
+io.device: 장치
+io.device_default: 장치 기본값
+io.device_default_khz: 장치 기본값 (%{sample_rate} kHz)
+io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'XY용 동일 진폭, 무잡음 정현파 신호: 동위상,
+  직교 위상 또는 반대 위상.'
+io.frequency: 주파수
+io.fs_peak: FS 피크
+io.gain: 이득
+io.generator_input_stopped_check_output_status_stop_input_and: Generator 입력이 중지되었습니다.
+  출력 상태를 확인하고 입력을 중지한 다음 출력을 초기화하고 다시 시작하세요.
+io.generator_loopback: Generator 루프백
+io.generator_loopback_out: Generator 루프백 · OUT 1 / 2
+io.hz_2: '%{r} Hz'
+io.hz_3: '%{rate} Hz'
+io.hz_4: '%{rate} Hz · %{format}'
+io.input: 입력
+io.input_channel: 입력 채널
+io.input_output_hz: '입력: %{r} · 출력: %{rate} Hz'
+io.input_source: '입력 소스: %{source}'
+io.internal_loopback: 내부 루프백
+io.internal_source_no_audio_output: 내부 소스 · 오디오 출력 없음
+io.khz: '%{rate} kHz'
+io.no_common_rate_for_these_devices_and_output_format: 이 장치와 출력 형식에서 공통 레이트를 사용할 수
+  없습니다. 별도의 샘플 레이트를 사용하세요.
+io.no_input_device: 입력 장치 없음
+io.noise: 잡음
+io.noise_2: 잡음
+io.noise_amplitude_in_digital_full_scale_fs: 디지털 풀 스케일(FS) 기준 잡음 진폭입니다.
+io.offset: 오프셋
+io.out_ch_out_ch_start_input_and_output_separately: OUT 1 → CH 1 · OUT 2 → CH 2 ·
+  입력과 출력을 각각 시작하세요.
+io.output: 출력
+io.output_device: 출력 장치
+io.physical_unit_e_g_v_a_pa: '물리 단위 (예: V, A, Pa)'
+io.queue_calibration: 보정 대기열에 추가
+io.queue_uncalibrated_fs: 비보정 FS 대기열에 추가
+io.queued_definitions_apply_on_the_next_start_source_device: 대기열에 추가한 정의는 다음 시작 시
+  적용됩니다. 소스/장치 선택 또는 장치 새로고침 시 대기열이 지워집니다. 계수는 사용자가 제공하며 기준 조건은 계수의 유효 범위를 설명합니다.
+io.queued_for_next_start: 다음 시작 시 적용 대기
+io.rate_changes_apply_on_start_held_results_keep_their: 레이트 변경은 시작 시 적용됩니다. 고정된 결과는
+  해당 레이트를 유지합니다.
+io.reference_conditions: 기준 조건
+io.reference_device_range_date_uncertainty: 기준, 장치/범위, 날짜, 불확도
+io.refresh_devices: 장치 새로고침
+io.sample_rate: 샘플 레이트
+io.sample_rate_channels_pcm: 샘플 레이트 / 채널 / PCM
+io.sample_rate_input_output: 샘플 레이트 · 입력 + 출력
+io.scope_readouts_and_spectrum_use_y_gain_fs_offset: Scope 판독값과 Spectrum은 y = gain
+  × FS + offset을 사용합니다. Spectrum의 DC 제거는 오프셋을 상쇄합니다. Scope 트레이스/트리거, Spectrogram 및
+  XY 축은 FS를 사용합니다.
+io.select_common_rate: 공통 레이트 선택
+io.separate_sample_rates: 별도의 샘플 레이트
+io.signal_changes_apply_when_input_restarts_captured_samples_stay: 신호 변경은 입력을 다시 시작할
+  때 적용됩니다. 캡처된 샘플은 고정 상태로 유지됩니다.
+io.software_loopback: Software Loopback
+io.source: 소스
+io.start_input: ▶  입력 시작
+io.start_input_demo: ▶  입력 시작 (데모)
+io.start_or_stop_the_shared_input_for_all_instruments: '모든 기기의 공유 입력을 시작하거나 중지합니다.
+  출력은 독립적으로 동작합니다. 바로 가기: Space'
+io.start_stop_is_always_in_the_top_bar: 시작 / 중지는 항상 상단 표시줄에 있습니다.
+io.stop_input: ■  입력 중지
+io.stop_input_and_output_and_select_a_supported_common: 입력과 출력을 중지하고 지원되는 공통 레이트를
+  선택하세요.
+io.stop_input_and_output_to_change_the_device_or: 장치 또는 형식을 변경하려면 입력과 출력을 중지하세요.
+io.supported_device_rates_up_to_khz: 지원 장치 레이트 · 최대 768 kHz
+io.unavailable: 사용 불가
+io.unit: 단위
+io.unit_fs: 단위/FS
+io.waveform: 파형
