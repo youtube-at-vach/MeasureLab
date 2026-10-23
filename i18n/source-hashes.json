@@ -3980,7 +3980,7 @@
       "spectrum.captured_fft_source_units_and_averaging_are_read_only": {
         "source": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
         "source_hash": "791c826af16c642a880363aac3af9e1ffd1f5f868f5009c13718e931c6872cd7",
-        "translation_hash": "6b0d941445d0fb679a52faa201d578cc65f4a7730b481e10fe0e14b03ffd1ef5"
+        "translation_hash": "5d232f4eccbe4c83942d82ccc3c58cd4c3ce03bc49f3c1ae4cc1c558c53aa673"
       },
       "spectrum.ch": {
         "source": "CH%{index}",
@@ -4150,7 +4150,7 @@
       "spectrum.input_source": {
         "source": "Input source",
         "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
-        "translation_hash": "f149355cf7da6dc3648c6fc88ed4c370da8e85d854ba4dab28e51eed6ae2b242"
+        "translation_hash": "bd87e0c594d988f4808ad287ec9dfe544627eb2711f5d6767354156d9eea4d09"
       },
       "spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power": {
         "source": "Invalid FFT window · nonfinite sample or calibrated power",

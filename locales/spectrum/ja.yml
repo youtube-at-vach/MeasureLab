@@ -13,7 +13,7 @@ spectrum.before_input_began_no_stft_frame: 入力開始前 · STFTフレーム�
 spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin: ビン振幅 · 0 dBFS = ビン中心の正弦波1 FS peak。窓のコヒーレントゲインを補正します。ビン中心から外れた信号にはスカロッピング損失があります。
 spectrum.bottom: 下限
 spectrum.calibration_rev: 校正 %{id} · 版 %{revision}
-spectrum.captured_fft_source_units_and_averaging_are_read_only: 取得時のFFT、入力元、単位、平均化設定は読み取り専用です。通常スペクトラムの解析は独立して続きます。
+spectrum.captured_fft_source_units_and_averaging_are_read_only: 取得時のFFT、入力ソース、単位、平均化設定は読み取り専用です。通常スペクトラムの解析は独立して続きます。
 spectrum.ch: CH%{index}
 spectrum.ch_input: CH%{shown_spectrum_index} · 入力 %{channel} · %{db_unit}
 spectrum.ch_input_select_for_peak_cursor_and_export_display: 'CH%{index} · 入力 %{source}
@@ -61,7 +61,7 @@ spectrum.hz_ch_samples: '%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}
   CH %{channel} · サンプル %{start}..%{end}'
 spectrum.hz_no_complete_window: '%{index} %{frequency} Hz · 完全なFFT窓なし'
 spectrum.hz_power: '%{first_hz}–%{last_hz} Hz · 電力 %{power} %{power_unit}'
-spectrum.input_source: 入力元
+spectrum.input_source: 入力ソース
 spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power: 無効なFFT窓 · サンプルまたは校正後の電力が非有限です
 spectrum.invalid_stft_window_nonfinite_input: 無効なSTFT窓 · 入力が非有限です
 spectrum.json_csv_png_use_the_selected_trace: JSON／CSV／PNGには選択中のトレースを使います。
