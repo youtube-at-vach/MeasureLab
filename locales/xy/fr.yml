@@ -1,0 +1,61 @@
+_version: 1
+xy.amplitude_range: Plage d’amplitude
+xy.auto_no_crossing: ' · Auto (aucun franchissement)'
+xy.b_a_x_y_fs: B−A ΔX %{delta} · ΔY %{delta_2} FS
+xy.cursors: CURSEURS
+xy.fix_x_y_amplitudes_independently_of_the_moving_trace: Fixez les amplitudes X/Y
+  indépendamment de la trace mobile. Mesurez ΔX et ΔY.
+xy.follow_a_real_sample_at_a_fixed_time_offset: Suivre un échantillon réel à un décalage
+  temporel fixe du déclenchement XY. Utilise les paramètres de déclenchement de l’oscilloscope.
+xy.free: Libre
+xy.free_click_or_drag_to_fix_x_y_amplitudes: 'Libre : cliquez ou faites glisser pour
+  fixer les amplitudes X/Y. A/B mesurent ΔX et ΔY indépendamment de la trace mobile.
+  Les positions libres sont conservées lors du passage au suivi de trace.'
+xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: Le mode Libre maintient les amplitudes
+  X/Y fixes et affiche ΔX/ΔY. Les positions des curseurs sont conservées lors du changement
+  de mode.
+xy.free_outside_plot: Libre · hors du graphique
+xy.free_run_moving_reference: ' · fonctionnement libre (référence mobile)'
+xy.input_source: Source d’entrée
+xy.ms_samples: '%{sample_rate} ms · échantillons %{start}..%{end}%{else}%{auto_no_crossing}'
+xy.observation: OBSERVATION
+xy.observation_window: Fenêtre d’observation
+xy.outside_xy_window_or_unavailable: '%{index} · hors de la fenêtre XY ou indisponible'
+xy.point_limit: ' · limite de points'
+xy.reset_xy_scales: Réinitialiser les échelles XY
+xy.shared_with_scope: Partagé avec l’oscilloscope
+xy.source_changes_apply_on_start_held_xy_keeps_its: Les changements de source s’appliquent
+  au démarrage. Le XY maintenu conserve ses canaux.
+xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
+xy.trace_snap: Suivi de trace
+xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Le suivi de trace suit
+  un échantillon relatif au déclenchement. Le mode Auto / libre peut déplacer le marqueur
+  ; l’arrêt le fige.
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: 'Suivi de trace : sélectionne
+  la paire réelle la plus proche parmi les canaux X/Y attribués et conserve son décalage
+  en échantillons par rapport au déclenchement XY. Utilise la source, le front et
+  le niveau de déclenchement de l’oscilloscope. Sans franchissement, la référence
+  suit la fenêtre la plus récente. En cas de points superposés, sélectionne l’échantillon
+  le plus récent ; l’arrêt fige la capture.'
+xy.trigger: DÉCLENCHEMENT
+xy.triggered: ' · Déclenché'
+xy.up_to_real_sample_pairs_longer_windows_show_the: Jusqu’à %{xy} paires d’échantillons
+  réelles ; les fenêtres plus longues affichent leur partie la plus récente.
+xy.waiting_for_sample_pairs: En attente de paires d’échantillons…
+xy.x_axis: AXE X
+xy.x_fs_div_y_fs_div: 'X : %{channels} · %{x_fs_per_div} FS/div   Y : %{channels_2}
+  · %{y_fs_per_div} FS/div'
+xy.x_fs_y_fs: X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS
+xy.x_fs_y_fs_2: '%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS
+
+  %{detail}'
+xy.x_y_use_the_same_input_frame_equal_axis: X/Y utilisent la même trame d’entrée.
+  Des échelles d’axe identiques préservent les cercles sur le graphique carré.
+xy.xy_free_cursor: Curseur XY libre
+xy.xy_lissajous: XY / Lissajous
+xy.xy_requires_at_least_two_input_channels: XY nécessite au moins deux canaux d’entrée.
+xy.xy_requires_two_input_channels: XY nécessite deux canaux d’entrée
+xy.xy_trace_snap_cursor: Curseur XY · suivi de trace
+xy.xy_unavailable_assigned_channel_missing: 'XY indisponible : canal attribué manquant'
+xy.xy_unavailable_mono_input: 'XY indisponible : entrée mono'
+xy.y_axis: AXE Y

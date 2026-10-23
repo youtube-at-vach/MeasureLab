@@ -1,0 +1,133 @@
+_version: 1
+oscilloscope.acquiring_post_trigger: Nachtrigger-Erfassung
+oscilloscope.acquisition: ERFASSUNG
+oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: Ein erfasster
+  oder kalibrierter Wert ist nicht endlich; kein gültiger Zahlenwert
+oscilloscope.auto: Automatisch
+oscilloscope.auto_free: Automatisch / frei
+oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: Zeitskala,
+  Amplitude und Trigger für ein periodisches Signal automatisch einstellen
+oscilloscope.autoset: Automatische Einstellung
+oscilloscope.autoset_frequency: 'Automatische Einstellung: %{frequency} Hz anhand
+  roher Flanken'
+oscilloscope.autoset_held: Amplitude der gehaltenen Erfassung angepasst; Zeit/Trigger
+  gelten ab dem nächsten Start (%{frequency} Hz)
+oscilloscope.capture_once_on_the_next_trigger_crossing: Beim nächsten Triggerübergang
+  einmal erfassen
+oscilloscope.centre_offset: Mittenoffset
+oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
+oscilloscope.ch_2: CH%{index}%{else}
+oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
+
+  %{index_2}
+
+  Auswählen, um diesen Kanal in den Scope-Einstellungen zu bearbeiten. Anzeige ein/aus
+  ist davon unabhängig.
+
+  %{display}'
+oscilloscope.channel_out_of_range: — · Kanal außerhalb des Bereichs
+oscilloscope.cursor: Cursor %{index} · %{join}
+oscilloscope.display: Anzeige
+oscilloscope.drag_the_slider_or_value_to_adjust_double_click: Schieberegler oder Wert
+  ziehen, um anzupassen. Doppelklicken, um eine Zahl einzugeben.
+oscilloscope.edge: Flanke
+oscilloscope.edge_names.falling: Fallend
+oscilloscope.edge_names.free: Frei
+oscilloscope.edge_names.rising: Steigend
+oscilloscope.falling_edge: Fallende Flanke
+oscilloscope.fit_amplitude: Amplitude anpassen
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Rohspitze des ausgewählten
+  Kanals anpassen und Offset zentrieren
+oscilloscope.free_run: Dauerbetrieb
+oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
+oscilloscope.fs_div: '%{fs_per_div} FS/div'
+oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = Vollbereich · Fs
+  = Abtastrate · div = Rasterteilung
+oscilloscope.guides: Hilfslinien
+oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: BEDINGUNGEN
+  DER GEHALTENEN ERFASSUNG BEIBEHALTEN · vorgemerkte Messeinstellungen gelten ab dem
+  nächsten Start
+oscilloscope.horizontal: HORIZONTAL
+oscilloscope.input_source: Eingangsquelle
+oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
+  · %{reading}
+
+  Intervall %{start}..%{end} (Ende exklusiv) · Generation %{input_generation} · nominal
+  %{sample_rate} Hz. %{channel_2}. Signalform und Trigger verwenden rohes FS.'
+oscilloscope.invalid_value: — · ungültiger Wert
+oscilloscope.level: Pegel
+oscilloscope.markers: Markierungen
+oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted: 'Markierungen: nur
+  T-Markierungen. Hilfslinien: T-Markierungen und gepunktete Zeit-/Pegelhilfslinien.
+  Aus: beide ausblenden. Eine horizontale Hilfslinie erscheint beim Bearbeiten des
+  Pegels in jedem Modus.'
+oscilloscope.mode_names.auto: Automatisch
+oscilloscope.mode_names.normal: Normal
+oscilloscope.mode_names.single: Einzeln
+oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
+oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · Signalform:
+  rohes FS'
+oscilloscope.no_acquired_samples_for_this_channel_and_interval: Keine erfassten Samples
+  für diesen Kanal und dieses Intervall
+oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
+  · Keine erfassten Samples
+
+  Eingangsbedingungen wurden nicht erfasst. Signalform und Trigger verwenden rohes
+  FS.'
+oscilloscope.no_samples_in_this_interval: — · keine Samples in diesem Intervall
+oscilloscope.normal: Normal
+oscilloscope.off: Aus
+oscilloscope.out_of_range: Außerhalb des Bereichs
+oscilloscope.outside_input_channel_range: ' · außerhalb des Eingangskanalbereichs'
+oscilloscope.outside_input_channel_range_2: '%{channel} · außerhalb des Eingangskanalbereichs'
+oscilloscope.outside_sweep: '%{index} #%{sample} · außerhalb des Sweeps'
+oscilloscope.partial_missing_samples: Teilweise · %{scope_missing} fehlende Samples
+oscilloscope.position: Position
+oscilloscope.reset_time_position: Zeitposition zurücksetzen
+oscilloscope.rising_edge: Steigende Flanke
+oscilloscope.rms_p_p: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak} %{unit}
+oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak}
+  %{unit} · Spitze %{peak} %{unit} · %{samples} erfasste Samples
+oscilloscope.show_ch_waveform_keeps_selection_and_measurements: Signalform von CH%{index}
+  anzeigen (Auswahl und Messungen bleiben erhalten)
+oscilloscope.single: Einzeln
+oscilloscope.single_complete: Einzelerfassung vollständig
+oscilloscope.source: Quelle
+oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
+
+  %{scope_trigger_marker_status} · Quelle %{channel} · Pegel %{level} rohes FS. Der
+  Pegel folgt dem Vertikalbereich des Quellkanals, der sich von der Achse des ausgewählten
+  Kanals unterscheiden kann.'
+oscilloscope.spectrogram_time_hz_cursor: Spectrogram · Zeit-/Hz-Cursor
+oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Eingang starten
+  und auf eine einzelne getriggerte Erfassung warten
+oscilloscope.start_single_capture: Einzelerfassung starten
+oscilloscope.t_markers_captured: 'T-Markierungen: erfasst'
+oscilloscope.t_markers_settings_only: 'T-Markierungen: nur Einstellungen'
+oscilloscope.t_markers_top_ms_right_level: 'T-Markierungen: oben = 0 ms · rechts =
+  Pegel'
+oscilloscope.time_scale: Zeitskala
+oscilloscope.time_trigger_edits_apply_on_next_start: Änderungen an Zeit/Trigger gelten
+  ab dem nächsten Start
+oscilloscope.trigger: TRIGGER
+oscilloscope.trigger_settings: Triggereinstellungen
+oscilloscope.trigger_source_unavailable: Triggerquelle nicht verfügbar
+oscilloscope.triggered: Getriggert
+oscilloscope.update_even_without_a_trigger_crossing: Auch ohne Triggerübergang aktualisieren
+oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: Bei Triggerübergängen
+  aktualisieren; letzte Erfassung während des Wartens halten
+oscilloscope.vertical_ch: VERTIKAL · CH%{index}
+oscilloscope.vertical_range: Vertikalbereich
+oscilloscope.waiting_for_sweep: '%{index} · wartet auf Sweep'
+oscilloscope.waiting_for_trigger: Warten auf Trigger
+oscilloscope.waiting_previous_capture: Warten · vorherige Erfassung
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale: 'Mausrad: Zeitskala
+  · Umschalt+Mausrad: Skala des ausgewählten Kanals'
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double: '%{display}
+
+  %{display_2}
+
+  Mausrad: Zeitskala · Umschalt+Mausrad: Skala des ausgewählten Kanals · Doppelklick:
+  Ansicht zurücksetzen'
+oscilloscope.zero_level: Nullpegel
+oscilloscope.zero_offset: Nullpunkt-Offset

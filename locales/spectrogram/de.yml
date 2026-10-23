@@ -1,0 +1,90 @@
+_version: 1
+spectrogram.age_s: Alter / s
+spectrogram.analysis: Analyse
+spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: Analyseänderungen
+  gelten beim Neustart des Eingangs. Das erfasste Bild bleibt gehalten.
+spectrogram.auto_color_range: Automatischer Farbbereich
+spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 'Erfasst: nominal %{sample_rate}
+  Hz · Fenster %{sample_rate_2} s · Zeile %{sample_rate_3} ms · Bin %{size} Hz'
+spectrogram.ch_dbfs: CH %{channel} · dBFS
+spectrogram.collecting_a_complete_stft_window: Vollständiges STFT-Fenster wird erfasst…
+spectrogram.color_map: FARBPALETTE
+spectrogram.color_maps.blue: Blau
+spectrogram.color_maps.copper: Kupfer
+spectrogram.color_maps.grayscale: Graustufen
+spectrogram.color_maps.heat: Hitze
+spectrogram.color_maps.hot: Heiß
+spectrogram.color_maps.inferno: Inferno
+spectrogram.color_maps.magma: Magma
+spectrogram.color_maps.turbo: Turbo
+spectrogram.color_maps.viridis: Viridis
+spectrogram.color_range_dbfs: FARBUMFANG · dBFS
+spectrogram.display: Anzeige
+spectrogram.end_s_s_retained_n_hop: '%{live} · Ende %{sample_rate} s · %{retained_seconds}
+  s aufbewahrt · N %{size} / Hop %{hop}%{else}'
+spectrogram.fft_length: FFT-LÄNGE
+spectrogram.fft_overlap: FFT-ÜBERLAPPUNG
+spectrogram.frequency_hz: Frequenz / Hz
+spectrogram.frequency_scale: FREQUENZSKALA
+spectrogram.from: Von
+spectrogram.gestures: 'Spectrogram: Mausrad zum Zoomen der Frequenz; ziehen zum Verschieben
+  von Frequenz/Zeit; Umschalt+Mausrad oder Mausrad auf der Zeitachse zum Scrollen
+  des Verlaufs; klicken, um einen Frame zu halten und auszuwählen; Cursorlinie ziehen,
+  um sie zu verschieben; „Live“ gibt den Verlauf frei; Doppelklick setzt Frequenz-/Zeitposition
+  zurück.'
+spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: Größere Überlappung
+  erzeugt mehr FFT-Fenster und verbraucht die Verlaufskapazität schneller.
+spectrogram.history_available_s_unavailable_time_stays_blank: 'Verlauf verfügbar:
+  %{retained_seconds} / %{spectrogram_seconds} s · nicht verfügbare Zeit bleibt leer'
+spectrogram.history_limited_by_capacity: ' · Verlauf durch Kapazität begrenzt'
+spectrogram.hold_action: Halten
+spectrogram.hold_input_running: HALTEN · Eingang läuft
+spectrogram.hold_input_stopped: HALTEN · Eingang gestoppt
+spectrogram.hz_dbfs_ch: '%{index} %{size} Hz · %{bin} dBFS
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.hz_dbfs_samples: '%{size} Hz · %{bin} dBFS · Samples %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input: '%{index} Ungültiges STFT-Fenster
+
+  Eingang nicht endlich · %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input_samples: Ungültiges STFT-Fenster
+  · Eingang nicht endlich · Samples %{start}..%{end}
+spectrogram.linear_hz: Linear Hz
+spectrogram.live: LIVE
+spectrogram.live_action: Live
+spectrogram.log_hz: Logarithmisch Hz
+spectrogram.max: Max.
+spectrogram.min: Min.
+spectrogram.min_and_max_must_be_finite_with_min_max: Min. und Max. müssen endlich
+  sein, mit Min. < Max. Vorheriger Bereich beibehalten.
+spectrogram.no_stft_data_at_this_time_gap_or_unavailable: Zu diesem Zeitpunkt keine
+  STFT-Daten · Lücke oder nicht verfügbar
+spectrogram.no_stft_row_before_input_began: '%{index} Keine STFT-Zeile
+
+  Vor Eingangsbeginn'
+spectrogram.outside_visible_time_range: '
+
+  Außerhalb des sichtbaren Zeitbereichs'
+spectrogram.overlap.half: 50 %
+spectrogram.overlap.seven_eighths: 87,5 %
+spectrogram.overlap.three_quarters: 75 %
+spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 'Bin-Amplitude
+  pro Fenster · nicht kalibriertes FS. Orange Streifen: fehlendes oder ungültiges
+  STFT. Leer: Verlauf nicht verfügbar.'
+spectrogram.points: '%{size} Punkte'
+spectrogram.preparing_history_view: Verlaufsansicht wird vorbereitet…
+spectrogram.remove_dc_offset: Gleichanteil entfernen
+spectrogram.s_ch: '%{index} −%{age} s
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
+
+  Keine STFT-Zeile · Lücke oder nicht verfügbar'
+spectrogram.spectrogram: Spectrogram
+spectrogram.start_input_to_begin_acquisition: Eingang starten, um die Erfassung zu
+  beginnen
+spectrogram.time_range: ZEITBEREICH
+spectrogram.to: Bis
+spectrogram.to_uses_nyquist_log_excludes_dc: Bis = 0 verwendet Nyquist. Logarithmische
+  Skala schließt DC aus.
+spectrogram.window: FENSTER
