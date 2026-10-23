@@ -109,7 +109,7 @@ common.invalid_value: 值无效
 common.keep_held_result_as_reference: 将保留结果作为参考值
 common.known_sine_gain_phase_delay_noise_dut_common_input: 已知正弦 → 增益 / 相位 / 延迟 / 噪声
   DUT → 公共输入。条件在启动时生效。
-common.language_fallback: 未翻译文本将显示为英语。仪器翻译正在准备中。
+common.language_fallback: 未翻译文本将显示为英语。
 common.last_observed_output_nominal_hz_generation_revision_next_output: 上次观察到的输出：%{label}
   | 标称 %{nominal_sample_rate} Hz | %{pcm_label} | %{state} | 输出代次 %{output_generation}
   修订 %{revision} | 下一个输出样本 %{next_sample}
