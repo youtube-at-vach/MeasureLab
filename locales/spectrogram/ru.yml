@@ -1,0 +1,89 @@
+_version: 1
+spectrogram.age_s: Возраст / s
+spectrogram.analysis: Анализ
+spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: Изменения
+  анализа применяются после перезапуска входа. Захваченное изображение остаётся удерживаемым.
+spectrogram.auto_color_range: Автодиапазон цвета
+spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 'Захвачено: номинал %{sample_rate}
+  Hz · окно %{sample_rate_2} s · строка %{sample_rate_3} ms · бин %{size} Hz'
+spectrogram.ch_dbfs: CH %{channel} · dBFS
+spectrogram.collecting_a_complete_stft_window: Сбор полного окна STFT…
+spectrogram.color_map: ЦВЕТОВАЯ КАРТА
+spectrogram.color_maps.blue: Синяя
+spectrogram.color_maps.copper: Медная
+spectrogram.color_maps.grayscale: Оттенки серого
+spectrogram.color_maps.heat: Тепловая
+spectrogram.color_maps.hot: Горячая
+spectrogram.color_maps.inferno: Inferno
+spectrogram.color_maps.magma: Magma
+spectrogram.color_maps.turbo: Turbo
+spectrogram.color_maps.viridis: Viridis
+spectrogram.color_range_dbfs: ДИАПАЗОН ЦВЕТА · dBFS
+spectrogram.display: Отображение
+spectrogram.end_s_s_retained_n_hop: '%{live} · Конец %{sample_rate} s · сохранено
+  %{retained_seconds} s · N %{size} / шаг %{hop}%{else}'
+spectrogram.fft_length: ДЛИНА FFT
+spectrogram.fft_overlap: ПЕРЕКРЫТИЕ FFT
+spectrogram.frequency_hz: Частота / Hz
+spectrogram.frequency_scale: ЧАСТОТНАЯ ШКАЛА
+spectrogram.from: От
+spectrogram.gestures: 'Spectrogram: прокрутите колесо для масштабирования частоты;
+  перетаскивайте для панорамирования частоты/времени; Shift+колесо или колесо на оси
+  времени прокручивает историю; щёлкните, чтобы удержать и выбрать кадр; перетащите
+  линию курсора; «Активно» отключает историю; двойной щелчок сбрасывает положение
+  частоты/времени.'
+spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: Большое перекрытие
+  создаёт больше окон FFT и быстрее исчерпывает ёмкость истории.
+spectrogram.history_available_s_unavailable_time_stays_blank: 'Доступно истории: %{retained_seconds}
+  / %{spectrogram_seconds} s · недоступное время остаётся пустым'
+spectrogram.history_limited_by_capacity: ' · история ограничена ёмкостью'
+spectrogram.hold_action: Удержать
+spectrogram.hold_input_running: УДЕРЖАТЬ · вход работает
+spectrogram.hold_input_stopped: УДЕРЖАТЬ · вход остановлен
+spectrogram.hz_dbfs_ch: '%{index} %{size} Hz · %{bin} dBFS
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.hz_dbfs_samples: '%{size} Hz · %{bin} dBFS · отсчёты %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input: '%{index} Недопустимое окно STFT
+
+  Нечисловой вход · %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input_samples: Недопустимое окно STFT ·
+  нечисловой вход · отсчёты %{start}..%{end}
+spectrogram.linear_hz: Линейная Hz
+spectrogram.live: В РЕАЛЬНОМ ВРЕМЕНИ
+spectrogram.live_action: Активно
+spectrogram.log_hz: Логарифмическая Hz
+spectrogram.max: Макс.
+spectrogram.min: Мин.
+spectrogram.min_and_max_must_be_finite_with_min_max: Мин. и Макс. должны быть конечными,
+  причём Мин. < Макс. Предыдущий диапазон сохранён.
+spectrogram.no_stft_data_at_this_time_gap_or_unavailable: Нет данных STFT за это время
+  · разрыв или недоступность
+spectrogram.no_stft_row_before_input_began: '%{index} Нет строки STFT
+
+  До запуска входа'
+spectrogram.outside_visible_time_range: '
+
+  За пределами видимого диапазона времени'
+spectrogram.overlap.half: 50%
+spectrogram.overlap.seven_eighths: 87,5%
+spectrogram.overlap.three_quarters: 75%
+spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 'Амплитуда
+  бина на окно · некалиброванный FS. Оранжевые полосы: отсутствующий или недопустимый
+  STFT. Пусто: история недоступна.'
+spectrogram.points: '%{size} точек'
+spectrogram.preparing_history_view: Подготовка вида истории…
+spectrogram.remove_dc_offset: Удалить постоянную составляющую
+spectrogram.s_ch: '%{index} −%{age} s
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
+
+  Нет строки STFT · разрыв или недоступность'
+spectrogram.spectrogram: Spectrogram
+spectrogram.start_input_to_begin_acquisition: Запустите вход, чтобы начать захват
+spectrogram.time_range: ВРЕМЕННОЙ ДИАПАЗОН
+spectrogram.to: До
+spectrogram.to_uses_nyquist_log_excludes_dc: До = 0 использует частоту Найквиста.
+  Логарифмическая шкала исключает DC.
+spectrogram.window: ОКНО

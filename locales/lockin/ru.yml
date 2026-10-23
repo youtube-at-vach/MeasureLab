@@ -1,0 +1,96 @@
+_version: 1
+lockin.all_four: Все четыре
+lockin.applying_settings_display_retains_its_captured_conditions: Применение настроек
+  · отображение сохраняет захваченные условия
+lockin.averaged_samples_latest_window: Усреднённые отсчёты %{start}..%{end} · последнее
+  окно %{start_2}..%{end_2}
+lockin.calibrated: ОТКАЛИБРОВАНО
+lockin.captured_hint_ref_threshold: Захваченная подсказка %{hz_2} · τ %{s} · порог
+  REF %{fs}
+lockin.ch_calibration_revision_gain_fs: Калибровка CH %{ch} %{id} / ревизия %{revision}
+  · усиление %{gain} %{unit} / FS
+lockin.ch_settings_unavailable: CH / НАСТРОЙКИ НЕДОСТУПНЫ
+lockin.check_sig_ref_channel_availability_and_frequency_against_nominal: Проверьте
+  доступность каналов SIG / REF и частоту относительно номинального Fs.
+lockin.complete_windows_missing_samples: 'Полных окон: %{processed_windows} · отсутствующих
+  отсчётов: %{missing_samples}'
+lockin.disabled: ОТКЛЮЧЕНО
+lockin.display_bars_auto_scale_they_do_not_change_input: Маркеры отображения масштабируются
+  автоматически и не меняют чувствительность входа. Периодическая аппроксимация Hann
+  + два полюса EMA. Физическая REF / синхронизация не проверены.
+lockin.display_scale_only: '%{v} %{unit} · только шкала отображения'
+lockin.ema_poles_settling_fundamental_only: 2 полюса EMA · установление за 10τ · только
+  основная гармоника
+lockin.experimental: ЭКСПЕРИМЕНТАЛЬНО
+lockin.experimental_input_reference: ЭКСПЕРИМЕНТАЛЬНО · ОПОРА ВХОДА
+lockin.f_ref: f REF  %{hz_2}
+lockin.fixed_frequency: ФИКСИРОВАННАЯ ЧАСТОТА
+lockin.frequency_must_be_below_nominal_fs_hz: '%{error}: частота должна быть ниже
+  0,45 × номинального Fs (%{rate} Hz)'
+lockin.fs_rms: ' FS RMS'
+lockin.gain: Усиление  %{gain}
+lockin.input_failed: СБОЙ ВХОДА
+lockin.input_gap: РАЗРЫВ ВХОДА
+lockin.input_or_calculation_is_nonfinite_no_valid_measurement_is: Вход или вычисление
+  нечисловые. Допустимое измерение отсутствует.
+lockin.input_samples_are_missing_the_filter_clears_and_settles: Отсутствуют входные
+  отсчёты. После восстановления фильтр сбрасывается и устанавливается снова.
+lockin.integration_samples: 'Интегрирование: %{integration_samples} отсчётов'
+lockin.invalid_input: НЕДОПУСТИМЫЙ ВХОД
+lockin.lock_in_amplifier: Усилитель Lock-in
+lockin.measurement_details: Сведения об измерении
+lockin.min_ref: 'Мин. REF '
+lockin.next_start_settings_changed_display_retains_captured_conditions: Настройки
+  для следующего запуска изменены · отображение сохраняет захваченные условия
+lockin.no_capture: НЕТ ЗАХВАТА
+lockin.no_valid_reading_no_bar_marker_is_shown: Допустимые показания отсутствуют;
+  маркер столбца не отображается
+lockin.nominal_fs_hz_input_generation: Номинальный Fs %{sample_rate} Hz · поколение
+  входа %{input_generation}
+lockin.physical_ref_and_timing_remain_unverified_no_physical_oscillator: Физические
+  REF и синхронизация не проверены. Нет физического выхода генератора и выбора аппаратной
+  чувствительности.
+lockin.poles_n: τ %{s}   ·   2 полюса   ·   N %{integration_samples}   ·   %{fixed_frequency}
+lockin.r_x_and_y_are_peak_amplitudes_positive_phase: R, X и Y — пиковые амплитуды.
+  Положительная фаза опережает REF. Фильтр имеет два фиксированных полюса EMA и устанавливается
+  за 10τ допустимых отсчётов. Настройки, изменённые в остановленном состоянии, применяются
+  при следующем запуске.
+lockin.ref: REF
+lockin.ref_ac_rms_sinusoid_fit: RMS AC REF %{fs} · аппроксимация синусоиды %{v}
+lockin.ref_and_signal_use_the_same_input_sample_clock: REF и сигнал используют одни
+  и те же часы входных отсчётов.
+lockin.ref_hint: 'Подсказка REF '
+lockin.ref_is_below_its_ac_rms_threshold_values_clear: REF ниже порога RMS AC. Значения
+  очищаются до восстановления REF.
+lockin.ref_lost: ПОТЕРЯНА REF
+lockin.ref_needs_cycles_window_sinusoid_fit_and_frequency_within: Для REF нужны ≥3
+  циклов/окно, ≥98% аппроксимации синусоиды и частота в пределах диапазона подсказки.
+lockin.ref_unstable: НЕСТАБИЛЬНА REF
+lockin.ref_valid: ДОПУСТИМА REF
+lockin.reference_filter: ЭТАЛОН И ФИЛЬТР
+lockin.reference_validity: ДОПУСТИМОСТЬ ЭТАЛОНА
+lockin.samples: '%{n} отсчётов'
+lockin.select_sig_ref_channels_press_start_analysis_then_start: Выберите каналы SIG
+  / REF, нажмите «Запустить анализ», затем «Запустить вход», если вход остановлен.
+lockin.settling: УСТАНОВЛЕНИЕ
+lockin.settling_of: Установление · %{progress}% от 10τ
+lockin.sig: SIG
+lockin.sig_ch_ref_ch: SIG CH %{response_channel}   /   REF CH %{reference_channel}
+lockin.start_analysis: Запустить анализ
+lockin.start_input_to_acquire_a_synchronous_sig_ref_window: Запустите вход, чтобы
+  захватить синхронное окно SIG / REF.
+lockin.state_names.disabled: Отключено
+lockin.state_names.missing: Отсутствует
+lockin.state_names.non_finite: Нечисловое значение
+lockin.state_names.reference_lost: Эталон потерян
+lockin.state_names.reference_unstable: Эталон нестабилен
+lockin.state_names.settling: Установление
+lockin.state_names.unavailable: Недоступно
+lockin.state_names.valid: Допустимо
+lockin.stop_analysis: Остановить анализ
+lockin.time_constant_presets: Предустановки постоянной времени
+lockin.track_input_ref_hint: Отслеживать вход REF (подсказка ±10%)
+lockin.track_ref: ОТСЛЕЖИВАТЬ REF
+lockin.uncalibrated_fs: НЕ ОТКАЛИБРОВАНО · FS
+lockin.waiting_for_a_complete_synchronous_input_window: Ожидание полного синхронного
+  окна входа.

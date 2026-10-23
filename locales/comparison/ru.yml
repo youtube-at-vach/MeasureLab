@@ -1,0 +1,100 @@
+_version: 1
+comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags: Сравнение AC
+  · положительная фаза опережает REF; положительная задержка отстаёт от REF. Изменения
+  при остановке применятся при следующем запуске.
+comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs: '%{name} · удалено
+  среднее AC · раздельные арифметические пакеты · порог REF %{reference_min_psd_fs2_hz}
+  FS²/Hz · когерентность ≥%{minimum_coherence}'
+comparison.around_reading: Около показания
+comparison.average_windows: 'Усреднить окна '
+comparison.averaged_windows_processed_missing_invalid_samples: 'Усреднено окон: %{averaged_windows}
+  · обработано: %{processed_windows} · отсутствует: %{missing_samples} · недопустимых
+  отсчётов: %{invalid_samples}'
+comparison.bin_hz: Бин %{k} · %{bin_width_hz} Hz · %{state}
+comparison.bin_states.averaging: Усреднение
+comparison.bin_states.incoherent: Некогерентно
+comparison.bin_states.reference_lost: Эталон потерян
+comparison.bin_states.response_lost: Отклик потерян
+comparison.bin_states.valid: Допустимо
+comparison.captured_conditions: Захваченные условия
+comparison.ch_revision_fs: 'CH %{ch}: %{id} / ревизия %{revision} · %{gain} %{unit}
+  / FS'
+comparison.check_ref_sig_channels_fft_and_nominal_fs_settings: Проверьте каналы REF
+  / SIG, FFT и настройки номинального Fs.
+comparison.coherence: Когерентность γ²
+comparison.custom: Пользовательский
+comparison.display_only_captured_analysis_validity_thresholds_and_the_phase: 'Только
+  отображение: захваченный анализ, пороги допустимости и полоса наклона фазы не изменяются.
+  Логарифмическая шкала Hz исключает DC.'
+comparison.display_range: Диапазон отображения
+comparison.finishing_analysis_before_holding_the_result: Завершение анализа перед
+  удержанием результата.
+comparison.from: 'От '
+comparison.fs_hz: ' FS²/Hz'
+comparison.full_nyquist: Полный / Найквиста
+comparison.gain: Усиление
+comparison.gain_db: Усиление dB
+comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain: H1 = Pxy/Pxx. Scope,
+  Spectrum и сравнение используют собственные интервалы. Аппроксимация наклона предполагает
+  соседние шаги фазы меньше π; периодические/свёрнутые данные не позволяют определить
+  абсолютную задержку.
+comparison.held_conditions_retained_queued_analysis_settings_apply_on_next: УСЛОВИЯ
+  УДЕРЖИВАЕМОГО РЕЗУЛЬТАТА СОХРАНЕНЫ · настройки анализа из очереди применятся при
+  следующем запуске
+comparison.hz: '%{selected_hz} Hz'
+comparison.hz_2: '%{fraction} Hz'
+comparison.input_gap_press_start_input_to_acquire_again: Разрыв входа · нажмите «Запустить
+  вход», чтобы захватить снова.
+comparison.input_gap_waiting_for_a_new_complete_average: Разрыв входа · ожидание нового
+  полного усреднения.
+comparison.input_generation_analysis_revision_hz_nominal_f64: Поколение входа %{generation}
+  · ревизия анализа %{analysis_revision} · номинал %{nominal_sample_rate_hz} Hz ·
+  f64
+comparison.invalid_input_no_valid_comparison_is_available: Недопустимый вход · корректное
+  сравнение недоступно.
+comparison.linear_hz: Линейная Hz
+comparison.log_hz: Логарифмическая Hz
+comparison.min_coherence: 'Мин. когерентность '
+comparison.min_ref: 'Мин. REF '
+comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps: Номинальный
+  Fs · калибровка фазы/времени CH не проверена · задержка сворачивается с периодом
+  1/f
+comparison.phase: Фаза °
+comparison.phase_lead: Опережение фазы
+comparison.phase_slope_needs_contiguous_excited_coherent_bins: 'Наклон фазы: — · требуется
+  ≥8 смежных возбуждённых когерентных бинов'
+comparison.phase_slope_s_hz_residual_rms: 'Наклон фазы: %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2}
+  Hz · RMS остатка %{phase_residual_rms_degrees}°'
+comparison.press_start_input_to_acquire_a_complete_average: Нажмите «Запустить вход»,
+  чтобы захватить полное усреднение.
+comparison.read_at: Считывать при
+comparison.ref: REF
+comparison.ref_ch_sig_ch_n_f_hz: '%{state} · REF CH %{reference_channel} / SIG CH
+  %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz'
+comparison.samples: 'Отсчётов: %{size}'
+comparison.samples_latest_input_end: Отсчёты %{start}..%{end} · последние %{start_2}..%{end_2}
+  · конец входа %{input_end}
+comparison.select_ref_sig_channels_then_press_start_analysis: Выберите каналы REF
+  / SIG, затем нажмите «Запустить анализ».
+comparison.selected_frequency_is_outside_the_captured_result: Выбранная частота выходит
+  за пределы захваченного результата.
+comparison.sig: SIG
+comparison.slope_from: 'Наклон от '
+comparison.slope_to: 'Наклон до '
+comparison.start_analysis: Запустить анализ
+comparison.state_names.averaging: Усреднение
+comparison.state_names.disabled: Отключено
+comparison.state_names.filling: Заполнение
+comparison.state_names.missing: Отсутствует
+comparison.state_names.non_finite: Нечисловое значение
+comparison.state_names.unavailable: Недоступно
+comparison.state_names.valid: Допустимо
+comparison.stop_analysis: Остановить анализ
+comparison.synchronous_comparison: Предустановки постоянной времени
+comparison.to: Отслеживать входной REF (подсказка ±10%)
+comparison.valid_band: ОТСЛЕЖИВАТЬ REF
+comparison.valid_transfer_bins_gaps_are_not_interpolated: 'Действительных бинов передачи:
+  %{valid} · разрывы не интерполируются'
+comparison.waiting_for_a_complete_average: Ожидание полного синхронного усреднения.
+comparison.window_averaging: ОКНО / УСРЕДНЕНИЕ
+comparison.wrapped_delay: Свёрнутая задержка

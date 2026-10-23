@@ -1,0 +1,376 @@
+_version: 1
+common.acquiring_post_trigger_samples: Adquiriendo muestras posteriores al disparo…
+common.active_input_differs_from_the_device_list_stop_and: La entrada activa difiere
+  de la lista de dispositivos; deténgala y actualice antes de guardar
+common.all_channels_off: Todos los canales DESACTIVADOS
+common.all_scope_channels_off: Todos los canales de Scope DESACTIVADOS
+common.amplitude_fs: Amplitud [FS]
+common.amplitude_help: FS = escala completa digital. La forma de onda y los niveles
+  de disparo usan FS sin calibrar. Las lecturas RMS / P-P usan la calibración capturada
+  del canal y muestran sus propias unidades.
+common.an_export_is_already_in_progress: Ya hay una exportación en curso
+common.band_hz_power_rms: Banda %{bin_centres_hz} Hz | potencia %{power} %{power_unit}
+  | RMS %{rms} %{rms_unit}
+common.calibration_rev_gain_offset: Calibración %{id} rev. %{revision} | ganancia
+  %{gain} desplazamiento %{offset} %{unit} | %{conditions}
+common.calibration_rev_gain_offset_2: Calibración %{id} rev. %{revision} | ganancia
+  %{gain} desplazamiento %{offset} | %{conditions}
+common.calibration_rev_y_fs: Calibración %{id} · rev. %{revision} · y = %{gain} ×
+  FS + %{offset} %{unit} · %{conditions}
+common.calibration_revision_exhausted: Revisión máxima de calibración alcanzada
+common.capacity_limited: ' · capacidad limitada'
+common.captured_f64: 'f64 capturado: %{v} %{unit}'
+common.channel_unavailable: CH no disponible
+common.channels_outside_the_input_range: Canales fuera del rango de entrada
+common.check_input_settings_and_the_acquisition_error_then_press: Compruebe la configuración
+  de entrada y el error de adquisición; después pulse Iniciar entrada para volver
+  a intentarlo.
+common.choose_an_available_trigger_source_in_scope_settings_or: Elija una fuente de
+  disparo disponible en la configuración de Scope o cambie la fuente de entrada en
+  Audio I/O.
+common.choose_which_cursor_the_next_plot_click_or_drag: Elija qué cursor colocará
+  el siguiente clic o arrastre en el gráfico; seleccionar A o B no lo coloca. Scope
+  conserva la posición del gráfico. Spectrogram mantiene el cuadro FFT seleccionado.
+  XY Free conserva las amplitudes X/Y; Trace Snap sigue una muestra relativa al disparo.
+common.clear_both_a_b_time_cursors_spectrum_spectrogram_frequency: Borrar los cursores
+  temporales A/B, los cursores de frecuencia de Spectrum/Spectrogram, los puntos XY
+  Free y las selecciones de cuadro de Spectrogram en todos los instrumentos. Los datos
+  adquiridos se conservan.
+common.clear_cursors: Borrar cursores
+common.clear_reference: Borrar referencia
+common.collecting_a_complete_fft_window: Adquiriendo una ventana FFT completa…
+common.compare_saved_reference: Comparar referencia guardada
+common.current: Actual
+common.current_held_result: Resultado actual retenido
+common.current_reference_gain_phase_wrapped_delay_s: 'Actual − referencia: ganancia
+  %{gain} · fase %{phase_degrees}° · retardo envuelto %{phase_delay_seconds} s'
+common.cursor_channel_invalid: ' · valor no válido de %{channel}'
+common.dc_fs_noise_rms_fs_frequency_offset_hz_ref: CC %{dc_offset} FS | ruido RMS
+  %{noise_rms} FS | desplazamiento de frecuencia %{frequency_offset_hz} Hz | REF %{disabled}
+common.delay_samples: 'Muestras de retardo '
+common.difference_requires_valid_matching_input_analysis_calibration_and_excitation: La
+  diferencia requiere condiciones válidas y coincidentes de entrada, análisis, calibración
+  y excitación, sin pérdidas. El historial independiente de salida externa no demuestra
+  que la excitación coincida con las muestras de entrada.
+common.disabled: deshabilitado
+common.display_updates_skipped: Actualizaciones de pantalla omitidas %{elaxed}
+common.div_help: div = una división de la cuadrícula. ms/div establece el tiempo por
+  división horizontal; FS/div establece la amplitud sin calibrar por división vertical
+  para cada canal de Scope.
+common.dropped: Omitidas %{dropped}
+common.dut_dc_fs: 'CC del DUT FS '
+common.dut_frequency_offset_hz: 'Desplazamiento de frecuencia del DUT Hz '
+common.dut_gain: 'Ganancia del DUT '
+common.dut_gain_phase_delay_samples: Ganancia del DUT %{gain} | fase %{phase_degrees}°
+  | retardo %{delay_samples} muestras
+common.ema_windows_envelope: EMA α %{alpha} | %{processed_windows} ventanas | envolvente
+  [%{start}, %{end})
+common.enabled: habilitado
+common.enter_a_results_file_path: Introduzca la ruta de un archivo de resultados
+common.enter_a_settings_file_path: Introduzca la ruta de un archivo de configuración
+common.envelope_latest_complete_windows_missing_samples_ref_hz_ac: 'Envolvente [%{start},
+  %{end}) · más reciente [%{start_2}, %{end_2})
+
+  %{processed_windows} ventanas completas · %{missing_samples} muestras ausentes
+
+  REF %{reference_frequency_hz} Hz · RMS CA %{reference_ac_rms_fs} FS · ajuste sinusoidal
+  %{reference_sinusoid_fraction}'
+common.export_annotated_png: Exportar PNG con anotaciones…
+common.export_held_result_csv: Exportar resultado retenido como CSV…
+common.export_held_results: Exportar resultados retenidos
+common.export_held_scope_csv: Exportar Scope retenido como CSV…
+common.export_held_scope_only: Exportar solo Scope retenido
+common.export_held_scope_png: Exportar Scope retenido como PNG…
+common.exporting_results: Exportando resultados retenidos…
+common.exports_the_retained_scope_interval_and_the_independently_timed: Exporta el
+  intervalo retenido de Scope y el resultado de Spectrum con temporización independiente.
+  Las muestras ausentes permanecen como null. No se incluyen Spectrogram, XY ni los
+  cursores.
+common.external_generator_history_independent_uncalibrated_output_clock_input_window: 'Historial
+  de Generator externo: reloj de salida independiente y sin calibrar; correspondencia
+  con la ventana de entrada desconocida.'
+common.f_hz_rbw_hz: Δf %{bin_width_hz} Hz | RBW %{rbw_hz} Hz
+common.fft_precision: PRECISIÓN FFT
+common.file: Archivo
+common.file_paths_status: Rutas de archivos y estado…
+common.file_selection_cancelled: Se canceló la selección de archivo
+common.finishing: FINALIZANDO
+common.finishing_acquisition: Finalizando adquisición…
+common.fixed_frequency: frecuencia fija
+common.frequency_hz: 'Frecuencia Hz '
+common.gain_phase_coherence: Ganancia %{gain} · adelanto de fase %{phase_lead_degrees}°
+  · coherencia %{coherence} · %{state}
+common.generation_nominal_hz_ch: Generación %{generation} | %{nominal_sample_rate_hz}
+  Hz nominales | %{channels} canales
+common.generator_internal_loopback_actual_f64_output_shared_integer_sample: Bucle
+  interno de Generator · salida f64 real · reloj de muestreo entero compartido
+common.gpu_segments: '%{len} segmentos de GPU'
+common.held: RETENIDO
+common.held_input_generation_does_not_match_results: La generación de entrada retenida
+  no coincide con los resultados
+common.held_measurement_results: RESULTADOS DE MEDICIÓN RETENIDOS
+common.hz_2: '%{frequency_hz} Hz · %{level_db} %{db_unit}'
+common.hz_3: '%{rate} Hz'
+common.hz_4: '%{unwrap_or} Hz'
+common.input: Entrada %{device_name} | %{sample_format}
+common.input_acquisition_failed: Error al adquirir la entrada
+common.input_conditions: 'Condiciones de entrada: —'
+common.input_conditions_changed_since_restoration_refresh_devices_and_restore: Las
+  condiciones de entrada cambiaron desde la restauración; actualice los dispositivos
+  y restaure de nuevo
+common.input_is_active_check_the_trigger_source_level_and: La entrada está activa.
+  Compruebe la fuente, el nivel y el flanco del disparo en la configuración de Scope,
+  o use el modo automático.
+common.input_is_active_waiting_for_enough_samples_to_draw: La entrada está activa.
+  Esperando muestras suficientes para dibujar un barrido completo.
+common.input_is_active_waiting_for_the_rest_of_the: La entrada está activa. Esperando
+  el resto del barrido disparado.
+common.input_ksa_s_nominal_ch: Entrada %{state} · %{nominal_sample_rate_hz} kSa/s
+  nominales · %{channels} canales · %{format}
+common.input_stopped: Entrada detenida
+common.input_stopped_before_a_complete_sweep_was_available_check: La entrada se detuvo
+  antes de disponer de un barrido completo. Compruebe la configuración de Scope y
+  pulse Iniciar entrada para adquirir de nuevo.
+common.invalid_fft_window_nonfinite_value: Ventana FFT no válida · valor no finito
+common.invalid_value: valor no válido
+common.keep_held_result_as_reference: Conservar el resultado retenido como referencia
+common.known_sine_gain_phase_delay_noise_dut_common_input: Seno conocido → ganancia
+  / fase / retardo / ruido DUT → entrada común. Las condiciones se aplican al iniciar.
+common.language_fallback: El texto sin traducir se muestra en inglés. La traducción
+  de los instrumentos está en preparación.
+common.last_observed_output_nominal_hz_generation_revision_next_output: 'Última salida
+  observada: %{label} | %{nominal_sample_rate} Hz nominales | %{pcm_label} | %{state}
+  | generación %{output_generation} revisión %{revision} | siguiente muestra de salida
+  %{next_sample}'
+common.live: EN VIVO
+common.load_reference_result: Cargar resultado de referencia…
+common.lock_in_current_reference_each_result_s_own_interval: 'Diferencia Lock-in actual
+  − referencia (cada resultado usa su propio intervalo):
+
+  ΔX %{x} · ΔY %{y} · ΔR %{amplitude_peak} %{response_unit_peak}
+
+  Δθ %{phase_degrees}° (envuelta a ±180°) · Δganancia %{gain} %{gain_unit}'
+common.lock_in_difference_requires_two_valid_settled_results_with: La diferencia Lock-in
+  requiere dos resultados válidos y estabilizados con Fs nominal, canales, ajustes
+  REF/filtro y calibraciones coincidentes, sin fallos de entrada y con excitación
+  estacionaria coincidente conocida para la entrada Generator.
+common.lock_in_experimental_sig_ch_ref_ch_s_n: 'Lock-in %{state} · experimental |
+  SIG CH %{response_channel} / REF CH %{reference_channel}
+
+  τ %{time_constant_seconds} s · N %{integration_samples} · sugerencia %{frequency_hz}
+  Hz · %{fixed_frequency} · REF mín. %{reference_min_rms_fs} FS RMS'
+common.loss_capture_scope_fft_input_fft_windows_missing_nonfinite: 'Pérdidas: captura
+  %{capture_dropped_samples} | Scope %{scope_missing_samples} | entrada FFT %{missing_input_samples}
+
+  Ventanas FFT: ausentes %{missing_windows} | no finitas %{nonfinite_windows} | observadas
+  %{processed_windows_since_reset}
+
+  Fin de entrada %{input_end} | rellenadas %{filled_samples} | fallo de entrada %{input_failed}'
+common.measurement_settings: CONFIGURACIÓN DE MEDICIÓN
+common.missing_sample: muestra ausente
+common.ms: '%{index} %{seconds} ms  '
+common.no_complete_fft_window: No hay una ventana FFT completa
+common.no_complete_sweep_captured: No se capturó un barrido completo
+common.no_held_input_conditions: No hay condiciones de entrada retenidas
+common.no_samples_acquired_yet: Aún no se han adquirido muestras
+common.no_valid_captured_value: No hay ningún valor capturado válido
+common.noise_rms_fs: 'Ruido RMS FS '
+common.not_acquired: NO ADQUIRIDO
+common.observed_changes_evicted_lost_reports_output_notifications_since_output: '%{len}
+  cambios observados | %{evicted_changes} desalojados | %{lost_reports_since_output_worker_start}
+  informes perdidos | %{notifications_since_output_worker_start} notificaciones de
+  salida desde que arrancó el worker de salida'
+common.one_reference_is_retained_recordings_use_independent_sample_clock: Se conserva
+  una referencia. Las grabaciones usan orígenes de reloj de muestreo independientes;
+  los gráficos se muestran por separado.
+common.only_this_instrument_s_fft_changes_precision_input_history: Solo la FFT de
+  este instrumento cambia la precisión. El historial de entrada, la eliminación de
+  CC y el promedio de potencia usan 64 bits.
+common.open_input_settings: Abrir configuración de entrada
+common.open_input_settings_to_choose_the_source_then_press: Abra la configuración
+  de entrada para elegir la fuente y pulse Iniciar entrada en la barra superior.
+common.open_input_settings_to_select_or_refresh_an_audio: Abra la configuración de
+  entrada para seleccionar o actualizar un dispositivo de audio, o elija Bucle de
+  software. Después pulse Iniciar entrada.
+common.outside_sweep: fuera del barrido
+common.peak_hold: Retención de pico
+common.performance: Rendimiento
+common.phase_lead: 'Adelanto de fase ° '
+common.place_cursor: 'Colocar cursor:'
+common.placed_a: 'Colocado: A'
+common.placed_a_b: 'Colocados: A, B'
+common.placed_b: 'Colocado: B'
+common.placed_none: 'Colocado: ninguno'
+common.precision.f32: 32 bits (FFT rápida)
+common.precision.f64: 64 bits
+common.preparing_input: Preparando entrada…
+common.previous_held_result: Resultado retenido anterior
+common.psd_band_power_current_reference: 'Potencia de banda PSD actual − referencia:
+  %{power} %{power_unit}'
+common.raw_sample_unavailable: '#%{sample} · muestra sin calibrar no disponible'
+common.raw_scope_fs_relative_sample_position: FS de Scope sin calibrar · posición
+  relativa de la muestra
+common.ref: REF
+common.ref_ch_sig_ch_windows: '%{label}: %{state} · REF CH %{reference_channel} /
+  SIG CH %{response_channel} · %{start}..%{end} · %{averaged_windows} ventanas promediadas
+  · %{gain_unit}'
+common.reference: Referencia
+common.reference_comparison: Comparación de referencia
+common.reference_loaded_captured_input_conditions_preserved: Referencia cargada; se
+  conservan las condiciones de entrada capturadas
+common.reference_peak_fs: 'Pico de referencia FS '
+common.reference_present: Referencia presente
+common.restore_settings: Restaurar configuración
+common.restore_settings_2: Restaurar configuración…
+common.restored_input_selection_changed_restore_settings_again: La selección de entrada
+  restaurada cambió; restaure la configuración de nuevo
+common.result_states.non_finite: No finito
+common.result_states.partial: Parcial
+common.result_states.unavailable: No disponible
+common.result_states.valid: Válido
+common.result_states.waiting: Esperando
+common.results_exported: 'Resultados exportados: %{path}'
+common.results_json_file_path: Ruta del archivo JSON de resultados
+common.retained_output_condition_intervals_missing_evicted_intervals_are_unknown: '%{len}
+  intervalos de condiciones de salida retenidos; los intervalos ausentes/desalojados
+  son desconocidos'
+common.rev_gain_offset: '%{label}: %{id} rev. %{revision} · ganancia %{gain} desplazamiento
+  %{offset} %{unit} · %{conditions}'
+common.revision_y_fs: '%{id} · revisión %{revision} · y = %{gain} × FS + %{offset}
+  %{unit} · %{conditions}'
+common.rms_peak_p_p: 'RMS %{rms}
+
+  Pico %{peak}
+
+  P-P %{peak_to_peak}'
+common.sample_rate_help: Fs = frecuencia de muestreo nominal en muestras/s (Sa/s).
+  El tiempo y la frecuencia capturados usan esta tasa; el reloj físico de muestreo
+  no está calibrado.
+common.save_held_result_json: Guardar resultado retenido como JSON…
+common.save_held_scope_json: Guardar Scope retenido como JSON…
+common.save_settings: Guardar configuración
+common.save_settings_2: Guardar configuración…
+common.save_the_queued_input_channels_analysis_and_calibration_for: Guardar la entrada
+  en cola, los canales, el análisis y la calibración para el siguiente inicio. Restaurar
+  mientras esté detenido; después iniciar la entrada explícitamente.
+common.saved: Guardado %{display}
+common.saved_calibration_conflicts_with_an_existing_id_revision: La calibración guardada
+  entra en conflicto con un ID/revisión existente
+common.scope_prep_ms: Preparación de Scope %{build_ms} ms
+common.scope_trigger_ch_at_fs: Scope [%{start}, %{end}) | %{acquisition_mode} | disparo
+  CH %{channel} %{edge} en %{level} FS
+common.select_a_channel_below_the_plot_and_choose_its: Seleccione un canal debajo
+  del gráfico y elija su fuente de entrada en la configuración de Scope, o cambie
+  la fuente de entrada en Audio I/O.
+common.select_an_audio_input_to_observe_audio_device_output: Seleccione una entrada
+  de audio para observar la salida del dispositivo de audio
+common.select_an_input_device_first: Seleccione primero un dispositivo de entrada
+common.select_an_input_source: Seleccionar fuente de entrada
+common.selected_ch_axis: Eje CH%{scope_selected} seleccionado. %{display}
+common.selecting_file: Seleccionando archivo…
+common.settings_error: Error de configuración
+common.settings_failed: 'Error al aplicar la configuración: %{detail}'
+common.settings_json_file_path: Ruta del archivo JSON de configuración
+common.settings_restored: 'Selección de entrada restaurada: %{path}. La entrada permanece
+  detenida; pulse Iniciar entrada para medir.'
+common.settings_restored_input_stopped: Configuración restaurada; entrada detenida
+common.settings_saved: 'Configuración guardada: %{path}'
+common.settings_status: Estado de configuración
+common.sig: SIG
+common.single_complete_fft_window_was_not_filled: Adquisición única completa · no
+  se llenó la ventana FFT
+common.software_loopback_ch_ref_ch_dut: BUCLE DE SOFTWARE · CH 1 REF / CH 2 DUT
+common.software_loopback_hz_ref_fs_peak: Bucle de software | %{frequency_hz} Hz |
+  REF %{amplitude_peak} FS pico
+common.spectrogram_history_ms: Preparación del historial de Spectrogram %{spectrogram_build_ms}
+  ms
+common.spectrogram_rows_mib_cpu_storage: Spectrogram %{len} / %{spectrogram} filas
+  · %{storage_bytes} MiB de almacenamiento CPU
+common.spectrum_ch_points_dc_removal: 'Spectrum %{state} | CH %{c}
+
+  %{end} | %{size} puntos | %{name}
+
+  %{mode} | eliminación de CC %{remove_dc} | %{unit}'
+common.spectrum_definitions_or_known_stationary_excitation_differ_inspect_each: Las
+  definiciones de Spectrum o la excitación estacionaria conocida difieren; inspeccione
+  por separado los bins y las bandas de cada resultado.
+common.spectrum_linear_values_bin_position: Valores lineales de Spectrum · posición
+  del bin
+common.spectrum_prep_ms: Preparación de Spectrum %{spectrum_build_ms} ms
+common.spectrum_windows_missing: Spectrum %{mode} · %{updates} ventanas · ausentes
+  %{missing_windows}
+common.start_input_to_begin_acquisition: Inicie la entrada para comenzar la adquisición
+common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / salto %{hop} · muestras
+  %{start}..%{end}
+common.stft_history_storage_losses_allocated_mib_peak_mib: Pérdidas de almacenamiento
+  del historial STFT %{elaxed} · asignado %{allocated_frame_bytes} MiB / pico %{peak_frame_bytes}
+  MiB
+common.stft_input_dropped_rows_dropped: Entrada STFT omitida %{elaxed} · filas omitidas
+  %{elaxed_2}
+common.stft_raster_peak_mib_mib_display_requests_replaced: Pico del ráster STFT %{peak_cache_bytes}
+  MiB / 8 MiB · solicitudes de pantalla reemplazadas %{elaxed}
+common.stft_retention_s_frames_mib_retired: Retención STFT %{retained_seconds} s ·
+  %{len} cuadros · %{storage_bytes} MiB · retirados %{retired}%{else}
+common.stop_input_and_output_and_wait_for_pending_operations: Detenga la entrada y
+  la salida y espere a que terminen las operaciones pendientes antes de restaurar
+common.stop_input_and_wait_for_held_scope_samples: Detenga la entrada y espere las
+  muestras retenidas de Scope
+common.stop_input_and_wait_for_the_held_measurement_results: Detenga la entrada y
+  espere los resultados de medición retenidos
+common.stop_input_before_restoring_settings: Detenga la entrada antes de restaurar
+  la configuración
+common.stop_input_then_export_scope_samples_and_statistics_spectrum: Detenga la entrada
+  y exporte las muestras y estadísticas de Scope, los bins de Spectrum y sus condiciones
+  capturadas a JSON.
+common.stop_input_to_compare_the_current_result: Detenga la entrada para comparar
+  el resultado actual.
+common.stored_cursor_positions_for_this_view_readings_can_be: Posiciones de cursor
+  guardadas para esta vista; las lecturas pueden no estar disponibles fuera de los
+  datos adquiridos.
+common.synchronous_comparison_at_bin_hz: Comparación síncrona en el bin %{bin} (%{width}
+  Hz)
+common.t_ms: Δt %{delta} ms
+common.t_ms_2: '%{index} T%{sample_rate} ms  '
+common.time_ms: Tiempo [ms]
+common.time_relative_to_the_sweep_reference_t_ms: Tiempo relativo a la referencia
+  del barrido (T, 0 ms). %{display}
+common.timings_are_cpu_work_not_gpu_execution: Los tiempos corresponden a trabajo
+  de CPU, no a ejecución en GPU.
+common.trace_ch: Trace %{i} CH %{channel} %{state} | %{unit}
+common.trace_current_reference_rms_each_result_s_own_interval: 'Trace %{i}: RMS actual
+  − referencia %{rms} (cada resultado usa su propio intervalo)'
+common.trace_differs_in_channel_unit_or_known_stationary_excitation: Trace %{i} difiere
+  en canal, unidad o excitación estacionaria conocida; no hay diferencia numérica
+common.tracking: seguimiento ±10 %
+common.trigger_help: T en la parte superior indica la referencia temporal (0 ms);
+  T a la derecha indica el nivel de disparo en FS sin calibrar para su canal fuente.
+  Sin disparo confirmado, ambos son solo ajustes.
+common.trigger_source_outside_the_input_range: La fuente de disparo está fuera del
+  rango de entrada
+common.turn_on_a_channel_using_the_checkboxes_below_the: Active un canal con las casillas
+  debajo del gráfico.
+common.ui_fps: UI %{fps} fps
+common.unavailable: '%{selected} · no disponible'
+common.unavailable_2: ' · %{channel} no disponible'
+common.uncalibrated: Sin calibrar
+common.uncalibrated_fs: Sin calibrar · FS
+common.uncalibrated_fs_2: '%{label}: sin calibrar · FS'
+common.wait_for_the_generator_settings_to_be_applied: Espere a que se apliquen los
+  ajustes de Generator
+common.waiting: ESPERANDO
+common.waiting_for_the_final_measurement_acquired_data_will_be: Esperando la medición
+  final. Los datos adquiridos se conservarán.
+common.waiting_for_the_input_source_and_its_channel_count: Esperando a que la fuente
+  de entrada y su número de canales estén listos.
+common.waiting_for_trigger: Esperando el disparo
+common.window: Ventana [%{start}, %{end})
+common.window_names.blackman_harris: Blackman-Harris
+common.window_names.hann: Hann
+common.window_names.rectangular: Rectangular
+common.worker_fft_ms: FFT del worker %{fft_ms} ms
+common.working: Procesando…
+common.x_y_r_leads_ref_gain: 'X %{x} · Y %{y} · R %{amplitude_peak} %{response_unit_peak}
+
+  θ %{phase_degrees}° (adelanta a REF) · Ganancia %{gain} %{gain_unit}'
+common.xy_prep_ms: Preparación de XY %{xy_build_ms} ms
+common.zero_db_readout: −∞ %{unit} (cero)

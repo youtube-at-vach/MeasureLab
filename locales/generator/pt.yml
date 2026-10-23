@@ -1,0 +1,118 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: Adicione um sinal no painel Generator.
+generator.add_signal: + Adicionar sinal
+generator.applied: APLICADO
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: 'Fs aplicado: %{nominal_sample_rate}
+  Hz (nominal). A prévia das configurações usa pico FS; as amostras medidas são exibidas
+  no Scope.'
+generator.applied_hz_dbfs_peak_lead: 'Aplicado: %{frequency_hz} Hz · %{amplitude_dbfs}
+  dBFS pico · avanço de %{phase_degrees}°'
+generator.applied_output: SAÍDA APLICADA
+generator.applied_sample: Amostra aplicada %{applied_sample}
+generator.applied_seed: Semente aplicada %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: Botões ± / Para cima / Para baixo
+  usam esta etapa em Hz, dBFS ou graus. Enter / foco aplica; Esc cancela.
+generator.down: Para baixo
+generator.duplicate: Duplicar
+generator.edit_step: EDITAR ETAPA
+generator.enter_a_finite_number_settings_were_not_applied: Informe um número finito;
+  as configurações não foram aplicadas
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Enter / foco para aplicar ·
+  Esc para cancelar · Para cima / Para baixo para ajustar
+generator.error: ERRO
+generator.error_reason.already_active: A saída já está ativa
+generator.error_reason.amplitude: 'Cartão na posição %{position}: a amplitude deve
+  ser finita e estar entre −120 e 0 dBFS de pico'
+generator.error_reason.callback_stalled: Callback de saída de áudio atingiu o tempo
+  limite; saída liberada
+generator.error_reason.channel_count: A saída requer de 1 a 16 canais
+generator.error_reason.counter_exhausted: Contador de amostra, geração ou controle
+  de saída esgotado
+generator.error_reason.duplicate_routing: Dois sinais não podem usar o mesmo canal
+  de saída
+generator.error_reason.frequency: 'Cartão na posição %{position}: a frequência deve
+  ser ≥ 0,1 Hz e < 0,45 × Fs de saída'
+generator.error_reason.no_enabled_signals: Selecione pelo menos um sinal antes de
+  iniciar a saída
+generator.error_reason.non_finite_output: Saída não finita; saída parada
+generator.error_reason.output_range: Saída excede a escala completa; saída parada
+generator.error_reason.output_stream: Falha na saída de áudio; redefina a saída antes
+  de reiniciar
+generator.error_reason.phase: 'Cartão na posição %{position}: a fase deve ser finita
+  e estar entre −180 e 180°'
+generator.error_reason.producer_suspended: A geração interna foi suspensa por mais
+  de 250 ms; saída parada
+generator.error_reason.revision: A revisão das configurações deve aumentar
+generator.error_reason.routing: 'Cartão na posição %{position}: canal de saída indisponível
+  ou não atribuído'
+generator.error_reason.routing_while_active: Pare a saída antes de alterar cartões,
+  detalhes da forma de onda ou atribuições de canais
+generator.error_reason.sample_rate: Taxa nominal de amostragem de saída não compatível
+generator.error_reason.signal_count: Generator aceita no máximo 16 cartões
+generator.error_reason.signal_identity: Os IDs dos cartões do Generator devem ser
+  únicos e anteriores ao próximo ID
+generator.error_reason.stopping: Aguarde a conclusão do fade da saída
+generator.error_reason.waveform: 'Cartão na posição %{position}: a semente de ruído
+  deve ser diferente de zero'
+generator.frequency: Frequência
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS pico · %{phase_degrees}°
+generator.generation_revision: Geração %{output_generation} · revisão %{revision}
+generator.hide_signal_controls: Ocultar controles do sinal
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · %{channels} canais. Parar entrada mantém a medição; a saída continua.'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} canais · %{pcm_label}
+  · Fs nominal'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS pico · avanço
+  de %{phase_degrees}°'
+generator.in_use: ' · em uso'
+generator.ms_cycles: '%{frequency_hz} ms / 2 ciclos'
+generator.no_signals_add_a_signal_to_choose_its_waveform: Nenhum sinal. Adicione um
+  sinal para escolher sua forma de onda e saída.
+generator.off: DESLIGADO
+generator.on: LIGADO
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: SAÍDA
+generator.output_details: Detalhes da saída
+generator.peak_level: Nível de pico
+generator.pending: PENDENTE
+generator.phase_lead: Avanço de fase
+generator.remove: Remover
+generator.reset_output_stays_off: Redefinir saída (permanece DESLIGADA)
+generator.running: EM EXECUÇÃO
+generator.seed: Semente
+generator.selected_transition_ends: Transição selecionada termina em %{i}
+generator.settings_preview_fs_ceiling: Prévia das configurações · teto ±%{amplitude_peak}
+  FS · %{frequency_hz}
+generator.show_signal_controls: Mostrar controles do sinal
+generator.start_output: ▶ Iniciar saída
+generator.start_replays_the_seed_frequency_and_phase_do_not: Iniciar reproduz novamente
+  a semente. Frequência e fase não afetam o ruído.
+generator.starting: INICIANDO
+generator.starting_pending: INICIANDO · pendente
+generator.stop_generator_output_independently_of_input_and_analysis: Pare a saída
+  do Generator independentemente da entrada e da análise
+generator.stop_output: ■ Parar saída
+generator.stop_output_2: Parar saída
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: Pare a saída para
+  adicionar, remover, duplicar, reordenar ou alterar a forma de onda / roteamento.
+generator.stopped: PARADO
+generator.stopping: PARANDO
+generator.transition: TRANSIÇÃO
+generator.unassigned: Não atribuído
+generator.up: Para cima
+generator.up_to_odd_harmonics_below_fs_peak_level_is: Até 16 harmônicos ímpares abaixo
+  de 0,45 Fs. O nível de pico é o teto de escala completa; o RMS depende da frequência.
+generator.waveform: Forma de onda
+generator.waveform_names.noise: Ruído
+generator.waveform_names.sine: Seno
+generator.waveform_names.square: Quadrada
+generator.waveform_names.triangle: Triangular
+generator.white_noise: ruído branco
+generator.white_noise_uniform_peak_bounded: Ruído branco · uniforme · pico limitado

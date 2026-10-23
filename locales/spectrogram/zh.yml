@@ -1,0 +1,80 @@
+_version: 1
+spectrogram.age_s: 时长 / s
+spectrogram.analysis: 分析
+spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: 分析更改将在输入重启时应用。捕获的图像会继续保留。
+spectrogram.auto_color_range: 自动颜色范围
+spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 已捕获：标称 %{sample_rate} Hz ·
+  窗口 %{sample_rate_2} s · 行 %{sample_rate_3} ms · 频点 %{size} Hz
+spectrogram.ch_dbfs: CH %{channel} · dBFS
+spectrogram.collecting_a_complete_stft_window: 正在采集完整 STFT 窗口…
+spectrogram.color_map: 颜色映射
+spectrogram.color_maps.blue: 蓝色
+spectrogram.color_maps.copper: 铜色
+spectrogram.color_maps.grayscale: 灰度
+spectrogram.color_maps.heat: 热度
+spectrogram.color_maps.hot: 高温
+spectrogram.color_maps.inferno: Inferno
+spectrogram.color_maps.magma: Magma
+spectrogram.color_maps.turbo: Turbo
+spectrogram.color_maps.viridis: Viridis
+spectrogram.color_range_dbfs: 颜色范围 · dBFS
+spectrogram.display: 显示
+spectrogram.end_s_s_retained_n_hop: '%{live} · 结束 %{sample_rate} s · 保留 %{retained_seconds}
+  s · N %{size} / 跳步 %{hop}%{else}'
+spectrogram.fft_length: FFT 长度
+spectrogram.fft_overlap: FFT 重叠
+spectrogram.frequency_hz: 频率 / Hz
+spectrogram.frequency_scale: 频率刻度
+spectrogram.from: 从
+spectrogram.gestures: Spectrogram：滚轮缩放频率；拖动以平移频率/时间；Shift+滚轮或在时间轴上滚动历史；单击以保持并选择帧；拖动光标线以移动；“实时”解除历史保持；双击重置频率/时间位置。
+spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: 较高的重叠率会生成更多
+  FFT 窗口，更快耗尽历史容量。
+spectrogram.history_available_s_unavailable_time_stays_blank: 可用历史：%{retained_seconds}
+  / %{spectrogram_seconds} s · 不可用时间保持空白
+spectrogram.history_limited_by_capacity: ' · 历史受容量限制'
+spectrogram.hold_action: 保持
+spectrogram.hold_input_running: 保持 · 输入运行中
+spectrogram.hold_input_stopped: 保持 · 输入已停止
+spectrogram.hz_dbfs_ch: '%{index} %{size} Hz · %{bin} dBFS
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.hz_dbfs_samples: '%{size} Hz · %{bin} dBFS · 样本 %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input: '%{index} STFT 窗口无效
+
+  输入非有限值 · %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input_samples: STFT 窗口无效 · 输入非有限值 · 样本
+  %{start}..%{end}
+spectrogram.linear_hz: 线性 Hz
+spectrogram.live: 实时
+spectrogram.live_action: 实时
+spectrogram.log_hz: 对数 Hz
+spectrogram.max: 最大值
+spectrogram.min: 最小值
+spectrogram.min_and_max_must_be_finite_with_min_max: 最小值和最大值必须为有限值，并且最小值 < 最大值。保留先前范围。
+spectrogram.no_stft_data_at_this_time_gap_or_unavailable: 此时没有 STFT 数据 · 间隙或不可用
+spectrogram.no_stft_row_before_input_began: '%{index} 没有 STFT 行
+
+  输入开始前'
+spectrogram.outside_visible_time_range: '
+
+  超出可见时间范围'
+spectrogram.overlap.half: 50%
+spectrogram.overlap.seven_eighths: 87.5%
+spectrogram.overlap.three_quarters: 75%
+spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 每窗口频点幅度
+  · 未校准 FS。橙色条纹：STFT 缺失或无效。空白：历史不可用。
+spectrogram.points: '%{size} 点'
+spectrogram.preparing_history_view: 正在准备历史视图…
+spectrogram.remove_dc_offset: 移除 DC 偏移
+spectrogram.s_ch: '%{index} −%{age} s
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
+
+  没有 STFT 行 · 间隙或不可用'
+spectrogram.spectrogram: Spectrogram
+spectrogram.start_input_to_begin_acquisition: 启动输入以开始采集
+spectrogram.time_range: 时间范围
+spectrogram.to: 到
+spectrogram.to_uses_nyquist_log_excludes_dc: 到 = 0 表示 Nyquist。对数刻度不包含 DC。
+spectrogram.window: 窗口

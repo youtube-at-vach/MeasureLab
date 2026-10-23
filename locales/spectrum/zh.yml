@@ -1,0 +1,152 @@
+_version: 1
+spectrum.advanced_analysis_diagnostics: 高级分析 / 诊断
+spectrum.amplitude: 幅度
+spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum: 分析更改将在输入重启时应用。捕获的
+  Spectrum 会继续保留。
+spectrum.auto: 自动
+spectrum.average: 平均
+spectrum.averaging: 平均
+spectrum.avg_off: 平均关闭
+spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum: 频带功率不可用 · 窗口、范围无效或求和值非有限
+spectrum.band_rms: 频带 RMS %{rms} %{unit}
+spectrum.before_input_began_no_stft_frame: 输入开始前 · 没有 STFT 帧
+spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin: 频点幅度 · 0 dBFS = 频点中心处峰值为 1 FS 的正弦波。已校正窗口相干增益；频点中心之外的音调会产生栅栏效应损失。
+spectrum.bottom: 底部
+spectrum.calibration_rev: 校准 %{id} · 修订 %{revision}
+spectrum.captured_fft_source_units_and_averaging_are_read_only: 捕获的 FFT、源、单位和平均值为只读。普通
+  Spectrum 独立继续运行。
+spectrum.ch: CH%{index}
+spectrum.ch_input: CH%{shown_spectrum_index} · 输入 %{channel} · %{db_unit}
+spectrum.ch_input_select_for_peak_cursor_and_export_display: 'CH%{index} · 输入 %{source}
+  · %{db_unit}
+
+  选择后可查看峰值/光标并导出。显示开/关相互独立。重新启用后将开始新的平均。'
+spectrum.choose_which_cursor_the_next_spectrum_click_or_drag: 选择下一次在 Spectrum 图中单击或拖动时放置哪个光标；选择
+  A 或 B 不会放置光标。两个光标都会读取所选通道最近的 FFT 频点。
+spectrum.clear_both_frequency_cursors_shared_by_spectrum_and_spectrogram: 清除 Spectrum
+  与 Spectrogram 共用的两个频率光标。时间光标、Spectrogram 帧选择、XY Free 点和已采集数据都会保留。
+spectrum.clear_frequency: 清除频率
+spectrum.clear_hold: 清除保持值
+spectrum.click_drag_the_plot_to_place_a_cursor: 单击 / 拖动图表以放置光标
+spectrum.continuous_hop_ms: 连续 · 步长 %{sample_rate} ms
+spectrum.continuous_process_every_window: 连续 · 处理每个窗口
+spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: 光标 %{index} ·
+  最近频点：%{value} %{linear_unit}。最新窗口：样本 %{start}..%{end}（不含结束值），CH %{channel}，%{sample_rate}
+  Hz，%{size} 点，%{name}，%{name_2}。EMA α = 1/%{averages}；已处理 %{updates} 个窗口，贡献包络 %{start_2}..%{end_2}（指数权重）。输入代次
+  %{input_generation}；缺少 %{missing_windows} 个窗口。%{times}
+spectrum.custom_frequency_range: 自定义频率范围
+spectrum.ema: EMA 1/%{averages}
+spectrum.ema_settling: EMA 稳定时间
+spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: 能量谱密度 · 每 Hz
+  能量。选择 ESD 后会为单个瞬态预设矩形窗口、平均关闭和移除 DC 关闭。
+spectrum.exponential_average_of_linear_power_off_uses_the_latest: 线性功率的指数平均。关闭时使用最新处理的窗口。
+spectrum.exponential_power_average_approximately_settled_after_weight_windows: 指数功率平均
+  · α = 1/%{averages}。经过 3 × 权重窗口后约稳定至 95%。
+spectrum.export_reason: 无法导出 Spectrum 历史。停止输入后仍可导出仅含 Scope 的 JSON / CSV / PNG；恢复普通
+  Spectrum 后可进行组合导出。
+spectrum.f_hz: Δf %{bin_hz} Hz
+spectrum.f_hz_l_db: Δf %{frequency_hz} Hz · ΔL %{delta_level} dB
+spectrum.f_hz_rbw_hz_window_ms_processed_windows: 'Δf %{bin_hz} Hz · RBW %{rbw_hz}
+  Hz
+
+  窗口 %{sample_rate} ms · 已处理 %{updates} 个窗口'
+spectrum.fft: FFT
+spectrum.fft_edits_apply_on_next_start_captured_results_retain: FFT 更改将在下次启动时应用；捕获的结果保留其条件。
+spectrum.fft_end_acquired_end: 'FFT 结束 #%{end} · 采集结束 #%{end_2}'
+spectrum.filling_window_samples: 正在填充窗口 · %{filled_samples} / %{size} 个样本
+spectrum.fit_the_entire_transient_inside_one_fft_window_trigger: 将整个瞬态放入一个 FFT 窗口。触发捕获未关联。
+spectrum.frequency_scale: 频率 / 刻度
+spectrum.from: 从
+spectrum.full_nyquist: 全范围 / Nyquist
+spectrum.history_read_only: 历史 · 只读
+spectrum.hz_ch_samples: '%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}
+
+  CH %{channel} · 样本 %{start}..%{end}'
+spectrum.hz_no_complete_window: '%{index} %{frequency} Hz · 没有完整窗口'
+spectrum.hz_power: '%{first_hz}–%{last_hz} Hz · 功率 %{power} %{power_unit}'
+spectrum.input_source: 输入源
+spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power: FFT 窗口无效 · 样本或校准功率不是有限值
+spectrum.invalid_stft_window_nonfinite_input: STFT 窗口无效 · 输入不是有限值
+spectrum.json_csv_png_use_the_selected_trace: JSON / CSV / PNG 使用所选轨迹。
+spectrum.latest_observe_at_a_limited_rate: 最新 · 限速观察
+spectrum.latest_target_ms: 最新 · 目标 %{observation_ms} ms
+spectrum.level_axis: 电平轴
+spectrum.linear_hz: 线性 Hz
+spectrum.live_observe_newest_window: 实时 · 观察最新窗口
+spectrum.live_target_ms: 实时 · 目标 %{observation_ms} ms
+spectrum.live_up_to_updates_s: 实时 · 最高 60 次更新/秒
+spectrum.log_hz: 对数 Hz
+spectrum.manual: 手动
+spectrum.measurement_ch: 测量 · CH%{index}
+spectrum.missing_input_invalid_windows_missed_observations: '%{cadence} · 缺少输入 %{input_missing}
+  · 无效窗口 %{invalid_windows} · 错过观察 %{missed_observations}'
+spectrum.mixed_level_references_units_shown_per_channel: 混合电平参考 · 按通道显示单位
+spectrum.mode_names.continuous: 连续
+spectrum.mode_names.latest: 最新
+spectrum.mode_names.live: 实时
+spectrum.newest_complete_window_only_intermediate_windows_can_be_skipped: 仅处理最新的完整窗口；可能跳过中间窗口。小型
+  FFT 至少 33 ms / N/4，大型 FFT 至少 100 ms。不保证捕获瞬态。
+spectrum.no_input: 无输入
+spectrum.no_stft_frame_gap_unavailable_or_different_generation: 没有 STFT 帧 · 间隙、不可用或不同代次
+spectrum.normal_spectrum: 普通 Spectrum
+spectrum.observe_the_newest_complete_window_with_a_processing_time: 在处理时间预算内观察最新的完整窗口。平均值和保持值按观察到的窗口更新，与绘图无关。使用“连续”可处理每个
+  N/4 窗口。
+spectrum.off: 关闭
+spectrum.one_complete_window_s_continuous_step_s_n: 一个完整窗口：%{sample_rate} s · 连续步长：%{sample_rate_2}
+  s (N/4)
+spectrum.peak_bin_hz: 峰值频点 %{frequency} Hz
+spectrum.peak_hold: 峰值保持
+spectrum.peak_markers: 峰值标记
+spectrum.place_cursor: 放置光标：
+spectrum.place_frequency_cursor: 放置频率光标：
+spectrum.points: '%{size} 点'
+spectrum.power_in_band: 频带功率
+spectrum.power_spectral_density_power_per_hz_with_window_noise: 功率谱密度 · 每 Hz 功率，并校正窗口噪声带宽
+spectrum.psd: PSD
+spectrum.pt_fs_hz_f_hz: '%{size} 点 · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz}
+  Hz · %{averaging}'
+spectrum.quantity.amplitude: 频点幅度
+spectrum.quantity.esd: 瞬态 (ESD)
+spectrum.quantity.psd: 功率谱密度
+spectrum.rectangular_recommended_other_windows_attenuate_energy_without_correction: 建议使用矩形窗口：其他窗口会衰减能量且不进行校正。
+spectrum.remove_dc_offset: 移除 DC 偏移
+spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: 请求 %{requested_hz}–%{requested_hz_2}
+  Hz，包括频点 %{first_bin}..=%{last_bin} 的中心。f64 PSD × Δf 求和；DC/Nyquist 处采用完整权重。CH %{channel}，代次
+  %{input_generation}，已处理 %{updates} 个窗口，贡献包络 %{start}..%{end}。输入丢失 %{dropped}；缺少
+  %{missing_windows} 个窗口。可选移除 DC 后的窗口均方值；不是 Scope 观察区间。
+spectrum.reset: 重置
+spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: 重置所有 Spectrum 轨迹的平均值和峰值保持
+spectrum.select_a_time_frame_in_spectrogram: 在 Spectrogram 中选择时间帧
+spectrum.show_ch_spectrum: 显示 CH%{index} Spectrum
+spectrum.span: 范围 %{hz}
+spectrum.span_2: 范围 %{span_hz}
+spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated: Spectrogram
+  历史 · 频点幅度 · FS / dBFS · 平均关闭 · 未校准
+spectrum.spectrum_analyzer: Spectrum 分析器
+spectrum.spectrum_and_scope_xy_have_independent_sample_intervals_fft: Spectrum 与 Scope/XY
+  使用独立的样本区间。FFT 处理时间和此窗口的时长是不同条件。
+spectrum.stopping_finishing_spectrum_windows: 正在停止 · 正在结束 Spectrum 窗口
+spectrum.subtracts_each_window_s_mean_before_windowing_in_esd: 窗口处理前会减去每个窗口的平均值。在
+  ESD 中，这会改变瞬态能量及其对窗口长度的依赖关系。
+spectrum.sum_of_f64_esd_f_over_all_bins_including: 对包括 DC/Nyquist 在内的所有频点求和 f64 ESD
+  × Δf。可选移除 DC 后的加窗波形能量。平均值是窗口能量的 EMA，并非累积能量。输入标称采样时钟。
+spectrum.time: 时间 %{i}
+spectrum.time_2: 时间 %{i} · %{i_2}
+spectrum.time_a_b_from_spectrogram: 来自 Spectrogram 的时间 A/B
+spectrum.time_end_s_ch_samples_hz_pt_dc: 时间 %{i} · 结束 %{sample_rate} s · CH %{channel}
+  · 样本 %{start}..%{end} · %{sample_rate_2} Hz · %{size} 点 · %{name} · %{name_2} ·
+  DC %{retained}
+spectrum.time_nearest_bin_acquired_samples_hz_points_no_average: 时间 %{selected} ·
+  最近频点 %{value} %{linear_unit} · 已采集样本 %{start}..%{end} · %{sample_rate} Hz · %{size}
+  点 · %{name} · %{name_2} · 无平均、无校准
+spectrum.to: 到
+spectrum.to_uses_nyquist_inclusive_bin_centres_whole_bins_band: 到 = 0 表示 Nyquist。包含频点中心；仅完整频点。更改频带会读取保留的
+  PSD，不会重置平均值。
+spectrum.to_uses_nyquist_narrow_ranges_show_individual_bins: 到 = 0 表示 Nyquist。较窄的范围会显示单个频点。
+spectrum.top: 顶部
+spectrum.update_mode: 更新模式
+spectrum.weight: 权重 %{count}
+spectrum.weight_2: 权重 %{average_weight}
+spectrum.window: ' · %{index} %{outside} 窗口'
+spectrum.window_duration_available_after_input_starts: 启动输入后可查看窗口持续时间
+spectrum.window_energy_s: 窗口能量 %{spectrum_energy} %{power_unit}·s
