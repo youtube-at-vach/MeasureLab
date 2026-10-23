@@ -1,0 +1,58 @@
+_version: 1
+xy.amplitude_range: Faixa de amplitude
+xy.auto_no_crossing: ' · Automático (sem cruzamento)'
+xy.b_a_x_y_fs: B−A ΔX %{delta} · ΔY %{delta_2} FS
+xy.cursors: CURSORES
+xy.fix_x_y_amplitudes_independently_of_the_moving_trace: Fixe as amplitudes X/Y independentemente
+  do traço em movimento. Meça ΔX e ΔY.
+xy.follow_a_real_sample_at_a_fixed_time_offset: Siga uma amostra real em um deslocamento
+  de tempo fixo em relação ao disparo XY. Usa as configurações de disparo do Scope.
+xy.free: Livre
+xy.free_click_or_drag_to_fix_x_y_amplitudes: 'Livre: clique ou arraste para fixar
+  as amplitudes X/Y. A/B medem ΔX e ΔY independentemente do traço em movimento. Posições
+  livres são mantidas ao alternar para Trace Snap.'
+xy.free_keeps_x_y_amplitudes_fixed_and_reads_x: Livre mantém as amplitudes X/Y fixas
+  e lê ΔX/ΔY. Posições do cursor são mantidas ao alternar modos.
+xy.free_outside_plot: Livre · fora do gráfico
+xy.free_run_moving_reference: ' · execução livre (referência móvel)'
+xy.input_source: Fonte de entrada
+xy.ms_samples: '%{sample_rate} ms · amostras %{start}..%{end}%{else}%{auto_no_crossing}'
+xy.observation: OBSERVAÇÃO
+xy.observation_window: Janela de observação
+xy.outside_xy_window_or_unavailable: '%{index} · fora da janela XY ou indisponível'
+xy.point_limit: ' · limite de pontos'
+xy.reset_xy_scales: Redefinir escalas XY
+xy.shared_with_scope: Compartilhado com Scope
+xy.source_changes_apply_on_start_held_xy_keeps_its: Alterações da fonte se aplicam
+  ao iniciar. XY retido mantém seus canais.
+xy.t_ms: 'T%{sample_rate} ms · #%{sample}'
+xy.trace_snap: Trace Snap
+xy.trace_snap_follows_a_trigger_relative_sample_auto_free: Trace Snap segue uma amostra
+  relativa ao disparo. Automático/livre pode mover o marcador; Parar o congela.
+xy.trace_snap_selects_the_nearest_actual_pair_from_the: 'Trace Snap: seleciona o par
+  real mais próximo dos canais X/Y atribuídos e mantém seu deslocamento de amostra
+  em relação ao disparo XY. Usa a fonte, a borda e o nível de disparo do Scope. Sem
+  cruzamento, a referência se move com a janela mais recente. Pontos sobrepostos selecionam
+  a amostra mais recente; Parar congela a captura.'
+xy.trigger: DISPARO
+xy.triggered: ' · Disparado'
+xy.up_to_real_sample_pairs_longer_windows_show_the: Até %{xy} pares de amostras reais;
+  janelas mais longas mostram o trecho mais recente.
+xy.waiting_for_sample_pairs: Aguardando pares de amostras…
+xy.x_axis: EIXO X
+xy.x_fs_div_y_fs_div: 'X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2}
+  · %{y_fs_per_div} FS/div'
+xy.x_fs_y_fs: X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS
+xy.x_fs_y_fs_2: '%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS
+
+  %{detail}'
+xy.x_y_use_the_same_input_frame_equal_axis: X/Y usam o mesmo quadro de entrada. Escalas
+  iguais dos eixos preservam círculos no gráfico quadrado.
+xy.xy_free_cursor: XY · cursor livre
+xy.xy_lissajous: XY / Lissajous
+xy.xy_requires_at_least_two_input_channels: XY requer pelo menos dois canais de entrada.
+xy.xy_requires_two_input_channels: XY requer dois canais de entrada
+xy.xy_trace_snap_cursor: XY · cursor Trace Snap
+xy.xy_unavailable_assigned_channel_missing: 'XY indisponível: canal atribuído ausente'
+xy.xy_unavailable_mono_input: 'XY indisponível: entrada mono'
+xy.y_axis: EIXO Y

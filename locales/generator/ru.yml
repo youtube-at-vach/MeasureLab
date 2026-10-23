@@ -1,0 +1,122 @@
+_version: 1
+generator.add_a_signal_in_the_generator_panel: Добавьте сигнал в панель Generator.
+generator.add_signal: + Добавить сигнал
+generator.applied: ПРИМЕНЕНО
+generator.applied_fs_hz_nominal_settings_preview_uses_fs_peak: 'Применён Fs: %{nominal_sample_rate}
+  Hz (номинал). В предпросмотре настроек используется пиковый FS; измеренные отсчёты
+  отображаются в Scope.'
+generator.applied_hz_dbfs_peak_lead: 'Применено: %{frequency_hz} Hz · %{amplitude_dbfs}
+  dBFS пик · опережение на %{phase_degrees}°'
+generator.applied_output: ВЫХОД ПРИМЕНЁН
+generator.applied_sample: Применённый отсчёт %{applied_sample}
+generator.applied_seed: Применённое начальное значение %{noise_seed}
+generator.buttons_up_down_use_this_step_in_hz_dbfs: Кнопки ± / Вверх / Вниз используют
+  этот шаг в Hz, dBFS или градусах. Enter / фокус применяет; Esc отменяет.
+generator.down: Вниз
+generator.duplicate: Дублировать
+generator.edit_step: ИЗМЕНИТЬ ШАГ
+generator.enter_a_finite_number_settings_were_not_applied: Введите конечное число;
+  настройки не применены
+generator.enter_focus_to_apply_esc_to_cancel_up_down: Enter / фокус — применить ·
+  Esc — отменить · Вверх / Вниз — изменить шаг
+generator.error: ОШИБКА
+generator.error_reason.already_active: Выход уже активен
+generator.error_reason.amplitude: 'Карточка в позиции %{position}: амплитуда должна
+  быть конечной и находиться в диапазоне −120…0 dBFS пик'
+generator.error_reason.callback_stalled: Время ожидания обратного вызова аудиовыхода
+  истекло; выход освобождён
+generator.error_reason.channel_count: Выход требует от 1 до 16 каналов
+generator.error_reason.counter_exhausted: Счётчик отсчётов, поколений или управления
+  выходом исчерпан
+generator.error_reason.duplicate_routing: Два сигнала не могут использовать один канал
+  выхода
+generator.error_reason.frequency: 'Карточка в позиции %{position}: частота должна
+  быть ≥ 0,1 Hz и < 0,45 × Fs выхода'
+generator.error_reason.no_enabled_signals: Перед запуском выхода выберите хотя бы
+  один сигнал
+generator.error_reason.non_finite_output: Нечисловое значение на выходе; выход остановлен
+generator.error_reason.output_range: Уровень выхода превышает полную шкалу; выход
+  остановлен
+generator.error_reason.output_stream: Сбой аудиовыхода; перед повторным запуском сбросьте
+  выход
+generator.error_reason.phase: 'Карточка в позиции %{position}: фаза должна быть конечной
+  и в диапазоне −180…180°'
+generator.error_reason.producer_suspended: Внутренняя генерация была приостановлена
+  более чем на 250 ms; выход остановлен
+generator.error_reason.revision: Ревизия настроек должна увеличиваться
+generator.error_reason.routing: 'Карточка в позиции %{position}: канал выхода недоступен
+  или не назначен'
+generator.error_reason.routing_while_active: Остановите выход перед изменением карточек,
+  параметров формы сигнала или назначения каналов
+generator.error_reason.sample_rate: Неподдерживаемая номинальная частота дискретизации
+  выхода
+generator.error_reason.signal_count: Generator поддерживает не более 16 карточек
+generator.error_reason.signal_identity: ID карточек Generator должны быть уникальны
+  и меньше следующего ID
+generator.error_reason.stopping: Дождитесь завершения затухания выхода
+generator.error_reason.waveform: 'Карточка в позиции %{position}: начальное значение
+  шума не должно быть нулевым'
+generator.frequency: Частота
+generator.gen: GEN %{id}
+generator.gen_2: GEN %{id} · %{s} · %{off}
+generator.gen_3: GEN %{id} · %{label} · %{s} · %{off}
+generator.gen_4: GEN %{id} · %{label}
+generator.gen_hz_dbfs_peak: GEN %{id} · %{label} · %{signal} · %{off} · %{frequency_hz}
+  Hz · %{amplitude_dbfs} dBFS пик · %{phase_degrees}°
+generator.generation_revision: Поколение %{output_generation} · ревизия %{revision}
+generator.hide_signal_controls: Скрыть управление сигналом
+generator.hz_ch_input_stop_holds_the_measurement_output_continues: '%{label} · %{rate}
+  Hz · каналов: %{channels}. Остановка входа удерживает измерение; выход продолжает
+  работать.'
+generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · каналов: %{channels} · %{pcm_label}
+  · номинальный Fs'
+generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS пик · опережение
+  на %{phase_degrees}°'
+generator.in_use: ' · используется'
+generator.ms_cycles: '%{frequency_hz} ms / 2 цикла'
+generator.no_signals_add_a_signal_to_choose_its_waveform: Нет сигналов. Добавьте сигнал,
+  чтобы выбрать форму сигнала и выход.
+generator.off: ВЫКЛ.
+generator.on: ВКЛ.
+generator.out: OUT %{ch}%{else}
+generator.out_2: OUT %{c}
+generator.out_3: OUT
+generator.output: ВЫХОД
+generator.output_details: Параметры выхода
+generator.peak_level: Пиковый уровень
+generator.pending: ОЖИДАНИЕ
+generator.phase_lead: Опережение фазы
+generator.remove: Удалить
+generator.reset_output_stays_off: Сбросить выход (останется ВЫКЛ.)
+generator.running: РАБОТАЕТ
+generator.seed: Начальное значение
+generator.selected_transition_ends: Выбранный переход заканчивается на %{i}
+generator.settings_preview_fs_ceiling: Предпросмотр настроек · предел ±%{amplitude_peak}
+  FS · %{frequency_hz}
+generator.show_signal_controls: Показать управление сигналом
+generator.start_output: ▶ Запустить выход
+generator.start_replays_the_seed_frequency_and_phase_do_not: При запуске начальное
+  значение используется повторно. Частота и фаза не влияют на шум.
+generator.starting: ЗАПУСК
+generator.starting_pending: ЗАПУСК · ожидание
+generator.stop_generator_output_independently_of_input_and_analysis: Остановить выход
+  Generator независимо от входа и анализа
+generator.stop_output: ■ Остановить выход
+generator.stop_output_2: Остановить выход
+generator.stop_output_to_add_remove_duplicate_reorder_or_change: Остановите выход,
+  чтобы добавить, удалить, дублировать, переместить или изменить форму сигнала / маршрутизацию.
+generator.stopped: ОСТАНОВЛЕН
+generator.stopping: ОСТАНОВКА
+generator.transition: ПЕРЕХОД
+generator.unassigned: Не назначен
+generator.up: Вверх
+generator.up_to_odd_harmonics_below_fs_peak_level_is: До 16 нечётных гармоник ниже
+  0,45 Fs. Пиковый уровень — предел полной шкалы; RMS зависит от частоты.
+generator.waveform: Форма сигнала
+generator.waveform_names.noise: Шум
+generator.waveform_names.sine: Синусоида
+generator.waveform_names.square: Меандр
+generator.waveform_names.triangle: Треугольная
+generator.white_noise: белый шум
+generator.white_noise_uniform_peak_bounded: Белый шум · равномерный · ограничен по
+  пику

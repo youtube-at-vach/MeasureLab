@@ -1,0 +1,100 @@
+_version: 1
+comparison.ac_comparison_positive_phase_leads_ref_positive_delay_lags: Comparaison
+  CA · une phase positive est en avance sur REF ; un retard positif signifie que SIG
+  est en retard sur REF. Les modifications à l’arrêt s’appliquent au prochain démarrage.
+comparison.ac_mean_removed_disjoint_arithmetic_batches_ref_floor_fs: '%{name} · moyenne
+  AC supprimée · lots arithmétiques disjoints · plancher REF %{reference_min_psd_fs2_hz}
+  FS²/Hz · cohérence ≥%{minimum_coherence}'
+comparison.around_reading: Autour de la mesure
+comparison.average_windows: 'Fenêtres moyennées '
+comparison.averaged_windows_processed_missing_invalid_samples: '%{averaged_windows}
+  fenêtres moyennées · %{processed_windows} traitées · %{missing_samples} échantillons
+  manquants · %{invalid_samples} invalides'
+comparison.bin_hz: Bin %{k} · %{bin_width_hz} Hz · %{state}
+comparison.bin_states.averaging: Moyenne en cours
+comparison.bin_states.incoherent: Non cohérent
+comparison.bin_states.reference_lost: REF perdue
+comparison.bin_states.response_lost: Réponse SIG perdue
+comparison.bin_states.valid: Valide
+comparison.captured_conditions: Conditions capturées
+comparison.ch_revision_fs: 'CH %{ch} : %{id} / révision %{revision} · %{gain} %{unit}
+  / FS'
+comparison.check_ref_sig_channels_fft_and_nominal_fs_settings: Vérifiez les canaux
+  REF / SIG, la FFT et les paramètres du Fs nominal.
+comparison.coherence: Cohérence γ²
+comparison.custom: Personnalisé
+comparison.display_only_captured_analysis_validity_thresholds_and_the_phase: 'Affichage
+  uniquement : l’analyse capturée, les seuils de validité et la bande de pente de
+  phase restent inchangés. L’échelle logarithmique exclut DC.'
+comparison.display_range: Plage d’affichage
+comparison.finishing_analysis_before_holding_the_result: Finalisation de l’analyse
+  avant le maintien du résultat.
+comparison.from: 'De '
+comparison.fs_hz: ' FS²/Hz'
+comparison.full_nyquist: Total / Nyquist
+comparison.gain: Gain
+comparison.gain_db: Gain dB
+comparison.h1_pxy_pxx_scope_spectrum_and_comparison_each_retain: H1 = Pxy/Pxx. L’oscilloscope,
+  le spectre et la comparaison conservent chacun leurs propres intervalles. L’ajustement
+  de pente suppose que les écarts de phase adjacents sont inférieurs à π ; les données
+  périodiques ou repliées ne permettent pas de déterminer la latence absolue.
+comparison.held_conditions_retained_queued_analysis_settings_apply_on_next: Conditions
+  MAINTENUES conservées · les paramètres d’analyse en attente s’appliquent au prochain
+  démarrage
+comparison.hz: '%{selected_hz} Hz'
+comparison.hz_2: '%{fraction} Hz'
+comparison.input_gap_press_start_input_to_acquire_again: Lacune d’entrée · appuyez
+  sur Démarrer l’entrée pour acquérir de nouveau.
+comparison.input_gap_waiting_for_a_new_complete_average: Lacune d’entrée · en attente
+  d’une nouvelle moyenne complète.
+comparison.input_generation_analysis_revision_hz_nominal_f64: Génération d’entrée
+  %{generation} · révision d’analyse %{analysis_revision} · %{nominal_sample_rate_hz}
+  Hz nominal · f64
+comparison.invalid_input_no_valid_comparison_is_available: Entrée invalide · aucune
+  comparaison valide disponible.
+comparison.linear_hz: Hz linéaire
+comparison.log_hz: Hz logarithmique
+comparison.min_coherence: 'Cohérence min. '
+comparison.min_ref: 'REF min. '
+comparison.nominal_fs_ch_phase_timing_calibration_unverified_delay_wraps: Fs nominal
+  · étalonnage de phase / synchronisation entre canaux CH non vérifié · le retard
+  se replie avec une période de 1/f
+comparison.phase: Phase °
+comparison.phase_lead: Avance de phase
+comparison.phase_slope_needs_contiguous_excited_coherent_bins: 'Pente de phase : —
+  · nécessite ≥8 bins contigus, excités et cohérents'
+comparison.phase_slope_s_hz_residual_rms: 'Pente de phase : %{e6} µs · %{bin_width_hz}–%{bin_width_hz_2}
+  Hz · résidu RMS %{phase_residual_rms_degrees}°'
+comparison.press_start_input_to_acquire_a_complete_average: Appuyez sur Démarrer l’entrée
+  pour acquérir une moyenne complète.
+comparison.read_at: Lire à
+comparison.ref: REF
+comparison.ref_ch_sig_ch_n_f_hz: '%{state} · REF CH %{reference_channel} / SIG CH
+  %{response_channel} · N %{size} × %{averages} · Δf %{bin_width_hz} Hz'
+comparison.samples: '%{size} échantillons'
+comparison.samples_latest_input_end: Échantillons %{start}..%{end} · derniers %{start_2}..%{end_2}
+  · fin d’entrée %{input_end}
+comparison.select_ref_sig_channels_then_press_start_analysis: Sélectionnez les canaux
+  REF / SIG, puis appuyez sur Démarrer l’analyse.
+comparison.selected_frequency_is_outside_the_captured_result: La fréquence sélectionnée
+  est hors de la plage du résultat capturé.
+comparison.sig: SIG
+comparison.slope_from: 'Pente de '
+comparison.slope_to: 'Pente à '
+comparison.start_analysis: Démarrer l’analyse
+comparison.state_names.averaging: Moyenne en cours
+comparison.state_names.disabled: Désactivé
+comparison.state_names.filling: Remplissage
+comparison.state_names.missing: Manquant
+comparison.state_names.non_finite: Non fini
+comparison.state_names.unavailable: Indisponible
+comparison.state_names.valid: Valide
+comparison.stop_analysis: Arrêter l’analyse
+comparison.synchronous_comparison: Comparaison synchrone
+comparison.to: 'À '
+comparison.valid_band: Bande valide
+comparison.valid_transfer_bins_gaps_are_not_interpolated: '%{valid} bins de transfert
+  valides · les lacunes ne sont pas interpolées'
+comparison.waiting_for_a_complete_average: En attente d’une moyenne complète.
+comparison.window_averaging: FENÊTRE / MOYENNE
+comparison.wrapped_delay: Retard replié

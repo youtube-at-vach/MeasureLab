@@ -1,0 +1,124 @@
+_version: 1
+shell.add_an_instrument_to_edit_its_details: Добавьте прибор, чтобы изменить его параметры.
+shell.add_instrument: Добавить прибор…
+shell.add_instruments_to_observe_and_generate_signals_together_removing: Добавьте
+  приборы, чтобы одновременно наблюдать и генерировать сигналы. Удаление панели не
+  останавливает её анализ и выход.
+shell.analysis_and_output_continue: Анализ и выход продолжаются
+shell.analysis_enabled_input_live: Анализ включён · вход активен
+shell.analysis_enabled_waiting_for_input: Анализ включён · ожидание входа
+shell.analysis_on: АНАЛИЗ ВКЛ.
+shell.analysis_status: Состояние анализа…
+shell.analysis_stopped: Анализ · остановлен
+shell.audio_i_o: Audio I/O
+shell.audio_i_o_settings: Настройки Audio I/O
+shell.back_to_instruments: К приборам
+shell.calibration: Калибровка
+shell.compact_sidebar: Компактная боковая панель
+shell.ctrl_open_an_instrument_ctrl_left_right_select_a: 'Ctrl + 1…7: открыть прибор.
+  Ctrl + Стрелка влево / вправо: выбрать панель консоли.'
+shell.details: Сведения
+shell.display_scale: Масштаб отображения
+shell.display_selection_does_not_start_or_stop_measurement: Выбор режима отображения
+  не запускает и не останавливает измерение.
+shell.error: '! Ошибка'
+shell.escape_cancel_editing_close_the_front_menu_window_then: 'Escape: отменить редактирование,
+  закрыть активное меню/окно, затем вернуться из I/O или узкой панели сведений.'
+shell.expand_sidebar: Развернуть боковую панель
+shell.file_paths_status: Пути к файлам и статус
+shell.find_an_instrument: Найти прибор
+shell.finishing: … Завершение
+shell.finishing_2: ЗАВЕРШЕНИЕ
+shell.first_pane_share: Разделить первую панель
+shell.font_license: Лицензия шрифта Noto Sans CJK
+shell.group.analysis: АНАЛИЗ
+shell.group.monitor: МОНИТОР
+shell.group.signal: СИГНАЛ
+shell.help: Справка
+shell.in: ВХОД
+shell.input: ВХОД
+shell.input_finishing_analysis: Вход · завершение анализа
+shell.input_live: ▶ Вход активен
+shell.input_opening_device: Вход · открытие устройства
+shell.input_output: Вход / выход
+shell.input_stopped: ■ Вход остановлен
+shell.instrument: 'Прибор: %{name}'
+shell.instrument_names.comparison: Синхронно, 2 канала
+shell.instrument_names.generator: Generator
+shell.instrument_names.lockin: Lock-in
+shell.instrument_names.scope: Scope
+shell.instrument_names.spectrogram: Spectrogram
+shell.instrument_names.spectrum: Spectrum
+shell.instrument_names.xy: XY
+shell.instruments: Приборы
+shell.instruments_2: ПРИБОРЫ
+shell.language: Язык
+shell.layout_names.columns: Рядом
+shell.layout_names.grid: 2 × 2
+shell.layout_names.rows: Стопкой
+shell.layout_names.tabs: Вкладки
+shell.live: В РЕАЛЬНОМ ВРЕМЕНИ
+shell.live_held_waiting_describe_acquisition_validity_and_calibration_are: В РЕАЛЬНОМ
+  ВРЕМЕНИ / УДЕРЖИВАЕТСЯ / ОЖИДАНИЕ описывают захват; допустимость и калибровка показаны
+  отдельно.
+shell.lock_in: Lock-in · %{enabled}
+shell.measurement: Измерение
+shell.menu: Меню
+shell.multi_instrument_arrangement: Расположение нескольких приборов
+shell.multi_instrument_view: Режим нескольких приборов
+shell.no_matching_instruments: Подходящие приборы не найдены
+shell.off: ■ Выкл.
+shell.on: ▶ Вкл.
+shell.open_single: Открыть одиночный вид
+shell.opening: … Открытие
+shell.opening_2: ОТКРЫТИЕ
+shell.output_error: Выход · ошибка
+shell.output_running: Выход · работает
+shell.output_start_pending: Выход · ожидание запуска
+shell.output_starting: Выход · запуск
+shell.output_stopped: Выход · остановлен
+shell.output_stopping: Выход · остановка
+shell.purpose.frequency_changes_over_time: Изменение частоты со временем
+shell.purpose.frequency_levels_and_power: Уровни частоты и мощность
+shell.purpose.generate_signals_on_output_channels: Генерировать сигналы на выходных
+  каналах
+shell.purpose.ref_sig_gain_phase_and_delay: Усиление, фаза и задержка REF / SIG
+shell.purpose.tone_amplitude_and_phase_vs_ref: Амплитуда и фаза тона относительно
+  REF
+shell.purpose.two_channel_x_y_relationship: Связь X/Y двух каналов
+shell.purpose.waveform_over_time: Форма сигнала со временем
+shell.remove_from_view: Убрать из вида
+shell.restoring_settings: Восстановление настроек…
+shell.running: ▶ Работает
+shell.scope_settings: Настройки Scope
+shell.scope_spectrum_stft_xy_input_running: Scope / Spectrum / STFT / XY · вход работает
+shell.selected: '%{name} · Выбрано'
+shell.selected_instrument_details: Параметры выбранного прибора
+shell.shared_input: Общий вход · %{state}
+shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition: Общий вход для
+  Scope, Spectrum, Spectrogram и XY. Захват и удерживаемые результаты показаны в каждом
+  приборе.
+shell.shared_input_live: Общий вход · активен
+shell.shared_input_stopped: Общий вход · остановлен
+shell.space_start_stop_shared_input_typing_in_an_editor: 'Пробел: запустить / остановить
+  общий вход. Ввод в редакторе не изменяет состояние входа.'
+shell.split_view_with: Разделить вид с…
+shell.starting: … Запуск
+shell.stop_lock_in_analysis: Остановить анализ Lock-in
+shell.stop_synchronous_analysis: Остановить синхронный анализ
+shell.stopped: ■ Остановлен
+shell.stopped_2: ОСТАНОВЛЕН
+shell.stopping: … Остановка
+shell.synchronous_ch: Синхронно, 2 канала · %{enabled}
+shell.tab_shift_tab_move_keyboard_focus_enter_space_activate: 'Tab / Shift + Tab:
+  переместить фокус клавиатуры. Enter / Пробел: активировать элемент в фокусе.'
+shell.tabs_keep_controls_and_readings_visible_at_this_size: При таком размере вкладки
+  сохраняют видимость элементов управления и показаний. Запрошенное расположение вернётся,
+  когда появится место.
+shell.this_replaces_the_saved_multi_instrument_view_use_undo: Это заменяет сохранённый
+  вид нескольких приборов. Чтобы восстановить его, выберите там «Отменить замену».
+shell.ui_fps_cpu_fft_ms: '%{adapter} · UI %{fps} fps · FFT CPU %{fft_ms} ms'
+shell.undo_replacement: Отменить замену
+shell.view: Вид
+shell.wait: … Ожидание
+shell.waiting_for_input: ОЖИДАНИЕ ВХОДА

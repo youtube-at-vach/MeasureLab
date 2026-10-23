@@ -1,0 +1,134 @@
+_version: 1
+oscilloscope.acquiring_post_trigger: Acquisition après déclenchement
+oscilloscope.acquisition: ACQUISITION
+oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: La valeur acquise
+  ou étalonnée n’est pas finie ; aucune mesure numérique valide
+oscilloscope.auto: Auto
+oscilloscope.auto_free: Auto / libre
+oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: Régler automatiquement
+  l’échelle de temps, l’amplitude et le déclenchement pour un signal périodique
+oscilloscope.autoset: Réglage auto
+oscilloscope.autoset_frequency: 'Réglage auto : %{frequency} Hz à partir des franchissements
+  bruts'
+oscilloscope.autoset_held: Amplitude ajustée à la capture maintenue ; temps et déclenchement
+  appliqués au prochain démarrage (%{frequency} Hz)
+oscilloscope.capture_once_on_the_next_trigger_crossing: Capturer une fois au prochain
+  franchissement du déclenchement
+oscilloscope.centre_offset: Centrer le décalage
+oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
+oscilloscope.ch_2: CH%{index}%{else}
+oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
+
+  %{index_2}
+
+  Sélectionnez pour modifier ce canal dans les paramètres de l’oscilloscope. L’affichage
+  est indépendant.
+
+  %{display}'
+oscilloscope.channel_out_of_range: — · canal hors plage
+oscilloscope.cursor: Curseur %{index} · %{join}
+oscilloscope.display: Affichage
+oscilloscope.drag_the_slider_or_value_to_adjust_double_click: Faites glisser le curseur
+  ou la valeur pour ajuster. Double-cliquez sur la valeur pour saisir un nombre.
+oscilloscope.edge: Front
+oscilloscope.edge_names.falling: Descendant
+oscilloscope.edge_names.free: Libre
+oscilloscope.edge_names.rising: Montant
+oscilloscope.falling_edge: Front descendant
+oscilloscope.fit_amplitude: Ajuster l’amplitude
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajuster l’amplitude au
+  pic brut du canal sélectionné et centrer son décalage
+oscilloscope.free_run: Balayage libre
+oscilloscope.fs: '%{channel} : %{raw} FS → %{value} %{channel_2}'
+oscilloscope.fs_div: '%{fs_per_div} FS/div'
+oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = pleine échelle ·
+  Fs = fréquence d’échantillonnage · div = division de la grille
+oscilloscope.guides: Repères
+oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: Conditions
+  MAINTENUES · les paramètres de mesure en attente s’appliquent au prochain démarrage
+oscilloscope.horizontal: HORIZONTAL
+oscilloscope.input_source: Source d’entrée
+oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
+  · %{reading}
+
+  Intervalle %{start}..%{end} (fin exclue) · génération %{input_generation} · nominal
+  %{sample_rate} Hz. %{channel_2}. La forme d’onde et le déclenchement utilisent le
+  FS brut.'
+oscilloscope.invalid_value: — · valeur invalide
+oscilloscope.level: Niveau
+oscilloscope.markers: Marqueurs
+oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted: 'Marqueurs : marqueurs
+  T uniquement. Repères : marqueurs T et repères pointillés de temps et de niveau.
+  Désactivé : masquer les deux. Un repère horizontal apparaît pendant la modification
+  du niveau, quel que soit le mode.'
+oscilloscope.mode_names.auto: Auto
+oscilloscope.mode_names.normal: Normal
+oscilloscope.mode_names.single: Unique
+oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
+oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · forme d’onde
+  : FS brut'
+oscilloscope.no_acquired_samples_for_this_channel_and_interval: Aucun échantillon
+  acquis pour ce canal et cet intervalle
+oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
+  · Aucun échantillon acquis
+
+  Les conditions d’entrée ne sont pas acquises. La forme d’onde et les paramètres
+  de déclenchement utilisent le FS brut.'
+oscilloscope.no_samples_in_this_interval: — · aucun échantillon dans cet intervalle
+oscilloscope.normal: Normal
+oscilloscope.off: Désactivé
+oscilloscope.out_of_range: Hors plage
+oscilloscope.outside_input_channel_range: ' · hors de la plage des canaux d’entrée'
+oscilloscope.outside_input_channel_range_2: '%{channel} · hors de la plage des canaux
+  d’entrée'
+oscilloscope.outside_sweep: '%{index} #%{sample} · hors du balayage'
+oscilloscope.partial_missing_samples: Partiel · %{scope_missing} échantillons manquants
+oscilloscope.position: Position
+oscilloscope.reset_time_position: Réinitialiser la position temporelle
+oscilloscope.rising_edge: Front montant
+oscilloscope.rms_p_p: RMS %{rms} %{unit} · crête à crête %{peak_to_peak} %{unit}
+oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · crête à crête %{peak_to_peak}
+  %{unit} · pic %{peak} %{unit} · %{samples} échantillons acquis
+oscilloscope.show_ch_waveform_keeps_selection_and_measurements: Afficher la forme
+  d’onde de CH%{index} (conserve la sélection et les mesures)
+oscilloscope.single: Unique
+oscilloscope.single_complete: Capture unique terminée
+oscilloscope.source: Source
+oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
+
+  %{scope_trigger_marker_status} · source %{channel} · niveau %{level} en FS brut.
+  Le niveau suit la plage verticale du canal source, qui peut différer de l’axe du
+  canal sélectionné.'
+oscilloscope.spectrogram_time_hz_cursor: Spectrogramme · curseur temps / Hz
+oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Démarrer l’entrée
+  et attendre une capture unique déclenchée
+oscilloscope.start_single_capture: Démarrer une capture unique
+oscilloscope.t_markers_captured: 'Marqueurs T : capturés'
+oscilloscope.t_markers_settings_only: 'Marqueurs T : paramètres uniquement'
+oscilloscope.t_markers_top_ms_right_level: 'Marqueurs T : haut = 0 ms · droite = niveau'
+oscilloscope.time_scale: Échelle de temps
+oscilloscope.time_trigger_edits_apply_on_next_start: Les modifications du temps et
+  du déclenchement s’appliquent au prochain démarrage
+oscilloscope.trigger: DÉCLENCHEMENT
+oscilloscope.trigger_settings: Paramètres de déclenchement
+oscilloscope.trigger_source_unavailable: Source de déclenchement indisponible
+oscilloscope.triggered: Déclenché
+oscilloscope.update_even_without_a_trigger_crossing: Actualiser même sans franchissement
+  du déclenchement
+oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: Actualiser aux
+  franchissements du déclenchement ; conserver la dernière capture pendant l’attente
+oscilloscope.vertical_ch: VERTICAL · CH%{index}
+oscilloscope.vertical_range: Plage verticale
+oscilloscope.waiting_for_sweep: '%{index} · en attente du balayage'
+oscilloscope.waiting_for_trigger: En attente du déclenchement
+oscilloscope.waiting_previous_capture: En attente · capture précédente
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale: 'Molette : échelle
+  de temps · Maj + molette : échelle du canal sélectionné'
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double: '%{display}
+
+  %{display_2}
+
+  Molette : échelle de temps · Maj + molette : échelle du canal sélectionné · Double-clic
+  : réinitialiser la vue'
+oscilloscope.zero_level: Mettre le niveau à zéro
+oscilloscope.zero_offset: Mettre le décalage à zéro

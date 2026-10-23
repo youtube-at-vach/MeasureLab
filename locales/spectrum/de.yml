@@ -1,0 +1,192 @@
+_version: 1
+spectrum.advanced_analysis_diagnostics: Erweiterte Analyse / Diagnose
+spectrum.amplitude: Amplitude
+spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum: Analyseänderungen
+  gelten beim Neustart des Eingangs. Das erfasste Spectrum bleibt gehalten.
+spectrum.auto: Automatisch
+spectrum.average: Mittelwert
+spectrum.averaging: MITTELUNG
+spectrum.avg_off: MITTELWERT AUS
+spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum: Band-Leistung
+  nicht verfügbar · ungültiges Fenster, Bereich oder nicht endliche Summe
+spectrum.band_rms: Band-RMS %{rms} %{unit}
+spectrum.before_input_began_no_stft_frame: Vor Eingangsbeginn · kein STFT-Frame
+spectrum.bin_amplitude_dbfs_fs_peak_sine_at_a_bin: Bin-Amplitude · 0 dBFS = Sinus
+  mit 1 FS Spitze bei einer Bin-Mittenfrequenz. Kohärenter Fenstergewinn korrigiert;
+  Töne außerhalb der Binmitte haben einen Scalloping-Verlust.
+spectrum.bottom: Unten
+spectrum.calibration_rev: Kalibrierung %{id} · Rev. %{revision}
+spectrum.captured_fft_source_units_and_averaging_are_read_only: Erfasste FFT, Quelle,
+  Einheiten und Mittelung sind schreibgeschützt. Das normale Spectrum läuft unabhängig
+  weiter.
+spectrum.ch: CH%{index}
+spectrum.ch_input: CH%{shown_spectrum_index} · Eingang %{channel} · %{db_unit}
+spectrum.ch_input_select_for_peak_cursor_and_export_display: 'CH%{index} · Eingang
+  %{source} · %{db_unit}
+
+  Zum Spitzenwert/Cursor und Export auswählen. Anzeige EIN/AUS ist unabhängig. Beim
+  erneuten Einschalten beginnt eine neue Mittelung.'
+spectrum.choose_which_cursor_the_next_spectrum_click_or_drag: Festlegen, welcher Cursor
+  beim nächsten Klick oder Ziehen im Spectrum-Diagramm gesetzt wird; durch Auswählen
+  von A oder B wird keiner platziert. Beide Cursor zeigen den nächstgelegenen FFT-Bin
+  des ausgewählten Kanals an.
+spectrum.clear_both_frequency_cursors_shared_by_spectrum_and_spectrogram: Beide Frequenzcursor
+  löschen, die Spectrum und Spectrogram gemeinsam verwenden. Zeitcursor, Spectrogram-Frameauswahlen,
+  XY-Free-Punkte und erfasste Daten bleiben erhalten.
+spectrum.clear_frequency: Frequenz löschen
+spectrum.clear_hold: Halten löschen
+spectrum.click_drag_the_plot_to_place_a_cursor: Ins Diagramm klicken / ziehen, um
+  einen Cursor zu platzieren
+spectrum.continuous_hop_ms: Fortlaufend · Schritt %{sample_rate} ms
+spectrum.continuous_process_every_window: Fortlaufend · jedes Fenster verarbeiten
+spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: 'Cursor %{index}
+  · nächster Bin: %{value} %{linear_unit}. Letztes Fenster: Samples %{start}..%{end}
+  (Ende exklusiv), CH %{channel}, %{sample_rate} Hz, %{size} Punkte, %{name}, %{name_2}.
+  EMA α = 1/%{averages}; %{updates} verarbeitete Fenster, Beitrags-Hüllkurve %{start_2}..%{end_2}
+  (exponentielle Gewichte). Eingangsgeneration %{input_generation}; fehlende Fenster
+  %{missing_windows}.%{times}'
+spectrum.custom_frequency_range: Benutzerdefinierter Frequenzbereich
+spectrum.ema: EMA 1/%{averages}
+spectrum.ema_settling: EMA-Einschwingzeit
+spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: Energiedichtespektrum
+  · Energie pro Hz. Bei Auswahl von ESD werden für einen einzelnen Transienten Rechteckfenster,
+  Mittelwert AUS und Gleichanteil entfernen AUS voreingestellt.
+spectrum.exponential_average_of_linear_power_off_uses_the_latest: Exponentieller Mittelwert
+  der linearen Leistung. AUS verwendet das zuletzt verarbeitete Fenster.
+spectrum.exponential_power_average_approximately_settled_after_weight_windows: Exponentielle
+  Leistungsmittelung · α = 1/%{averages}. Nach etwa 3 × Gewicht-Fenstern zu ca. 95
+  % eingeschwungen.
+spectrum.export_reason: Export des Verlaufs-Spectrum nicht verfügbar. Nur-Scope-JSON/CSV/PNG
+  bleiben nach dem Stoppen des Eingangs verfügbar; normales Spectrum stellt den kombinierten
+  Export wieder her.
+spectrum.f_hz: Δf %{bin_hz} Hz
+spectrum.f_hz_l_db: Δf %{frequency_hz} Hz · ΔL %{delta_level} dB
+spectrum.f_hz_rbw_hz_window_ms_processed_windows: 'Δf %{bin_hz} Hz · RBW %{rbw_hz}
+  Hz
+
+  Fenster %{sample_rate} ms · %{updates} verarbeitete Fenster'
+spectrum.fft: FFT
+spectrum.fft_edits_apply_on_next_start_captured_results_retain: FFT-Änderungen gelten
+  ab dem nächsten Start; erfasste Ergebnisse behalten ihre Bedingungen.
+spectrum.fft_end_acquired_end: 'FFT-Ende #%{end} · erfasstes Ende #%{end_2}'
+spectrum.filling_window_samples: Fenster wird gefüllt · %{filled_samples} / %{size}
+  Samples
+spectrum.fit_the_entire_transient_inside_one_fft_window_trigger: Den gesamten Transienten
+  in ein FFT-Fenster einpassen. Die Triggererfassung ist nicht verknüpft.
+spectrum.frequency_scale: FREQUENZ / SKALA
+spectrum.from: Von
+spectrum.full_nyquist: Vollbereich / Nyquist
+spectrum.history_read_only: Verlauf · schreibgeschützt
+spectrum.hz_ch_samples: '%{index} %{frequency_hz} Hz · %{level_db} %{db_unit}
+
+  CH %{channel} · Samples %{start}..%{end}'
+spectrum.hz_no_complete_window: '%{index} %{frequency} Hz · kein vollständiges Fenster'
+spectrum.hz_power: '%{first_hz}–%{last_hz} Hz · Leistung %{power} %{power_unit}'
+spectrum.input_source: Eingangsquelle
+spectrum.invalid_fft_window_nonfinite_sample_or_calibrated_power: Ungültiges FFT-Fenster
+  · nicht endlicher Wert in Sample oder kalibrierter Leistung
+spectrum.invalid_stft_window_nonfinite_input: Ungültiges STFT-Fenster · nicht endlicher
+  Eingangswert
+spectrum.json_csv_png_use_the_selected_trace: JSON / CSV / PNG verwenden den ausgewählten
+  Trace.
+spectrum.latest_observe_at_a_limited_rate: Letztes · mit begrenzter Rate beobachten
+spectrum.latest_target_ms: Letztes · Ziel %{observation_ms} ms
+spectrum.level_axis: Pegelachse
+spectrum.linear_hz: Linear Hz
+spectrum.live_observe_newest_window: Live · neuestes Fenster beobachten
+spectrum.live_target_ms: Live · Ziel %{observation_ms} ms
+spectrum.live_up_to_updates_s: Live · bis zu 60 Aktualisierungen/s
+spectrum.log_hz: Logarithmisch Hz
+spectrum.manual: Manuell
+spectrum.measurement_ch: MESSUNG · CH%{index}
+spectrum.missing_input_invalid_windows_missed_observations: '%{cadence} · fehlender
+  Eingang %{input_missing} · ungültige Fenster %{invalid_windows} · verpasste Beobachtungen
+  %{missed_observations}'
+spectrum.mixed_level_references_units_shown_per_channel: Gemischte Pegelreferenzen
+  · Einheiten je Kanal angezeigt
+spectrum.mode_names.continuous: Fortlaufend
+spectrum.mode_names.latest: Letztes
+spectrum.mode_names.live: Live
+spectrum.newest_complete_window_only_intermediate_windows_can_be_skipped: Nur das
+  neueste vollständige Fenster; Zwischenfenster können übersprungen werden. Mindestens
+  33 ms / N/4 bei kleinen FFTs, 100 ms bei großen FFTs. Garantiert keine Transientenerfassung.
+spectrum.no_input: Kein Eingang
+spectrum.no_stft_frame_gap_unavailable_or_different_generation: Kein STFT-Frame ·
+  Lücke, nicht verfügbar oder andere Generation
+spectrum.normal_spectrum: Normales Spectrum
+spectrum.observe_the_newest_complete_window_with_a_processing_time: Neuestes vollständiges
+  Fenster innerhalb eines Verarbeitungszeitbudgets beobachten. Mittelwert und Haltewert
+  werden pro beobachtetem Fenster aktualisiert, unabhängig von der Anzeige. „Fortlaufend“
+  verarbeitet jedes N/4-Fenster.
+spectrum.off: AUS
+spectrum.one_complete_window_s_continuous_step_s_n: 'Ein vollständiges Fenster: %{sample_rate}
+  s · fortlaufender Schritt: %{sample_rate_2} s (N/4)'
+spectrum.peak_bin_hz: Peak-Bin %{frequency} Hz
+spectrum.peak_hold: Peak-Hold
+spectrum.peak_markers: Peak-Markierungen
+spectrum.place_cursor: 'Cursor platzieren:'
+spectrum.place_frequency_cursor: 'Frequenzcursor platzieren:'
+spectrum.points: '%{size} Punkte'
+spectrum.power_in_band: Leistung im Band
+spectrum.power_spectral_density_power_per_hz_with_window_noise: Leistungsdichtespektrum
+  · Leistung pro Hz mit Korrektur der Fensterrauschbandbreite
+spectrum.psd: PSD
+spectrum.pt_fs_hz_f_hz: '%{size} Punkte · %{name} · Fs %{sample_rate} Hz · Δf %{bin_hz}
+  Hz · %{averaging}'
+spectrum.quantity.amplitude: Bin-Amplitude
+spectrum.quantity.esd: Transient (ESD)
+spectrum.quantity.psd: Leistungsdichtespektrum
+spectrum.rectangular_recommended_other_windows_attenuate_energy_without_correction: 'Rechteck
+  empfohlen: Andere Fenster dämpfen die Energie ohne Korrektur.'
+spectrum.remove_dc_offset: Gleichanteil entfernen
+spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: Angefordert %{requested_hz}–%{requested_hz_2}
+  Hz, einschließlich Mittenfrequenzen der Bins %{first_bin}..=%{last_bin}. Summe aus
+  f64-PSD × Δf; volle Gewichtung bei DC/Nyquist. CH %{channel}, Generation %{input_generation},
+  %{updates} verarbeitete Fenster, Beitrags-Hüllkurve %{start}..%{end}. Eingangsverlust
+  %{dropped}; fehlende Fenster %{missing_windows}. Fenster-Mittelquadrat nach optionaler
+  Gleichanteilentfernung; nicht das Scope-Beobachtungsintervall.
+spectrum.reset: Zurücksetzen
+spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: Mittelung und Peak-Hold
+  für alle Spectrum-Traces zurücksetzen
+spectrum.select_a_time_frame_in_spectrogram: Zeit-Frame in Spectrogram auswählen
+spectrum.show_ch_spectrum: Spectrum von CH%{index} anzeigen
+spectrum.span: Bereich %{hz}
+spectrum.span_2: Bereich %{span_hz}
+spectrum.spectrogram_history_bin_amplitude_fs_dbfs_avg_off_uncalibrated: Spectrogram-Verlauf
+  · Bin-Amplitude · FS / dBFS · MITTELWERT AUS · nicht kalibriert
+spectrum.spectrum_analyzer: Spectrum Analyzer
+spectrum.spectrum_and_scope_xy_have_independent_sample_intervals_fft: Spectrum und
+  Scope/XY haben unabhängige Sampleintervalle. FFT-Verarbeitungszeit und Alter dieses
+  Fensters sind getrennte Bedingungen.
+spectrum.stopping_finishing_spectrum_windows: Wird gestoppt · Spectrum-Fenster werden
+  abgeschlossen
+spectrum.subtracts_each_window_s_mean_before_windowing_in_esd: Zieht vor der Fensterung
+  den Mittelwert jedes Fensters ab. Bei ESD verändert dies die Transientenenergie
+  und ihre Abhängigkeit von der Fensterlänge.
+spectrum.sum_of_f64_esd_f_over_all_bins_including: Summe von f64-ESD × Δf über alle
+  Bins einschließlich DC/Nyquist. Energie der gefensterten Signalform nach optionaler
+  Gleichanteilentfernung. Mittelung bildet eine EMA der Fensterenergien, keine kumulative
+  Energie. Nominaler Eingangsabtasttakt.
+spectrum.time: Zeit %{i}
+spectrum.time_2: Zeit %{i} · %{i_2}
+spectrum.time_a_b_from_spectrogram: Zeit A/B aus Spectrogram
+spectrum.time_end_s_ch_samples_hz_pt_dc: Zeit %{i} · Ende %{sample_rate} s · CH %{channel}
+  · Samples %{start}..%{end} · %{sample_rate_2} Hz · %{size} Punkte · %{name} · %{name_2}
+  · Gleichanteil %{retained}
+spectrum.time_nearest_bin_acquired_samples_hz_points_no_average: Zeit %{selected}
+  · nächster Bin %{value} %{linear_unit} · erfasste Samples %{start}..%{end} · %{sample_rate}
+  Hz · %{size} Punkte · %{name} · %{name_2} · keine Mittelung, keine Kalibrierung
+spectrum.to: Bis
+spectrum.to_uses_nyquist_inclusive_bin_centres_whole_bins_band: Bis = 0 verwendet
+  Nyquist. Bin-Mittenfrequenzen einschließlich; ganze Bins. Änderungen des Bands lesen
+  die gehaltene PSD ohne Zurücksetzen der Mittelung aus.
+spectrum.to_uses_nyquist_narrow_ranges_show_individual_bins: Bis = 0 verwendet Nyquist.
+  In engen Bereichen werden einzelne Bins angezeigt.
+spectrum.top: Oben
+spectrum.update_mode: AKTUALISIERUNGSMODUS
+spectrum.weight: Gewicht %{count}
+spectrum.weight_2: Gewicht %{average_weight}
+spectrum.window: ' · %{index} %{outside} Fenster'
+spectrum.window_duration_available_after_input_starts: Fensterdauer nach dem Start
+  des Eingangs verfügbar
+spectrum.window_energy_s: Fensterenergie %{spectrum_energy} %{power_unit}·s
