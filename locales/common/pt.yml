@@ -133,8 +133,7 @@ common.invalid_value: valor inválido
 common.keep_held_result_as_reference: Manter resultado retido como referência
 common.known_sine_gain_phase_delay_noise_dut_common_input: Seno conhecido → ganho
   / fase / atraso / ruído DUT → entrada comum. As condições se aplicam ao iniciar.
-common.language_fallback: Textos sem tradução são exibidos em inglês. A tradução dos
-  instrumentos está em preparação.
+common.language_fallback: Textos sem tradução são exibidos em inglês.
 common.last_observed_output_nominal_hz_generation_revision_next_output: 'Última saída
   observada: %{label} | %{nominal_sample_rate} Hz nominal | %{pcm_label} | %{state}
   | geração %{output_generation} revisão %{revision} | próxima amostra de saída %{next_sample}'
