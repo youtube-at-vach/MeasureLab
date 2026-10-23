@@ -1,1414 +1,1018 @@
 {
   "version": 1,
-  "base_revision": "57bf8a414a6d0166fc6a63ad05ba1e59421314e1",
+  "base_revision": "bed97c951adc1f5f678b7c45aa332ff24245dbdf",
   "locale": "fr",
   "groups": [
-    "shell"
+    "io"
   ],
   "entries": [
     {
-      "key": "shell.add_an_instrument_to_edit_its_details",
-      "group": "shell",
+      "key": "io.amplitude",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Add an instrument to edit its details.",
-      "new_english": "Add an instrument to edit its details.",
+      "old_english": "AMPLITUDE",
+      "new_english": "AMPLITUDE",
       "variables": [],
       "translation": null,
-      "source_hash": "dd8646da505a93475c5aa2e6dc1ed1ddb4a5ec761cf157600b666887c03bcad0",
+      "source_hash": "fea6a3e0688f27ee70e47153be5c8da0581a86fc7dcbd61d14e7abf3fbcfab39",
       "translated_source_hash": null
     },
     {
-      "key": "shell.add_instrument",
-      "group": "shell",
+      "key": "io.applies_to_both_while_stopped_held_results_keep_their",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Add instrument…",
-      "new_english": "Add instrument…",
+      "old_english": "Applies to both while stopped. Held results keep their rate.",
+      "new_english": "Applies to both while stopped. Held results keep their rate.",
       "variables": [],
       "translation": null,
-      "source_hash": "abfad93a097b6cfe14f397691747aca437eee0fd368ead24c24d86b8e5485ed2",
+      "source_hash": "aa11d59ef178309f869887eb3a30ee2acffc2fe7a4056e704377f70b9188ef79",
       "translated_source_hash": null
     },
     {
-      "key": "shell.add_instruments_to_observe_and_generate_signals_together_removing",
-      "group": "shell",
+      "key": "io.audio_input",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Add instruments to observe and generate signals together. Removing a pane leaves its analysis and output running.",
-      "new_english": "Add instruments to observe and generate signals together. Removing a pane leaves its analysis and output running.",
+      "old_english": "Audio input",
+      "new_english": "Audio input",
       "variables": [],
       "translation": null,
-      "source_hash": "bee76d8f494778420f66c9d3dc005489c040c0c08167cec2ed6fc80ccf2d6e65",
+      "source_hash": "627d3bcf7c70c5352bb1efa8f8b075312ba3cb8fa710d302d9b6e062d47b5811",
       "translated_source_hash": null
     },
     {
-      "key": "shell.analysis_and_output_continue",
-      "group": "shell",
+      "key": "io.audio_input_no_device_selected",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Analysis and output continue",
-      "new_english": "Analysis and output continue",
+      "old_english": "Audio input · no device selected",
+      "new_english": "Audio input · no device selected",
       "variables": [],
       "translation": null,
-      "source_hash": "a4c2541e0a9e6bd69e64cf71a1742674279f1a58674f7c4f1b370b7fe8f33ffd",
+      "source_hash": "93e2be7eda574dc3f20787587e6ac31ca95ffec2bd79b6fe9a51015efa32ecdb",
       "translated_source_hash": null
     },
     {
-      "key": "shell.analysis_enabled_input_live",
-      "group": "shell",
+      "key": "io.audio_stream_stopped_check_device_connection_and_microphone_permission",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Analysis enabled · input live",
-      "new_english": "Analysis enabled · input live",
+      "old_english": "Audio stream stopped. Check device connection and microphone permission, then restart.",
+      "new_english": "Audio stream stopped. Check device connection and microphone permission, then restart.",
       "variables": [],
       "translation": null,
-      "source_hash": "8e5ccff9e4156e73355ebd0ce717bc1ba61c2ef42c4843b8c0a19163a0ce61ad",
+      "source_hash": "bbd7a74729f28493582956c88f06a3d20caeb9f1dc5cc167536aecf79981518e",
       "translated_source_hash": null
     },
     {
-      "key": "shell.analysis_enabled_waiting_for_input",
-      "group": "shell",
+      "key": "io.available_with_the_internal_loopback_output_device",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Analysis enabled · waiting for input",
-      "new_english": "Analysis enabled · waiting for input",
+      "old_english": "Available with the Internal loopback output device.",
+      "new_english": "Available with the Internal loopback output device.",
       "variables": [],
       "translation": null,
-      "source_hash": "db368b0d4cd75d6c7f00d9a44350ac003c94a8149ac6f58d9085d74f22e88e50",
+      "source_hash": "a363b4329de0555846dfe6921764c85a9e86664441f1d614eb758baf4b3f4c1b",
       "translated_source_hash": null
     },
     {
-      "key": "shell.analysis_on",
-      "group": "shell",
+      "key": "io.captured_readout_condition",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "ANALYSIS ON",
-      "new_english": "ANALYSIS ON",
+      "old_english": "CAPTURED READOUT CONDITION",
+      "new_english": "CAPTURED READOUT CONDITION",
       "variables": [],
       "translation": null,
-      "source_hash": "47f529813c9b9eff980544c5da3d41803d0333a9134bb208789f30182e798aaa",
+      "source_hash": "d77feace93cdcc076b1f27ff96549ada2af89aca28351d4f9807de0339298d64",
       "translated_source_hash": null
     },
     {
-      "key": "shell.analysis_status",
-      "group": "shell",
+      "key": "io.ch",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Analysis status…",
-      "new_english": "Analysis status…",
-      "variables": [],
+      "old_english": "%{channels}ch · %{label}",
+      "new_english": "%{channels}ch · %{label}",
+      "variables": [
+        "channels",
+        "label"
+      ],
       "translation": null,
-      "source_hash": "9c751f225d44f4565e553ee6bb3338936950bcf79a9025307fece0990d4c82bf",
+      "source_hash": "687840fed99d4ecefeb3236fc69432af4dc6b90b072c96b1f6a7c91dd600af9a",
       "translated_source_hash": null
     },
     {
-      "key": "shell.analysis_stopped",
-      "group": "shell",
+      "key": "io.ch_gain",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Analysis · stopped",
-      "new_english": "Analysis · stopped",
+      "old_english": "CH 2 gain",
+      "new_english": "CH 2 gain",
       "variables": [],
       "translation": null,
-      "source_hash": "d298a39f423fe8985c78ee03e22d3e69087d9f2bed19575cee6650c594f9025f",
+      "source_hash": "d1fd5a10db8fb21235f45a23d6e44d2eed25a71a8c190990a63145a79120d1f8",
       "translated_source_hash": null
     },
     {
-      "key": "shell.audio_i_o",
-      "group": "shell",
+      "key": "io.ch_phase_gain",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Audio I/O",
-      "new_english": "Audio I/O",
+      "old_english": "CH 2 PHASE / GAIN",
+      "new_english": "CH 2 PHASE / GAIN",
       "variables": [],
       "translation": null,
-      "source_hash": "1c60cfccedc02779bd01e0b84d723c42e1838c52eeee94e1b2961d4889dbe854",
+      "source_hash": "9e2bfa7b76dd0672ec34a9bffb6b2ed12144472de8caadb7c804d6dfe411186b",
       "translated_source_hash": null
     },
     {
-      "key": "shell.audio_i_o_settings",
-      "group": "shell",
+      "key": "io.channel_unavailable_in_the_current_input",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Audio I/O settings",
-      "new_english": "Audio I/O settings",
+      "old_english": "Channel unavailable in the current input",
+      "new_english": "Channel unavailable in the current input",
       "variables": [],
       "translation": null,
-      "source_hash": "2b79d942ad68b17cd1260094d43a4168cc9e5c7cccdb2349e4320cd7b3b02d8a",
+      "source_hash": "ab31d6a01d0bce9f8c72825738dd86500bf33733b0c7093c9f1a0ada1f398dc0",
       "translated_source_hash": null
     },
     {
-      "key": "shell.back_to_instruments",
-      "group": "shell",
+      "key": "io.channels_pcm",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Back to instruments",
-      "new_english": "Back to instruments",
+      "old_english": "CHANNELS / PCM",
+      "new_english": "CHANNELS / PCM",
       "variables": [],
       "translation": null,
-      "source_hash": "6643c0d211883589ca63f25318f91d6c637d7b35b0fe7247925f0ac78133eba5",
+      "source_hash": "b0f3b27322d23a0f0865b65e7003fe9053c8baa6f7c00a0e5926ad9e9b446fbb",
       "translated_source_hash": null
     },
     {
-      "key": "shell.calibration",
-      "group": "shell",
+      "key": "io.default",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Calibration",
-      "new_english": "Calibration",
-      "variables": [],
-      "translation": null,
-      "source_hash": "252526ecd4314302d0ed8f0d897d9f453ab7cd10bd81e8979d76bdc4aa192285",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.compact_sidebar",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Compact sidebar",
-      "new_english": "Compact sidebar",
-      "variables": [],
-      "translation": null,
-      "source_hash": "79356a53e6c1f6b62b688f1eb916ba89e738123f8619894729690755511bd51f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.ctrl_open_an_instrument_ctrl_left_right_select_a",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Ctrl + 1…7: open an instrument. Ctrl + Left / Right: select a console pane.",
-      "new_english": "Ctrl + 1…7: open an instrument. Ctrl + Left / Right: select a console pane.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b2563a051b8c0dea33ca9dcf8cbb1f1907ebd6f9b648451d146bddb07fc2984f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.details",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Details",
-      "new_english": "Details",
-      "variables": [],
-      "translation": null,
-      "source_hash": "45989de49fb7f66dfe17a8fc26f3a02c7abcd74f7e8e6cf9f39fa0e3775780df",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.display_scale",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Display scale",
-      "new_english": "Display scale",
-      "variables": [],
-      "translation": null,
-      "source_hash": "87220d7434f36dc57c9ac78f91ed8bcb911eafbba5f7907e4bd10bbbfca4e401",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.display_selection_does_not_start_or_stop_measurement",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Display selection does not start or stop measurement.",
-      "new_english": "Display selection does not start or stop measurement.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7767e4689baa8befffb3a98b427aaa573e4958ba3450496697bdd0ec57c72e4c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.error",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "! Error",
-      "new_english": "! Error",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7325d39bac6b460f7f23e3840f45ca76d5516ccd04ca16e5b67be1676cc8f6ef",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.escape_cancel_editing_close_the_front_menu_window_then",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Escape: cancel editing, close the front menu/window, then return from I/O or narrow details.",
-      "new_english": "Escape: cancel editing, close the front menu/window, then return from I/O or narrow details.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "08743c68da12200900be78d92edfc4a11d37b09290ecd03c25ab81e8457dd403",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.expand_sidebar",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Expand sidebar",
-      "new_english": "Expand sidebar",
-      "variables": [],
-      "translation": null,
-      "source_hash": "37a5d6485e109bf695382308d0e2cd33913c3e5f7e9ab990e8f1a5f4287b2c6a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.file_paths_status",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "File paths & status",
-      "new_english": "File paths & status",
-      "variables": [],
-      "translation": null,
-      "source_hash": "12a2e0565a2b42ba9e6514f127cfb115c07fe1f835c975aec03c70ade99108d9",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.find_an_instrument",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Find an instrument",
-      "new_english": "Find an instrument",
-      "variables": [],
-      "translation": null,
-      "source_hash": "28c539ad92111da91e37ba8d2603c5541e74303154fc7bf24b9a0280da652e5c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.finishing",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "… Finishing",
-      "new_english": "… Finishing",
-      "variables": [],
-      "translation": null,
-      "source_hash": "34d9ad8172b499ad84856a9e6bcfe4130cc460c8007f5d857a6e295ad6b30dad",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.finishing_2",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "FINISHING",
-      "new_english": "FINISHING",
-      "variables": [],
-      "translation": null,
-      "source_hash": "76aa96241d34f2654f9a9f0921e34878dafdaa94f4175cf991c89a200fa83267",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.first_pane_share",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "First pane share",
-      "new_english": "First pane share",
-      "variables": [],
-      "translation": null,
-      "source_hash": "5778fb6d0be2f3ec7faec9eabea1793f855555e52df26d1e6bb15032278aff40",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.font_license",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Noto Sans CJK font license",
-      "new_english": "Noto Sans CJK font license",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a8d5fc68712ffce439aac3e1a5493a475a1c7b235f6e42db48006cb145046f7a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.group.analysis",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "ANALYSIS",
-      "new_english": "ANALYSIS",
-      "variables": [],
-      "translation": null,
-      "source_hash": "15fd14555fced6b32930b9e8c62b5533f918c2f801af34dccb01ddbbf80c9941",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.group.monitor",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "MONITOR",
-      "new_english": "MONITOR",
-      "variables": [],
-      "translation": null,
-      "source_hash": "90a94cc5f296be2851beddc2e0c8c3924c9c2138ef72b56cb5902db17c7ef439",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.group.signal",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "SIGNAL",
-      "new_english": "SIGNAL",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8e1a5272bdd1d3e31686395747952c2384871c7f71f73dc660dcd0999f934582",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.help",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Help",
-      "new_english": "Help",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b79cac926e0b2e347e72cc91d5174037c9e17ae7733fd7bdb570f71b10cd7bfc",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.in",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "IN",
-      "new_english": "IN",
-      "variables": [],
-      "translation": null,
-      "source_hash": "fed1d872f6d540f4118582ec694270274e987b12f5dfe2057dddf1e12df2761a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.input",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "INPUT",
-      "new_english": "INPUT",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f4262548cb993257ce8409eec8b0382e2836b5dd6d9cec1e8527b458dccd3098",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.input_finishing_analysis",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Input · finishing analysis",
-      "new_english": "Input · finishing analysis",
-      "variables": [],
-      "translation": null,
-      "source_hash": "63e6f9222b50693e3167731a1929148ad85fb2c8119d98cde0fa98b52a0efc17",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.input_live",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "▶ Input live",
-      "new_english": "▶ Input live",
-      "variables": [],
-      "translation": null,
-      "source_hash": "f9fe617534032cc24d5dd39197e9c4d273285093581a96cdfe1dd194c82ae662",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.input_opening_device",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Input · opening device",
-      "new_english": "Input · opening device",
-      "variables": [],
-      "translation": null,
-      "source_hash": "3b3af4d15f56a8b42b4bfb08231d645feb7716d31d7c30d2d42a6d6545729e86",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.input_output",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Input / output",
-      "new_english": "Input / output",
-      "variables": [],
-      "translation": null,
-      "source_hash": "9b59a615a34b1a6020ad2d86f6f2455a1730c0f097c3a9af70c0b3718a6b3b40",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.input_stopped",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "■ Input stopped",
-      "new_english": "■ Input stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "05407bddebb1e4e162e46520e9fdba6ee3ecca170e779bacd528533feb33b5ed",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.instrument",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Instrument: %{name}",
-      "new_english": "Instrument: %{name}",
+      "old_english": "%{name} (default)",
+      "new_english": "%{name} (default)",
       "variables": [
         "name"
       ],
       "translation": null,
-      "source_hash": "b1665cc2369580f6e60541b9555f22b9ef9df7308b506c4e2130816b8bbaf828",
+      "source_hash": "615efcb976c44fb21b85907ddfb1a3c7739b1f1ffb3f8697050365b94f8ace77",
       "translated_source_hash": null
     },
     {
-      "key": "shell.instrument_names.comparison",
-      "group": "shell",
+      "key": "io.degrees",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Synchronous 2ch",
-      "new_english": "Synchronous 2ch",
+      "old_english": "degrees",
+      "new_english": "degrees",
       "variables": [],
       "translation": null,
-      "source_hash": "6126fd0403e4955644e00c39b9710febeab6e727acfead83e14dcdaaab2959ad",
+      "source_hash": "67e565733661bf1a7d36500840e4ecf4a844436fdebfd57eab8518b57a19ae0c",
       "translated_source_hash": null
     },
     {
-      "key": "shell.instrument_names.generator",
-      "group": "shell",
+      "key": "io.demo_harmonics",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Generator",
-      "new_english": "Generator",
+      "old_english": "Sine + harmonics",
+      "new_english": "Sine + harmonics",
       "variables": [],
       "translation": null,
-      "source_hash": "1ade60abe93f5cfce908a10bb2d1b474f024779843faba4bb1f2ef06f277d3c7",
+      "source_hash": "e6e577f66f2e9a75d9d9868d4ec6b9f5e329aa143170241ab99c3ba21f7b5c22",
       "translated_source_hash": null
     },
     {
-      "key": "shell.instrument_names.lockin",
-      "group": "shell",
+      "key": "io.demo_signal_qa",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Lock-in",
-      "new_english": "Lock-in",
+      "old_english": "Demo signal (QA)",
+      "new_english": "Demo signal (QA)",
       "variables": [],
       "translation": null,
-      "source_hash": "e3711ecaf505fe5745276cdd332f955137440a93018d94258063dfba75740318",
+      "source_hash": "fc3436546ba8dbc60b181221de75b51c3d60a550dd3f1640cc8b3aa5116db594",
       "translated_source_hash": null
     },
     {
-      "key": "shell.instrument_names.scope",
-      "group": "shell",
+      "key": "io.demo_square",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Scope",
-      "new_english": "Scope",
+      "old_english": "Band-limited square",
+      "new_english": "Band-limited square",
       "variables": [],
       "translation": null,
-      "source_hash": "b073f6c68ef8721107fd9815b19b2c35ec111d526b75c2123d1111ba64424000",
+      "source_hash": "72548c449c7cc0605c3a6b97b1122708d6140206d371207b490e1c271d5658c8",
       "translated_source_hash": null
     },
     {
-      "key": "shell.instrument_names.spectrogram",
-      "group": "shell",
+      "key": "io.device",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Spectrogram",
-      "new_english": "Spectrogram",
+      "old_english": "DEVICE",
+      "new_english": "DEVICE",
       "variables": [],
       "translation": null,
-      "source_hash": "f913745341afc7f6e3e86396a560ebe13ffc1789e4fe750abfc94497d046b49c",
+      "source_hash": "f92fc83b9b091613e91ecc85224bcb51bf5db2942d4114847725de79158366dd",
       "translated_source_hash": null
     },
     {
-      "key": "shell.instrument_names.spectrum",
-      "group": "shell",
+      "key": "io.device_default",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Spectrum",
-      "new_english": "Spectrum",
+      "old_english": "Device default",
+      "new_english": "Device default",
       "variables": [],
       "translation": null,
-      "source_hash": "fc457d42d767a3f3eb24df58595fb1955b77c813da138fa1784dc45449cd4ca9",
+      "source_hash": "aa46c3735f0740e749e2aaa790ac6dd73024064e5fa22fb6bdf6618213f01edb",
       "translated_source_hash": null
     },
     {
-      "key": "shell.instrument_names.xy",
-      "group": "shell",
+      "key": "io.device_default_khz",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "XY",
-      "new_english": "XY",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c07a3de039fbc0914689549f041eae295d621de7f7f647fd863f6d2f8db2080e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.instruments",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Instruments",
-      "new_english": "Instruments",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a81b2bad1f227b6a60753c459455b6f3195db917089d4489c2b8ce900f3a572a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.instruments_2",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "INSTRUMENTS",
-      "new_english": "INSTRUMENTS",
-      "variables": [],
-      "translation": null,
-      "source_hash": "3f6d13ec1050c836b04b3e1deb8541123d6c6741c2da2fb3f915fc5870ab1391",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.language",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Language",
-      "new_english": "Language",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a4fe65264ef7dbb38d104b1e81eb3350f3142f3d16f32bdec39b1d9b42c1b8d1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.layout_names.columns",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Side by side",
-      "new_english": "Side by side",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a3d7b387c34df52c5a611045b53215ebba668ddb9026a813b5aff0d50599fb3e",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.layout_names.grid",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "2 × 2",
-      "new_english": "2 × 2",
-      "variables": [],
-      "translation": null,
-      "source_hash": "31457e743b9f656da45f60cfb92b7589849f4bbac1dd830e409cf4373154807f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.layout_names.rows",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Stacked",
-      "new_english": "Stacked",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c2fed746cc0e2142b5a2bb118d3d02721c0800c3bf25385c936a6c846d773f7f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.layout_names.tabs",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Tabs",
-      "new_english": "Tabs",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8e5ea509893e6dfd39126d7fb98c5237b273db19f11df5be8bca227fc11fe08a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.live",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "LIVE",
-      "new_english": "LIVE",
-      "variables": [],
-      "translation": null,
-      "source_hash": "35e0d0360a0af6d115f9df30e1b00b5b544ebf4bb93272aa02cd5d64b064a64b",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.live_held_waiting_describe_acquisition_validity_and_calibration_are",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "LIVE / HELD / WAITING describe acquisition; validity and calibration are shown separately.",
-      "new_english": "LIVE / HELD / WAITING describe acquisition; validity and calibration are shown separately.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "749633c49288955d183bf8acd95c17de18212ad715f40cc84468c88367a5bdc1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.lock_in",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Lock-in · %{enabled}",
-      "new_english": "Lock-in · %{enabled}",
+      "old_english": "Device default (%{sample_rate} kHz)",
+      "new_english": "Device default (%{sample_rate} kHz)",
       "variables": [
-        "enabled"
+        "sample_rate"
       ],
       "translation": null,
-      "source_hash": "d7e6d13dbd460e5a1f6f126ae910e3ee92bbfc5f29426c583ab5b4b568acf5a0",
+      "source_hash": "74083ae991dde7d11e1f7ec9ea1ec214d614a9043f303efe87ac43266a216712",
       "translated_source_hash": null
     },
     {
-      "key": "shell.measurement",
-      "group": "shell",
+      "key": "io.equal_amplitude_noise_free_sine_signals_for_xy_in",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Measurement",
-      "new_english": "Measurement",
+      "old_english": "Equal-amplitude, noise-free sine signals for XY: in-phase, quadrature or opposite phase.",
+      "new_english": "Equal-amplitude, noise-free sine signals for XY: in-phase, quadrature or opposite phase.",
       "variables": [],
       "translation": null,
-      "source_hash": "385165e2ff59804537e732dc51e2b6058a5a11016e0bb01febe8a738614ed728",
+      "source_hash": "b3491024884c6272fe33abf070e4340413e8c326dd644d735d37d06e355facf0",
       "translated_source_hash": null
     },
     {
-      "key": "shell.menu",
-      "group": "shell",
+      "key": "io.frequency",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Menu",
-      "new_english": "Menu",
+      "old_english": "FREQUENCY",
+      "new_english": "FREQUENCY",
       "variables": [],
       "translation": null,
-      "source_hash": "99af6606ff9d6cd5154d4d4e9c21e325086d3e904677cdb41d363c8a3480f862",
+      "source_hash": "c77d231aa6d343b0ed6bf72e5df23b248708e5c9d063e568bd8634372702592d",
       "translated_source_hash": null
     },
     {
-      "key": "shell.multi_instrument_arrangement",
-      "group": "shell",
+      "key": "io.fs_peak",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Multi-instrument arrangement",
-      "new_english": "Multi-instrument arrangement",
+      "old_english": "FS peak",
+      "new_english": "FS peak",
       "variables": [],
       "translation": null,
-      "source_hash": "d502bbba2f8a43e1946d20b117a1824fa35caba0e1308639b5b8b53bedf5c961",
+      "source_hash": "01b235bba7e50652d1ed8da638a700765826bc2d93e5e295878a9063d5c20674",
       "translated_source_hash": null
     },
     {
-      "key": "shell.multi_instrument_view",
-      "group": "shell",
+      "key": "io.gain",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Multi-instrument view",
-      "new_english": "Multi-instrument view",
+      "old_english": "Gain",
+      "new_english": "Gain",
       "variables": [],
       "translation": null,
-      "source_hash": "20432bb9e1aa2de8fd97d6aaaa0162fb325be640ad90bbeb629087172885b80f",
+      "source_hash": "4e125a3ef68a00b029459c9aa8aa94aa07e74cc54188ffef7f60f38f016e61ca",
       "translated_source_hash": null
     },
     {
-      "key": "shell.no_matching_instruments",
-      "group": "shell",
+      "key": "io.generator_input_stopped_check_output_status_stop_input_and",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "No matching instruments",
-      "new_english": "No matching instruments",
+      "old_english": "Generator input stopped. Check output status, stop input and reset output before restarting.",
+      "new_english": "Generator input stopped. Check output status, stop input and reset output before restarting.",
       "variables": [],
       "translation": null,
-      "source_hash": "ad3831ce8927a98e806641e7422c022d8c0f2d4d327be570343fe7ee5d50b8a0",
+      "source_hash": "34ddab5d2296a578934af2c220bdb7f90337ae5ee29cd0e1aed0e7500fa9a989",
       "translated_source_hash": null
     },
     {
-      "key": "shell.off",
-      "group": "shell",
+      "key": "io.generator_loopback",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "■ Off",
-      "new_english": "■ Off",
+      "old_english": "Generator loopback",
+      "new_english": "Generator loopback",
       "variables": [],
       "translation": null,
-      "source_hash": "f219275b833c57190a949610c05ece5ca61dfcbfa832f8ee99c0e3815e6d6f69",
+      "source_hash": "dd792ce6ea80277040304b50213ed8d0170cb66e722637de9ab9e32e6091aa77",
       "translated_source_hash": null
     },
     {
-      "key": "shell.on",
-      "group": "shell",
+      "key": "io.generator_loopback_out",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "▶ On",
-      "new_english": "▶ On",
+      "old_english": "Generator loopback · OUT 1 / 2",
+      "new_english": "Generator loopback · OUT 1 / 2",
       "variables": [],
       "translation": null,
-      "source_hash": "3a5105004c1b4fc7dea4ba0af55fbcefee7e9c20fc034054e473c815799777bc",
+      "source_hash": "2cb554a548ac054c3f337b26eb5e00836786bfd14fcd58b42622931aae00d653",
       "translated_source_hash": null
     },
     {
-      "key": "shell.open_single",
-      "group": "shell",
+      "key": "io.hz_2",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Open single",
-      "new_english": "Open single",
-      "variables": [],
-      "translation": null,
-      "source_hash": "2c892cecfa045b767d1d53d7bd20f2a9577e4c99689ac531a18dc8cb2672c6fa",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.opening",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "… Opening",
-      "new_english": "… Opening",
-      "variables": [],
-      "translation": null,
-      "source_hash": "cef33a37dc4d7f16a1eadb42bc8e1ed0499727cea3ca6a3021fe32c83667060c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.opening_2",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "OPENING",
-      "new_english": "OPENING",
-      "variables": [],
-      "translation": null,
-      "source_hash": "3f65664dc577b44d71f1913e27423f452f75e64614d30d832c79747fd7c13ccb",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.output_error",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output · error",
-      "new_english": "Output · error",
-      "variables": [],
-      "translation": null,
-      "source_hash": "6358dd7b86fa3b8bd0c9b2baecfa581a6540a2e265b793ec26e3fad411e3a1c4",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.output_running",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output · running",
-      "new_english": "Output · running",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1ec04b74f1fa7544bab3504592a13cf0cc42d3400251495a01cfb12a26334b11",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.output_start_pending",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output · start pending",
-      "new_english": "Output · start pending",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e9ae14ea92cf0a4b9eb1a4456c7cde4ab98e5e9073afea3bd8c630cc1a57d984",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.output_starting",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output · starting",
-      "new_english": "Output · starting",
-      "variables": [],
-      "translation": null,
-      "source_hash": "3305b4c8dcbe1d464924321f760137ba877146d2037f91570690a83efa798c70",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.output_stopped",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output · stopped",
-      "new_english": "Output · stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c25d9730775464e886faf0f693a2730dc2ea6544fef0d1287f495171f10838d5",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.output_stopping",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Output · stopping",
-      "new_english": "Output · stopping",
-      "variables": [],
-      "translation": null,
-      "source_hash": "fb6933ff2a96858d7f8cb507fb0f382f7deeaa0a4b9e3cfd13c5e7bd835737cd",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.purpose.frequency_changes_over_time",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Frequency changes over time",
-      "new_english": "Frequency changes over time",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a24b058cceb27595ae54ec334e9c2826341c28a3fae6c53de8738371e6cb3579",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.purpose.frequency_levels_and_power",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Frequency levels and power",
-      "new_english": "Frequency levels and power",
-      "variables": [],
-      "translation": null,
-      "source_hash": "248a24e4f892f8b66f005321782775f66bcb0941987508b103795245aadfd217",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.purpose.generate_signals_on_output_channels",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Generate signals on output channels",
-      "new_english": "Generate signals on output channels",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b5b54e1ade3ad46eeb4f97f28855a7ebef3ec99879d680c47f54bd98163e0fe2",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.purpose.ref_sig_gain_phase_and_delay",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "REF / SIG gain, phase and delay",
-      "new_english": "REF / SIG gain, phase and delay",
-      "variables": [],
-      "translation": null,
-      "source_hash": "125b41550f62507c981484d5f3af47830c61cdb0979610cac4ca9999b447bef0",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.purpose.tone_amplitude_and_phase_vs_ref",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Tone amplitude and phase vs REF",
-      "new_english": "Tone amplitude and phase vs REF",
-      "variables": [],
-      "translation": null,
-      "source_hash": "0c13b1b58f07aea7e5240fed19bb2bc450e5f7b09903c42877cd873c2dc63842",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.purpose.two_channel_x_y_relationship",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Two-channel X/Y relationship",
-      "new_english": "Two-channel X/Y relationship",
-      "variables": [],
-      "translation": null,
-      "source_hash": "31eb5e9b3530856813d9b42f2179f1e9d529cfa6a2759b286d5f37a2a210f739",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.purpose.waveform_over_time",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Waveform over time",
-      "new_english": "Waveform over time",
-      "variables": [],
-      "translation": null,
-      "source_hash": "452f54c77dc5aba6ceb980c7871a314ed0ea37483d85ad479e40bdda549b3c3d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.remove_from_view",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Remove from view",
-      "new_english": "Remove from view",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ba0f204d873934ac4a133ab7727857c710f1d07e1b30c6d938840ecb1614c76a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.restoring_settings",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Restoring settings…",
-      "new_english": "Restoring settings…",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1bb457a804b7c6c1e9931635a816009bdfaa9c3ddfa8505ad815ecdc2bfa5d87",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.running",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "▶ Running",
-      "new_english": "▶ Running",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4166ef5ae9c34ca81ff9b2708033a05ea828a20f10fd25c4214bab45d5d8e04d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.scope_settings",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Scope settings",
-      "new_english": "Scope settings",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4b5d76fa2773790c618284a2e16038c7d29b9e3903982a455ad7a5ebe3ef936d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.scope_spectrum_stft_xy_input_running",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Scope / Spectrum / STFT / XY · input running",
-      "new_english": "Scope / Spectrum / STFT / XY · input running",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a4724915ca1d03883ab1e429322366f14cea2aed3b4e1f8cee0f458f97127f4c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.selected",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{name} · Selected",
-      "new_english": "%{name} · Selected",
+      "old_english": "%{r} Hz",
+      "new_english": "%{r} Hz",
       "variables": [
-        "name"
+        "r"
       ],
       "translation": null,
-      "source_hash": "5e5ec958d02c22a8de0d8ad26b91fc018ce794965a7ee1c61445f535076f5689",
+      "source_hash": "34a9607478a566a17ce3f8b5334df350a3a0232be765be883eb1984b38ac9f9d",
       "translated_source_hash": null
     },
     {
-      "key": "shell.selected_instrument_details",
-      "group": "shell",
+      "key": "io.hz_3",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Selected instrument details",
-      "new_english": "Selected instrument details",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d4eae9184ce7fe77728556de0b9beaf7d99d44a5cae33118b63af88b1cf7a302",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.shared_input",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Shared input · %{state}",
-      "new_english": "Shared input · %{state}",
+      "old_english": "%{rate} Hz",
+      "new_english": "%{rate} Hz",
       "variables": [
-        "state"
+        "rate"
       ],
       "translation": null,
-      "source_hash": "e7e8e04467973338e62db30313741bffb73f05cf6988e1c083d38732571df4c1",
+      "source_hash": "9a2852cf0c807d06c8c28a629b5579b6ad76962224c66c32fea476380e301800",
       "translated_source_hash": null
     },
     {
-      "key": "shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition",
-      "group": "shell",
+      "key": "io.hz_4",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Shared input for Scope, Spectrum, Spectrogram and XY. Acquisition and held results are shown inside each instrument.",
-      "new_english": "Shared input for Scope, Spectrum, Spectrogram and XY. Acquisition and held results are shown inside each instrument.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "cef3cfe61c93ebb22bbbeb0e0c11880e86c4ae0915700750660095eb59a001df",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.shared_input_live",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Shared input · live",
-      "new_english": "Shared input · live",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b4dd7853fd04840aa07166a5cba0f6bba85b18324a730dc3d8e351aa7d865c89",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.shared_input_stopped",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Shared input · stopped",
-      "new_english": "Shared input · stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ab0392b7cf5ae971368aa0309fe651589c793172ed3be819920797e4d5164006",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.space_start_stop_shared_input_typing_in_an_editor",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Space: start / stop shared input. Typing in an editor leaves input unchanged.",
-      "new_english": "Space: start / stop shared input. Typing in an editor leaves input unchanged.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7d5e484e9d7d64514912b048ba95337d13b93aff832be8e42b849ea4ed2891db",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.split_view_with",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Split view with…",
-      "new_english": "Split view with…",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a04dfc73a7c098e374f3cb3b596892a6822fc49bb3064709ee331aa4b7dd2c05",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.starting",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "… Starting",
-      "new_english": "… Starting",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a6618bbc2160eaa8f2af03840a67ca88e0229b68a904bfdb54c0af6027bd24b9",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.stop_lock_in_analysis",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Stop Lock-in analysis",
-      "new_english": "Stop Lock-in analysis",
-      "variables": [],
-      "translation": null,
-      "source_hash": "5389e551c6d09c0914ecb837bfc128305cd62366ce2663f133c81f2ebac536d4",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.stop_synchronous_analysis",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Stop synchronous analysis",
-      "new_english": "Stop synchronous analysis",
-      "variables": [],
-      "translation": null,
-      "source_hash": "80118fc3075e54f504e262c881fe9e287699f691e3a3618787da2f1141d74438",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.stopped",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "■ Stopped",
-      "new_english": "■ Stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "aa70a7b5bb89bcc8df2d29601bbd08cc7ca1a2564ae9315a4f1533ec164b0d4a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.stopped_2",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "STOPPED",
-      "new_english": "STOPPED",
-      "variables": [],
-      "translation": null,
-      "source_hash": "133c49456b6509109d9feb7f177f09ed2feca968952482454b134c7b49c4ff06",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.stopping",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "… Stopping",
-      "new_english": "… Stopping",
-      "variables": [],
-      "translation": null,
-      "source_hash": "173915e8853ba8f14d4295b1fb954c01435f16b6eb8742ba69b399fd62a10639",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.synchronous_ch",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Synchronous 2ch · %{enabled}",
-      "new_english": "Synchronous 2ch · %{enabled}",
+      "old_english": "%{rate} Hz · %{format}",
+      "new_english": "%{rate} Hz · %{format}",
       "variables": [
-        "enabled"
+        "format",
+        "rate"
       ],
       "translation": null,
-      "source_hash": "21e12e1d3ae366a939c9ffa067928b19d8e66b84c8cd038d6c1bdeb73a306c29",
+      "source_hash": "312a0311d310b7f38bc8ac343b80421b10b305f0e4c12402ae956cb77a8a11f6",
       "translated_source_hash": null
     },
     {
-      "key": "shell.tab_shift_tab_move_keyboard_focus_enter_space_activate",
-      "group": "shell",
+      "key": "io.input",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Tab / Shift + Tab: move keyboard focus. Enter / Space: activate a focused control.",
-      "new_english": "Tab / Shift + Tab: move keyboard focus. Enter / Space: activate a focused control.",
+      "old_english": "Input",
+      "new_english": "Input",
       "variables": [],
       "translation": null,
-      "source_hash": "1959e4460d5caeed049121ca82d25e63405c5868f390566ffec33d4bcbe550fa",
+      "source_hash": "36ecb4f8669133ce744c21982ba4abe2ecd7086e1dc2226ccd6f266f3a5005f8",
       "translated_source_hash": null
     },
     {
-      "key": "shell.tabs_keep_controls_and_readings_visible_at_this_size",
-      "group": "shell",
+      "key": "io.input_channel",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Tabs keep controls and readings visible at this size. The requested arrangement returns when space allows.",
-      "new_english": "Tabs keep controls and readings visible at this size. The requested arrangement returns when space allows.",
+      "old_english": "INPUT CHANNEL",
+      "new_english": "INPUT CHANNEL",
       "variables": [],
       "translation": null,
-      "source_hash": "cc906d33a32bebbead217c9a53f916c61a909e2f9fdb8d012f5c790e69b2172c",
+      "source_hash": "87454b78339b5c43e64c0665ad88a682e0cf008edbef5f722c5f7c4c061185d4",
       "translated_source_hash": null
     },
     {
-      "key": "shell.this_replaces_the_saved_multi_instrument_view_use_undo",
-      "group": "shell",
+      "key": "io.input_output_hz",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "This replaces the saved multi-instrument view. Use Undo replacement there to restore it.",
-      "new_english": "This replaces the saved multi-instrument view. Use Undo replacement there to restore it.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c66a70b56e6f835bc2eab7c6a3898527e7746979cae46dcfc472c131dc67c84c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "shell.ui_fps_cpu_fft_ms",
-      "group": "shell",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{adapter} · UI %{fps} fps · CPU FFT %{fft_ms} ms",
-      "new_english": "%{adapter} · UI %{fps} fps · CPU FFT %{fft_ms} ms",
+      "old_english": "Input: %{r} · Output: %{rate} Hz",
+      "new_english": "Input: %{r} · Output: %{rate} Hz",
       "variables": [
-        "adapter",
-        "fft_ms",
-        "fps"
+        "r",
+        "rate"
       ],
       "translation": null,
-      "source_hash": "1d16cb99321de3bed409e55194c9b0a348f4b4365071b6b9eafa04996aff19b0",
+      "source_hash": "103651c56125cbcc0da6a3322dce3593277d283e9aa35aedb5723c16865f4439",
       "translated_source_hash": null
     },
     {
-      "key": "shell.undo_replacement",
-      "group": "shell",
+      "key": "io.input_source",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "Undo replacement",
-      "new_english": "Undo replacement",
-      "variables": [],
+      "old_english": "Input source: %{source}",
+      "new_english": "Input source: %{source}",
+      "variables": [
+        "source"
+      ],
       "translation": null,
-      "source_hash": "69ef9bf0c4982ed056d5312354f5e23622aca29af866269c5b4de72cc1197654",
+      "source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b",
       "translated_source_hash": null
     },
     {
-      "key": "shell.view",
-      "group": "shell",
+      "key": "io.internal_loopback",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "View",
-      "new_english": "View",
+      "old_english": "Internal loopback",
+      "new_english": "Internal loopback",
       "variables": [],
       "translation": null,
-      "source_hash": "dcc839a4015c4b7dd9db959a8f757833b8adb92462a751b973386e453c6d58a3",
+      "source_hash": "b9a87d921926df0d115b3fe524ad35bf23ee57e106ac1875574edd8d9a15bd14",
       "translated_source_hash": null
     },
     {
-      "key": "shell.wait",
-      "group": "shell",
+      "key": "io.internal_source_no_audio_output",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "… Wait",
-      "new_english": "… Wait",
+      "old_english": "Internal source · no audio output",
+      "new_english": "Internal source · no audio output",
       "variables": [],
       "translation": null,
-      "source_hash": "7f7e1ded5831bc231c009fc0efc0855dce2aa8426e205def804d06b52f74c5a8",
+      "source_hash": "db16919adab43317836f80fd17edfa1346b6c3acd1f2c81fbcdd4c0ae45e6e3c",
       "translated_source_hash": null
     },
     {
-      "key": "shell.waiting_for_input",
-      "group": "shell",
+      "key": "io.khz",
+      "group": "io",
       "reasons": [
         "missing"
       ],
-      "old_english": "WAITING FOR INPUT",
-      "new_english": "WAITING FOR INPUT",
+      "old_english": "%{rate} kHz",
+      "new_english": "%{rate} kHz",
+      "variables": [
+        "rate"
+      ],
+      "translation": null,
+      "source_hash": "208567bd66c992840649b9125f2654a63ec1405237345f46d8577bac768362ed",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.no_common_rate_for_these_devices_and_output_format",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "No common rate for these devices and output format. Use separate sample rates.",
+      "new_english": "No common rate for these devices and output format. Use separate sample rates.",
       "variables": [],
       "translation": null,
-      "source_hash": "454e6b5b0dc6519b4e1cfaf909416026901a0d7573ee60b81598a4cb0b63ac9a",
+      "source_hash": "74a2e66883227dcaaa6158fe9e6143bbe519e21a52ef7cfea2afe60387f1db23",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.no_input_device",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "No input device",
+      "new_english": "No input device",
+      "variables": [],
+      "translation": null,
+      "source_hash": "bc9d3f9c177edaead524282306dcf075bcfc183a9c77782f03d8ad2b35441e4a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.noise",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Noise",
+      "new_english": "Noise",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9ada8e83c1186cd632fb2ac8195abc11596b4a6cea30900c55d23a44c2724770",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.noise_2",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "NOISE",
+      "new_english": "NOISE",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d331ebe20ee3073f359d76dd1f0268d365aa5e6d4c93b1946a749c2fb4f394c8",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.noise_amplitude_in_digital_full_scale_fs",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Noise amplitude in digital full scale (FS).",
+      "new_english": "Noise amplitude in digital full scale (FS).",
+      "variables": [],
+      "translation": null,
+      "source_hash": "6645baa344f7586ad2c529a052e597ee8e073e83f5979a2a56d62df946b5f027",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.offset",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Offset",
+      "new_english": "Offset",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b1a1e8e3cf7c522ed8606c3c3c3f35d3299eca78cb664fec00d9787da111f418",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.out_ch_out_ch_start_input_and_output_separately",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "OUT 1 → CH 1 · OUT 2 → CH 2 · Start input and output separately.",
+      "new_english": "OUT 1 → CH 1 · OUT 2 → CH 2 · Start input and output separately.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d2c21c8a21812df2c14054b209cc0d24d58a2f76be4ce0de0790b31b79c6f307",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.output",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Output",
+      "new_english": "Output",
+      "variables": [],
+      "translation": null,
+      "source_hash": "b2439bcb8dee14b685f137f294b0e0cb62f5aadf45143ce01d79777d435a93b4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.output_device",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "OUTPUT DEVICE",
+      "new_english": "OUTPUT DEVICE",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4072269aa3171ed233aafc5474ce4d1bd6be89a5ef4896d08230e9382f73ac73",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.physical_unit_e_g_v_a_pa",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "PHYSICAL UNIT (E.G. V, A, Pa)",
+      "new_english": "PHYSICAL UNIT (E.G. V, A, Pa)",
+      "variables": [],
+      "translation": null,
+      "source_hash": "12cffb5c555afdf1aa6ec7a38493951e77a2ab5ed38b9533fe39d40c3636e901",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.queue_calibration",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Queue calibration",
+      "new_english": "Queue calibration",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d3ca4f6e871290ac0b3251d1e535decf388cb4b1062737486bcaae2799eff42c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.queue_uncalibrated_fs",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Queue uncalibrated FS",
+      "new_english": "Queue uncalibrated FS",
+      "variables": [],
+      "translation": null,
+      "source_hash": "560689273504e25d413277279e525954941140ecf3c135f50b98be2aee2c8e43",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.queued_definitions_apply_on_the_next_start_source_device",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Queued definitions apply on the next Start. Source/device selection or device refresh clears the queue. Coefficients are supplied by you; reference conditions describe their validity.",
+      "new_english": "Queued definitions apply on the next Start. Source/device selection or device refresh clears the queue. Coefficients are supplied by you; reference conditions describe their validity.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7e98075699f5de2610bd118e18bafd7b7b790aaa3ded0265d383bd84a5e4d6db",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.queued_for_next_start",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "QUEUED FOR NEXT START",
+      "new_english": "QUEUED FOR NEXT START",
+      "variables": [],
+      "translation": null,
+      "source_hash": "af4a88d2d5dbc7047e4e6cf1af191b6930d2f3c3a167cf7f047bc81bc86a50a3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.rate_changes_apply_on_start_held_results_keep_their",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Rate changes apply on Start. Held results keep their rate.",
+      "new_english": "Rate changes apply on Start. Held results keep their rate.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "452cbb9f3212a33b74fa4155525adf28b3d7930a1138ea50811c20fadcb12dfe",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.reference_conditions",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "REFERENCE CONDITIONS",
+      "new_english": "REFERENCE CONDITIONS",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fdbc3c417b9e4ceb265203bf092432ba17b23c157dd6fe4ba6004fa37ec268d3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.reference_device_range_date_uncertainty",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Reference, device/range, date, uncertainty",
+      "new_english": "Reference, device/range, date, uncertainty",
+      "variables": [],
+      "translation": null,
+      "source_hash": "008df086ebe894f78d2bf32ef53291ed924f77ff0248a2fc7dd1e80a6db1058a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.refresh_devices",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Refresh devices",
+      "new_english": "Refresh devices",
+      "variables": [],
+      "translation": null,
+      "source_hash": "67f9239ead4a9b054712087c80f88fd53290cb77295bd9c822871744f03e5db6",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.sample_rate",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "SAMPLE RATE",
+      "new_english": "SAMPLE RATE",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e200e8a2e608fb42ff48cdd21836ed04b1eb804348d82c4c6924dcf607efaf81",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.sample_rate_channels_pcm",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "SAMPLE RATE / CHANNELS / PCM",
+      "new_english": "SAMPLE RATE / CHANNELS / PCM",
+      "variables": [],
+      "translation": null,
+      "source_hash": "544013ac8e8c29b22328028c0d43014fc1f59bfe22a85540fed908120be07204",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.sample_rate_input_output",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "SAMPLE RATE · INPUT + OUTPUT",
+      "new_english": "SAMPLE RATE · INPUT + OUTPUT",
+      "variables": [],
+      "translation": null,
+      "source_hash": "32c5dde3f74817698d1773093e4c14552426a3095584cb2943ee7e11a2015f8e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.scope_readouts_and_spectrum_use_y_gain_fs_offset",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Scope readouts and Spectrum use y = gain × FS + offset. Spectrum Remove DC cancels offset. Scope trace/trigger, Spectrogram and XY axes use FS.",
+      "new_english": "Scope readouts and Spectrum use y = gain × FS + offset. Spectrum Remove DC cancels offset. Scope trace/trigger, Spectrogram and XY axes use FS.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fd8bd9b0fff4f440a553b500da73838e63263ceb343650c40f8f350c7068c6e5",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.select_common_rate",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Select common rate",
+      "new_english": "Select common rate",
+      "variables": [],
+      "translation": null,
+      "source_hash": "81f0e1b7665315cbf53d49c1fa7cf0b8e354f564dac7d441f2d3a6ce130eafd7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.separate_sample_rates",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Separate sample rates",
+      "new_english": "Separate sample rates",
+      "variables": [],
+      "translation": null,
+      "source_hash": "33d6cf37687423dde845e5a16b56b16f03013bc7fd8d001fb6ea3f1c59c8f7d4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.signal_changes_apply_when_input_restarts_captured_samples_stay",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Signal changes apply when input restarts. Captured samples stay held.",
+      "new_english": "Signal changes apply when input restarts. Captured samples stay held.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "48b7c66118bad4a0a08aaa268ad07ffede5e281cb85da9c7eedc90aac1f2217c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.software_loopback",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Software Loopback",
+      "new_english": "Software Loopback",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c2333009468d498e94ada080c5edb9758aaef8c48d31eb132599cd9cafde9457",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.source",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "SOURCE",
+      "new_english": "SOURCE",
+      "variables": [],
+      "translation": null,
+      "source_hash": "56ccd012fa61dd4b6697697b49cc06debf68c1876c2fa89750ba35dd2ae875d9",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.start_input",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "▶  Start input",
+      "new_english": "▶  Start input",
+      "variables": [],
+      "translation": null,
+      "source_hash": "01511f203284f519f70278238a5df858b2fba01e58f5d620d89b5b538e15de85",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.start_input_demo",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "▶  Start input (demo)",
+      "new_english": "▶  Start input (demo)",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e448a779bd05a482b2de7fde7bb5fc3821dd097392b7911d83c1e6baeb364f01",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.start_or_stop_the_shared_input_for_all_instruments",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Start or stop the shared input for all instruments; output is independent. Shortcut: Space",
+      "new_english": "Start or stop the shared input for all instruments; output is independent. Shortcut: Space",
+      "variables": [],
+      "translation": null,
+      "source_hash": "880cfde27bdce047ea67572987c7bc8138d8daba4f509522a99960da7b82e7c4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.start_stop_is_always_in_the_top_bar",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Start / stop is always in the top bar.",
+      "new_english": "Start / stop is always in the top bar.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "83abb54269435843fcee6ba4b6d1766728c5955422984167956ee47835c83ab1",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.stop_input",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "■  Stop input",
+      "new_english": "■  Stop input",
+      "variables": [],
+      "translation": null,
+      "source_hash": "eb2a908826c163e5ac733af620673f4e1e9447debf94aa433de1f6b654cfbb47",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.stop_input_and_output_and_select_a_supported_common",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stop input and output and select a supported common rate.",
+      "new_english": "Stop input and output and select a supported common rate.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "8cb65970d99c76a2f7963eab10e3f52871bc97f387c4e152136a7eea881d4342",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.stop_input_and_output_to_change_the_device_or",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Stop input and output to change the device or format.",
+      "new_english": "Stop input and output to change the device or format.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "12dbdb4eba333cf1360fee0d37ae830c061b7139d046919609452809ff26f653",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.supported_device_rates_up_to_khz",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Supported device rates · up to 768 kHz",
+      "new_english": "Supported device rates · up to 768 kHz",
+      "variables": [],
+      "translation": null,
+      "source_hash": "9fec62dc6c198fe466ad4ff2c96d601d4e29e886684cab6260f07754ae4e86af",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.unavailable",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Unavailable",
+      "new_english": "Unavailable",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ca184496974204a0bd3fd4925e0540bc4b0df6fcc232994d29754272b7183812",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.unit",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "unit",
+      "new_english": "unit",
+      "variables": [],
+      "translation": null,
+      "source_hash": "385cfdbc00ec32031699460779c15099b2bba3cad0e440fffb08e10df0acb9e1",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.unit_fs",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "unit/FS",
+      "new_english": "unit/FS",
+      "variables": [],
+      "translation": null,
+      "source_hash": "c5651870d773261e2f52f37ce14fa50b2b2a69caa8bda8ae955db8ddc8f41368",
+      "translated_source_hash": null
+    },
+    {
+      "key": "io.waveform",
+      "group": "io",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "WAVEFORM",
+      "new_english": "WAVEFORM",
+      "variables": [],
+      "translation": null,
+      "source_hash": "745c4d27a2375ecadfb7da7138ae0235fdc018d90895dd8ae470c122188df924",
       "translated_source_hash": null
     }
   ]

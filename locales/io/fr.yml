@@ -1,0 +1,102 @@
+_version: 1
+io.amplitude: AMPLITUDE
+io.applies_to_both_while_stopped_held_results_keep_their: S’applique aux deux lorsqu’ils
+  sont arrêtés. Les résultats maintenus conservent leur fréquence d’échantillonnage.
+io.audio_input: Entrée audio
+io.audio_input_no_device_selected: Entrée audio · aucun appareil sélectionné
+io.audio_stream_stopped_check_device_connection_and_microphone_permission: Le flux
+  audio s’est arrêté. Vérifiez la connexion de l’appareil et l’autorisation du microphone,
+  puis redémarrez.
+io.available_with_the_internal_loopback_output_device: Disponible avec l’appareil
+  de sortie « Bouclage interne ».
+io.captured_readout_condition: CONDITION DE MESURE CAPTURÉE
+io.ch: '%{channels}ch · %{label}'
+io.ch_gain: Gain CH 2
+io.ch_phase_gain: PHASE / GAIN CH 2
+io.channel_unavailable_in_the_current_input: Canal indisponible avec l’entrée actuelle
+io.channels_pcm: CANAUX / PCM
+io.default: '%{name} (par défaut)'
+io.degrees: degrés
+io.demo_harmonics: Sinusoïde + harmoniques
+io.demo_signal_qa: Signal de démo (QA)
+io.demo_square: Signal carré à bande limitée
+io.device: APPAREIL
+io.device_default: Valeur par défaut de l’appareil
+io.device_default_khz: Valeur par défaut de l’appareil (%{sample_rate} kHz)
+io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Signaux sinusoïdaux de même
+  amplitude et sans bruit pour XY : en phase, en quadrature ou en opposition de phase.'
+io.frequency: FRÉQUENCE
+io.fs_peak: Crête FS
+io.gain: Gain
+io.generator_input_stopped_check_output_status_stop_input_and: L’entrée du générateur
+  s’est arrêtée. Vérifiez l’état de la sortie, arrêtez l’entrée et réinitialisez la
+  sortie avant de redémarrer.
+io.generator_loopback: Bouclage du générateur
+io.generator_loopback_out: Bouclage du générateur · OUT 1 / 2
+io.hz_2: '%{r} Hz'
+io.hz_3: '%{rate} Hz'
+io.hz_4: '%{rate} Hz · %{format}'
+io.input: Entrée
+io.input_channel: CANAL D’ENTRÉE
+io.input_output_hz: 'Entrée : %{r} · Sortie : %{rate} Hz'
+io.input_source: 'Source d’entrée : %{source}'
+io.internal_loopback: Bouclage interne
+io.internal_source_no_audio_output: Source interne · aucune sortie audio
+io.khz: '%{rate} kHz'
+io.no_common_rate_for_these_devices_and_output_format: Aucune fréquence d’échantillonnage
+  commune ne convient à ces appareils et à ce format de sortie. Utilisez des fréquences
+  d’échantillonnage distinctes.
+io.no_input_device: Aucun appareil d’entrée
+io.noise: Bruit
+io.noise_2: BRUIT
+io.noise_amplitude_in_digital_full_scale_fs: Amplitude du bruit en pleine échelle
+  numérique (FS).
+io.offset: Décalage
+io.out_ch_out_ch_start_input_and_output_separately: OUT 1 → CH 1 · OUT 2 → CH 2 ·
+  Démarrez l’entrée et la sortie séparément.
+io.output: Sortie
+io.output_device: APPAREIL DE SORTIE
+io.physical_unit_e_g_v_a_pa: UNITÉ PHYSIQUE (PAR EX. V, A, Pa)
+io.queue_calibration: Mettre l’étalonnage en attente
+io.queue_uncalibrated_fs: Mettre FS non étalonné en attente
+io.queued_definitions_apply_on_the_next_start_source_device: Les définitions en attente
+  s’appliquent au prochain démarrage. Le choix de la source ou de l’appareil, ainsi
+  que l’actualisation des appareils, efface la file d’attente. Vous fournissez les
+  coefficients ; les conditions de référence décrivent leur domaine de validité.
+io.queued_for_next_start: EN ATTENTE DU PROCHAIN DÉMARRAGE
+io.rate_changes_apply_on_start_held_results_keep_their: Les changements de fréquence
+  s’appliquent au démarrage. Les résultats maintenus conservent leur fréquence.
+io.reference_conditions: CONDITIONS DE RÉFÉRENCE
+io.reference_device_range_date_uncertainty: Référence, appareil/plage, date, incertitude
+io.refresh_devices: Actualiser les appareils
+io.sample_rate: FRÉQUENCE D’ÉCHANTILLONNAGE
+io.sample_rate_channels_pcm: FRÉQUENCE D’ÉCHANTILLONNAGE / CANAUX / PCM
+io.sample_rate_input_output: FRÉQUENCE D’ÉCHANTILLONNAGE · ENTRÉE + SORTIE
+io.scope_readouts_and_spectrum_use_y_gain_fs_offset: Les mesures de l’oscilloscope
+  et le spectre utilisent y = gain × FS + offset. La suppression du continu dans le
+  spectre annule le décalage. La trace et le déclenchement de l’oscilloscope, ainsi
+  que les axes du spectrogramme et de XY, utilisent FS.
+io.select_common_rate: Sélectionner une fréquence commune
+io.separate_sample_rates: Fréquences d’échantillonnage distinctes
+io.signal_changes_apply_when_input_restarts_captured_samples_stay: Les changements
+  de signal s’appliquent au redémarrage de l’entrée. Les échantillons capturés restent
+  maintenus.
+io.software_loopback: Bouclage logiciel
+io.source: SOURCE
+io.start_input: ▶  Démarrer l’entrée
+io.start_input_demo: ▶  Démarrer l’entrée (démo)
+io.start_or_stop_the_shared_input_for_all_instruments: 'Démarrer ou arrêter l’entrée
+  partagée de tous les appareils ; la sortie est indépendante. Raccourci : Espace'
+io.start_stop_is_always_in_the_top_bar: Le démarrage et l’arrêt se trouvent toujours
+  dans la barre supérieure.
+io.stop_input: ■  Arrêter l’entrée
+io.stop_input_and_output_and_select_a_supported_common: Arrêtez l’entrée et la sortie,
+  puis sélectionnez une fréquence commune prise en charge.
+io.stop_input_and_output_to_change_the_device_or: Arrêtez l’entrée et la sortie pour
+  changer d’appareil ou de format.
+io.supported_device_rates_up_to_khz: Fréquences prises en charge par l’appareil ·
+  jusqu’à 768 kHz
+io.unavailable: Indisponible
+io.unit: unité
+io.unit_fs: unité/FS
+io.waveform: FORME D’ONDE
