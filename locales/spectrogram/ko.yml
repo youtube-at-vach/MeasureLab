@@ -1,0 +1,85 @@
+_version: 1
+spectrogram.age_s: 경과 시간 / s
+spectrogram.analysis: 분석
+spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: 입력을 다시
+  시작하면 분석 변경 사항이 적용됩니다. 캡처된 이미지는 고정 상태로 유지됩니다.
+spectrogram.auto_color_range: 자동 색상 범위
+spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: '캡처됨: 공칭 %{sample_rate} Hz
+  · 윈도우 %{sample_rate_2} s · 행 %{sample_rate_3} ms · 빈 %{size} Hz'
+spectrogram.ch_dbfs: CH %{channel} · dBFS
+spectrogram.collecting_a_complete_stft_window: 완전한 STFT 윈도우 수집 중…
+spectrogram.color_map: 색상 맵
+spectrogram.color_maps.blue: 파랑
+spectrogram.color_maps.copper: 구리색
+spectrogram.color_maps.grayscale: 회색조
+spectrogram.color_maps.heat: 열
+spectrogram.color_maps.hot: 핫
+spectrogram.color_maps.inferno: Inferno
+spectrogram.color_maps.magma: Magma
+spectrogram.color_maps.turbo: Turbo
+spectrogram.color_maps.viridis: Viridis
+spectrogram.color_range_dbfs: 색상 범위 · dBFS
+spectrogram.display: 표시
+spectrogram.end_s_s_retained_n_hop: '%{live} · 종료 %{sample_rate} s · 유지 %{retained_seconds}
+  s · N %{size} / 홉 %{hop}%{else}'
+spectrogram.fft_length: FFT 길이
+spectrogram.fft_overlap: FFT 중첩
+spectrogram.frequency_hz: 주파수 / Hz
+spectrogram.frequency_scale: 주파수 축척
+spectrogram.from: 시작
+spectrogram.gestures: 'Spectrogram: 휠로 주파수 확대/축소, 드래그로 주파수/시간 이동, Shift+휠 또는 시간 축
+  휠로 이력 스크롤, 클릭으로 프레임 고정 및 선택, 커서 선을 드래그해 이동, 실시간을 선택하면 이력 고정 해제, 두 번 클릭하면 주파수/시간
+  위치 초기화.'
+spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history: 중첩률이 높을수록 FFT
+  윈도우가 늘어나 이력 용량을 더 빨리 사용합니다.
+spectrogram.history_available_s_unavailable_time_stays_blank: '사용 가능한 이력: %{retained_seconds}
+  / %{spectrogram_seconds} s · 사용할 수 없는 시간은 공백으로 표시됩니다'
+spectrogram.history_limited_by_capacity: ' · 용량 제한으로 이력이 제한됨'
+spectrogram.hold_action: 프레임 고정
+spectrogram.hold_input_running: 고정 · 입력 실행 중
+spectrogram.hold_input_stopped: 고정 · 입력 중지됨
+spectrogram.hz_dbfs_ch: '%{index} %{size} Hz · %{bin} dBFS
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.hz_dbfs_samples: '%{size} Hz · %{bin} dBFS · 샘플 %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input: '%{index} 잘못된 STFT 윈도우
+
+  유한하지 않은 입력 · %{start}..%{end}'
+spectrogram.invalid_stft_window_non_finite_input_samples: 잘못된 STFT 윈도우 · 유한하지 않은 입력
+  · 샘플 %{start}..%{end}
+spectrogram.linear_hz: 선형 Hz
+spectrogram.live: 실시간
+spectrogram.live_action: 실시간
+spectrogram.log_hz: 로그 Hz
+spectrogram.max: 최대
+spectrogram.min: 최소
+spectrogram.min_and_max_must_be_finite_with_min_max: 최소와 최대는 유한한 값이어야 하며 최소 < 최대여야
+  합니다. 이전 범위를 유지합니다.
+spectrogram.no_stft_data_at_this_time_gap_or_unavailable: 이 시간에 STFT 데이터가 없습니다 · 간격이
+  있거나 사용할 수 없음
+spectrogram.no_stft_row_before_input_began: '%{index} STFT 행 없음
+
+  입력 시작 전'
+spectrogram.outside_visible_time_range: '
+
+  보이는 시간 범위 밖'
+spectrogram.overlap.half: 50%
+spectrogram.overlap.seven_eighths: 87.5%
+spectrogram.overlap.three_quarters: 75%
+spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: '윈도우별
+  빈 진폭 · 비보정 FS. 주황색 줄무늬: 누락되었거나 유효하지 않은 STFT. 공백: 사용할 수 없는 이력.'
+spectrogram.points: '%{size}개 포인트'
+spectrogram.preparing_history_view: 이력 보기 준비 중…
+spectrogram.remove_dc_offset: DC 오프셋 제거
+spectrogram.s_ch: '%{index} −%{age} s
+
+  CH %{channel} · %{start}..%{end}'
+spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
+
+  STFT 행 없음 · 간격이 있거나 사용할 수 없음'
+spectrogram.spectrogram: Spectrogram
+spectrogram.start_input_to_begin_acquisition: 취득을 시작하려면 입력 시작을 누르세요
+spectrogram.time_range: 시간 범위
+spectrogram.to: 끝
+spectrogram.to_uses_nyquist_log_excludes_dc: 끝 = 0은 Nyquist를 사용합니다. 로그 축에서는 DC를 제외합니다.
+spectrogram.window: 윈도우
