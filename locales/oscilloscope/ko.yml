@@ -32,8 +32,8 @@ oscilloscope.edge_names.free: 자유 실행
 oscilloscope.edge_names.rising: 상승
 oscilloscope.falling_edge: 하강 에지
 oscilloscope.fit_amplitude: 진폭 맞춤
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 선택한 채널의 원시 피크에 맞추고 오프셋을
-  중심에 맞춥니다
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 선택한 채널의 원시 피크에 맞춰 세로
+  축척을 조정하고 오프셋을 0으로 되돌립니다.
 oscilloscope.free_run: 자유 실행
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
