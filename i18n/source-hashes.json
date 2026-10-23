@@ -1305,7 +1305,7 @@
       "io.input_source": {
         "source": "Input source: %{source}",
         "source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b",
-        "translation_hash": "ed4ed66fc70320bcd9d3dfe44dd78c3a230d29b84e57f4fba96739d12d8dd804"
+        "translation_hash": "2c9dec8317adf2453cdba9e65f34c390b81d6d3b856aeb38e1c2c62c56f41862"
       },
       "io.internal_loopback": {
         "source": "Internal loopback",
