@@ -80,7 +80,7 @@ oscilloscope.source: 源
 oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
 
   %{scope_trigger_marker_status} · 源 %{channel} · 电平 %{level} 原始 FS。电平跟随源通道的垂直量程，该量程可能与所选通道的坐标轴不同。'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · 时间 / Hz 光标
+oscilloscope.spectrogram_time_hz_cursor: 时间／频率光标
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 启动输入并等待一次触发捕获
 oscilloscope.start_single_capture: 开始单次捕获
 oscilloscope.t_markers_captured: T 标记：已捕获
