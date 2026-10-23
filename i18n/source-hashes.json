@@ -11604,12 +11604,12 @@
       "oscilloscope.fit_amplitude": {
         "source": "Fit amplitude",
         "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
-        "translation_hash": "f0020faf97aac49a84d14efd8f2b55d93d643b65a4477a33bde7289cc6c4a050"
+        "translation_hash": "87cdf4c92533cc6a50c86d22bf5fd1f60c7e6b1f09fd42943472bf38d882e7a8"
       },
       "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre": {
         "source": "Fit the selected channel's raw peak and centre its offset",
         "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
-        "translation_hash": "39b7141473628280779fc8176e510a2d7cf3a1dc222a9ba7bc6f025b40506b1e"
+        "translation_hash": "8ecfbf4146053f07924bdf374ff2469de22343614e95bb7c8369cbebb818e84d"
       },
       "oscilloscope.free_run": {
         "source": "Free run",

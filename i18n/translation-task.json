@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "base_revision": "36131b46b6a90202f976262796db16ed45b78aa1",
-  "locale": "fr",
+  "base_revision": "937c2c77559aa2623233c965b6cb71c9517885da",
+  "locale": "de",
   "groups": [
     "oscilloscope"
   ],
@@ -19,7 +19,7 @@
       "old_english": "Fit amplitude",
       "new_english": "Fit amplitude",
       "variables": [],
-      "translation": "Ajuster l’amplitude",
+      "translation": "Amplitude anpassen",
       "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
       "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
     },
@@ -32,7 +32,7 @@
       "old_english": "Fit the selected channel's raw peak and centre its offset",
       "new_english": "Fit the selected channel's raw peak and centre its offset",
       "variables": [],
-      "translation": "Ajuster l’amplitude au pic brut du canal sélectionné et centrer son décalage",
+      "translation": "Rohspitze des ausgewählten Kanals anpassen und Offset zentrieren",
       "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
       "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
     }

@@ -35,9 +35,9 @@ oscilloscope.edge_names.falling: Fallend
 oscilloscope.edge_names.free: Frei
 oscilloscope.edge_names.rising: Steigend
 oscilloscope.falling_edge: Fallende Flanke
-oscilloscope.fit_amplitude: Amplitude anpassen
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Rohspitze des ausgewählten
-  Kanals anpassen und Offset zentrieren
+oscilloscope.fit_amplitude: Skala anpassen
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Vertikalskala an die
+  Rohspitze des gewählten Kanals anpassen und den Offset auf null setzen.
 oscilloscope.free_run: Dauerbetrieb
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
