@@ -1,28 +1,255 @@
 {
   "version": 1,
-  "base_revision": "17583f7e11af0cd1f985c1a6782d830d432fee6c",
+  "base_revision": "a85d6112d92a2f394f689ab804a3841e82f95341",
   "locale": "ja",
   "groups": [
-    "io"
+    "oscilloscope"
   ],
   "review_keys": [
-    "io.input_source"
+    "oscilloscope.autoset_held",
+    "oscilloscope.capture_once_on_the_next_trigger_crossing",
+    "oscilloscope.fit_amplitude",
+    "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+    "oscilloscope.input_source",
+    "oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger",
+    "oscilloscope.ms_div_waveform_raw_fs",
+    "oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform",
+    "oscilloscope.source",
+    "oscilloscope.source_level_raw_fs_the_level_follows_the_source",
+    "oscilloscope.start_input_and_wait_for_a_single_triggered_capture",
+    "oscilloscope.start_single_capture",
+    "oscilloscope.t_markers_captured",
+    "oscilloscope.trigger_source_unavailable",
+    "oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while",
+    "oscilloscope.waiting_previous_capture"
   ],
   "entries": [
     {
-      "key": "io.input_source",
-      "group": "io",
+      "key": "oscilloscope.autoset_held",
+      "group": "oscilloscope",
       "reasons": [
         "review"
       ],
-      "old_english": "Input source: %{source}",
-      "new_english": "Input source: %{source}",
+      "old_english": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+      "new_english": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
       "variables": [
-        "source"
+        "frequency"
       ],
-      "translation": "入力元：%{source}",
-      "source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b",
-      "translated_source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b"
+      "translation": "保持中の捕捉波形に振幅を合わせました。時間軸／トリガーは次回開始時に適用します（%{frequency} Hz）",
+      "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
+      "translated_source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e"
+    },
+    {
+      "key": "oscilloscope.capture_once_on_the_next_trigger_crossing",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Capture once on the next trigger crossing",
+      "new_english": "Capture once on the next trigger crossing",
+      "variables": [],
+      "translation": "次のトリガー交差で1回捕捉",
+      "source_hash": "9db8198e1d68e5270e330e824e0c4295685bbb03af049a84b7ccff68626e6ed6",
+      "translated_source_hash": "9db8198e1d68e5270e330e824e0c4295685bbb03af049a84b7ccff68626e6ed6"
+    },
+    {
+      "key": "oscilloscope.fit_amplitude",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Fit amplitude",
+      "new_english": "Fit amplitude",
+      "variables": [],
+      "translation": "振幅を合わせる",
+      "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+      "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+    },
+    {
+      "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Fit the selected channel's raw peak and centre its offset",
+      "new_english": "Fit the selected channel's raw peak and centre its offset",
+      "variables": [],
+      "translation": "選択したチャンネルの生ピークに振幅を合わせ、オフセットを中央に設定",
+      "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+      "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+    },
+    {
+      "key": "oscilloscope.input_source",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Input source",
+      "new_english": "Input source",
+      "variables": [],
+      "translation": "入力元",
+      "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+      "translated_source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b"
+    },
+    {
+      "key": "oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "%{channel} · %{reading}\nInterval %{start}..%{end} (exclusive end) · generation %{input_generation} · nominal %{sample_rate} Hz. %{channel_2}. Waveform and trigger are raw FS.",
+      "new_english": "%{channel} · %{reading}\nInterval %{start}..%{end} (exclusive end) · generation %{input_generation} · nominal %{sample_rate} Hz. %{channel_2}. Waveform and trigger are raw FS.",
+      "variables": [
+        "channel",
+        "channel_2",
+        "end",
+        "input_generation",
+        "reading",
+        "sample_rate",
+        "start"
+      ],
+      "translation": "%{channel} · %{reading}\n区間 %{start}..%{end}（終端を含まない） · 入力世代 %{input_generation} · 公称 %{sample_rate} Hz。%{channel_2}。波形とトリガーには生FSを使用します。",
+      "source_hash": "cf579ed063d29423a695710ec193d4a738ddfc757686d3a4d4bd1db0d5873c33",
+      "translated_source_hash": "cf579ed063d29423a695710ec193d4a738ddfc757686d3a4d4bd1db0d5873c33"
+    },
+    {
+      "key": "oscilloscope.ms_div_waveform_raw_fs",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
+      "new_english": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
+      "variables": [
+        "scope_display_ms_per_div"
+      ],
+      "translation": "%{scope_display_ms_per_div} ms/div · 波形：生FS",
+      "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
+      "translated_source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759"
+    },
+    {
+      "key": "oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "%{channel} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
+      "new_english": "%{channel} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
+      "variables": [
+        "channel"
+      ],
+      "translation": "%{channel} · 取得サンプルなし\n入力条件は未取得です。波形とトリガーの設定には生FSを使用します。",
+      "source_hash": "ceff997455de4f81e86663a3a5cc73d4814d450c052e79adf95e20f00552b7db",
+      "translated_source_hash": "ceff997455de4f81e86663a3a5cc73d4814d450c052e79adf95e20f00552b7db"
+    },
+    {
+      "key": "oscilloscope.source",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Source",
+      "new_english": "Source",
+      "variables": [],
+      "translation": "トリガー元",
+      "source_hash": "0e570ca6fabe24f94e52c1833f3ffd25567022beb826fa16891f3322051bc221",
+      "translated_source_hash": "0e570ca6fabe24f94e52c1833f3ffd25567022beb826fa16891f3322051bc221"
+    },
+    {
+      "key": "oscilloscope.source_level_raw_fs_the_level_follows_the_source",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "%{display}\n%{scope_trigger_marker_status} · source %{channel} · level %{level} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
+      "new_english": "%{display}\n%{scope_trigger_marker_status} · source %{channel} · level %{level} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
+      "variables": [
+        "channel",
+        "display",
+        "level",
+        "scope_trigger_marker_status"
+      ],
+      "translation": "%{display}\n%{scope_trigger_marker_status} · トリガー元 %{channel} · レベル %{level} 生FS。レベルはトリガー元チャンネルの縦軸レンジに従います。選択中のチャンネルの軸とは異なる場合があります。",
+      "source_hash": "36e8de28ee92f6ce75298ff4141140d94f69d2766da27dadbec893489125aa27",
+      "translated_source_hash": "36e8de28ee92f6ce75298ff4141140d94f69d2766da27dadbec893489125aa27"
+    },
+    {
+      "key": "oscilloscope.start_input_and_wait_for_a_single_triggered_capture",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Start input and wait for a single triggered capture",
+      "new_english": "Start input and wait for a single triggered capture",
+      "variables": [],
+      "translation": "入力を開始して、トリガーで1回捕捉するまで待ちます",
+      "source_hash": "66f0436edf78fe6e103cd927a2748a1d4144219f94473bfd4f623e83d32331d4",
+      "translated_source_hash": "66f0436edf78fe6e103cd927a2748a1d4144219f94473bfd4f623e83d32331d4"
+    },
+    {
+      "key": "oscilloscope.start_single_capture",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Start single capture",
+      "new_english": "Start single capture",
+      "variables": [],
+      "translation": "シングル捕捉を開始",
+      "source_hash": "a8d5bf0618eaf606dee759a890894499efe99511b9bdc89b5fc9faaa8716e002",
+      "translated_source_hash": "a8d5bf0618eaf606dee759a890894499efe99511b9bdc89b5fc9faaa8716e002"
+    },
+    {
+      "key": "oscilloscope.t_markers_captured",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "T markers: captured",
+      "new_english": "T markers: captured",
+      "variables": [],
+      "translation": "Tマーカー：捕捉済み",
+      "source_hash": "07d577d66fdc84977acf98b0d62d61ccdc318db4e6bf59417a21dd314fcd9857",
+      "translated_source_hash": "07d577d66fdc84977acf98b0d62d61ccdc318db4e6bf59417a21dd314fcd9857"
+    },
+    {
+      "key": "oscilloscope.trigger_source_unavailable",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Trigger source unavailable",
+      "new_english": "Trigger source unavailable",
+      "variables": [],
+      "translation": "トリガー元を利用できません",
+      "source_hash": "4d4b4daeaf32356594e2a8169b4132ed85a904bb6011678b91a1febafd463430",
+      "translated_source_hash": "4d4b4daeaf32356594e2a8169b4132ed85a904bb6011678b91a1febafd463430"
+    },
+    {
+      "key": "oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Update on trigger crossings; hold the last capture while waiting",
+      "new_english": "Update on trigger crossings; hold the last capture while waiting",
+      "variables": [],
+      "translation": "トリガー交差で更新し、待機中は最後の捕捉を保持",
+      "source_hash": "14c8dc71bc614c180b8ae751814dd82a97de7fd70527439c8621170049894ede",
+      "translated_source_hash": "14c8dc71bc614c180b8ae751814dd82a97de7fd70527439c8621170049894ede"
+    },
+    {
+      "key": "oscilloscope.waiting_previous_capture",
+      "group": "oscilloscope",
+      "reasons": [
+        "review"
+      ],
+      "old_english": "Waiting · previous capture",
+      "new_english": "Waiting · previous capture",
+      "variables": [],
+      "translation": "待機中 · 前回の捕捉を保持",
+      "source_hash": "200c7c4b2c0853e7544ab0b31c68b854678dc050584f665c4dd7267d902b18dd",
+      "translated_source_hash": "200c7c4b2c0853e7544ab0b31c68b854678dc050584f665c4dd7267d902b18dd"
     }
   ]
 }
