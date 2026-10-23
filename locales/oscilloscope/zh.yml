@@ -1,0 +1,109 @@
+_version: 1
+oscilloscope.acquiring_post_trigger: 正在采集触发后数据
+oscilloscope.acquisition: 采集
+oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: 采集或校准的值不是有限数值；没有有效的数值读数
+oscilloscope.auto: 自动
+oscilloscope.auto_free: 自动 / 自由运行
+oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: 为周期信号自动设置时间刻度、幅度和触发
+oscilloscope.autoset: 自动设置
+oscilloscope.autoset_frequency: 自动设置：根据原始交叉点计算为 %{frequency} Hz
+oscilloscope.autoset_held: 已拟合保留捕获的幅度；时间/触发将在下次启动时应用（%{frequency} Hz）
+oscilloscope.capture_once_on_the_next_trigger_crossing: 下次触发交叉时捕获一次
+oscilloscope.centre_offset: 中心偏移
+oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
+oscilloscope.ch_2: CH%{index}%{else}
+oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{channel}%{else}
+
+  %{index_2}
+
+  选择后可在 Scope 设置中编辑此通道。显示开/关不受此选择影响。
+
+  %{display}'
+oscilloscope.channel_out_of_range: — · 通道超出范围
+oscilloscope.cursor: 光标 %{index} · %{join}
+oscilloscope.display: 显示
+oscilloscope.drag_the_slider_or_value_to_adjust_double_click: 拖动滑块或数值进行调整。双击数值可输入数字。
+oscilloscope.edge: 边沿
+oscilloscope.edge_names.falling: 下降
+oscilloscope.edge_names.free: 自由运行
+oscilloscope.edge_names.rising: 上升
+oscilloscope.falling_edge: 下降沿
+oscilloscope.fit_amplitude: 拟合幅度
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 拟合所选通道的原始峰值并将偏移居中
+oscilloscope.free_run: 自由运行
+oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
+oscilloscope.fs_div: '%{fs_per_div} FS/div'
+oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = 满量程 · Fs = 采样率 ·
+  div = 网格刻度
+oscilloscope.guides: 参考线
+oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: 保留的采集条件已保留
+  · 排队的测量设置将在下次启动时应用
+oscilloscope.horizontal: 水平
+oscilloscope.input_source: 输入源
+oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
+  · %{reading}
+
+  区间 %{start}..%{end}（不含结束值）· 代次 %{input_generation} · 标称 %{sample_rate} Hz。%{channel_2}。波形和触发使用原始
+  FS。'
+oscilloscope.invalid_value: — · 值无效
+oscilloscope.level: 电平
+oscilloscope.markers: 标记
+oscilloscope.markers_t_markers_only_guides_t_markers_and_dotted: 标记：仅 T 标记。参考线：T 标记以及点状时间/电平参考线。关闭：隐藏两者。在任何模式下编辑电平时，都会显示水平参考线。
+oscilloscope.mode_names.auto: 自动
+oscilloscope.mode_names.normal: 正常
+oscilloscope.mode_names.single: 单次
+oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
+oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · 波形：原始 FS'
+oscilloscope.no_acquired_samples_for_this_channel_and_interval: 此通道和区间没有已采集样本
+oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
+  · 没有已采集样本
+
+  输入条件尚未采集。波形和触发设置使用原始 FS。'
+oscilloscope.no_samples_in_this_interval: — · 此区间没有样本
+oscilloscope.normal: 正常
+oscilloscope.off: 关闭
+oscilloscope.out_of_range: 超出范围
+oscilloscope.outside_input_channel_range: ' · 超出输入通道范围'
+oscilloscope.outside_input_channel_range_2: '%{channel} · 超出输入通道范围'
+oscilloscope.outside_sweep: '%{index} #%{sample} · 超出扫描范围'
+oscilloscope.partial_missing_samples: 部分 · 缺少 %{scope_missing} 个样本
+oscilloscope.position: 位置
+oscilloscope.reset_time_position: 重置时间位置
+oscilloscope.rising_edge: 上升沿
+oscilloscope.rms_p_p: RMS %{rms} %{unit} · 峰峰值 %{peak_to_peak} %{unit}
+oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · 峰峰值 %{peak_to_peak}
+  %{unit} · 峰值 %{peak} %{unit} · 已采集 %{samples} 个样本
+oscilloscope.show_ch_waveform_keeps_selection_and_measurements: 显示 CH%{index} 波形（保留选择和测量值）
+oscilloscope.single: 单次
+oscilloscope.single_complete: 单次采集完成
+oscilloscope.source: 源
+oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
+
+  %{scope_trigger_marker_status} · 源 %{channel} · 电平 %{level} 原始 FS。电平跟随源通道的垂直量程，该量程可能与所选通道的坐标轴不同。'
+oscilloscope.spectrogram_time_hz_cursor: Spectrogram · 时间 / Hz 光标
+oscilloscope.start_input_and_wait_for_a_single_triggered_capture: 启动输入并等待一次触发捕获
+oscilloscope.start_single_capture: 开始单次捕获
+oscilloscope.t_markers_captured: T 标记：已捕获
+oscilloscope.t_markers_settings_only: T 标记：仅设置
+oscilloscope.t_markers_top_ms_right_level: T 标记：顶部 = 0 ms · 右侧 = 电平
+oscilloscope.time_scale: 时间刻度
+oscilloscope.time_trigger_edits_apply_on_next_start: 时间/触发更改将在下次启动时应用
+oscilloscope.trigger: 触发
+oscilloscope.trigger_settings: 触发设置
+oscilloscope.trigger_source_unavailable: 触发源不可用
+oscilloscope.triggered: 已触发
+oscilloscope.update_even_without_a_trigger_crossing: 即使没有触发交叉也更新
+oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while: 在触发交叉时更新；等待期间保留上次捕获
+oscilloscope.vertical_ch: 垂直 · CH%{index}
+oscilloscope.vertical_range: 垂直量程
+oscilloscope.waiting_for_sweep: '%{index} · 正在等待扫描'
+oscilloscope.waiting_for_trigger: 正在等待触发
+oscilloscope.waiting_previous_capture: 等待中 · 上次捕获
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale: 滚轮：时间刻度 · Shift+滚轮：所选通道刻度
+oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double: '%{display}
+
+  %{display_2}
+
+  滚轮：时间刻度 · Shift+滚轮：所选通道刻度 · 双击：重置视图'
+oscilloscope.zero_level: 零电平
+oscilloscope.zero_offset: 零偏移
