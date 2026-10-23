@@ -1,851 +1,573 @@
 {
   "version": 1,
-  "base_revision": "683f2fd15e0e2193fb69aae0ad7ec20c0aa72d50",
+  "base_revision": "7698c689ba5f82b52a9211e0db852e3b916c29a0",
   "locale": "zh",
   "groups": [
-    "spectrogram"
+    "xy"
   ],
   "entries": [
     {
-      "key": "spectrogram.age_s",
-      "group": "spectrogram",
+      "key": "xy.amplitude_range",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Age / s",
-      "new_english": "Age / s",
+      "old_english": "Amplitude range",
+      "new_english": "Amplitude range",
       "variables": [],
       "translation": null,
-      "source_hash": "89cab479bb357949727e18ae3d278fd3a10383fbf22283cd612241f7e43b8c3f",
+      "source_hash": "beecc5f6b08fd81dd8172f523002aee6379c7418444511b3ab79a37257e30881",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.analysis",
-      "group": "spectrogram",
+      "key": "xy.auto_no_crossing",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Analysis",
-      "new_english": "Analysis",
+      "old_english": " · Auto (no crossing)",
+      "new_english": " · Auto (no crossing)",
       "variables": [],
       "translation": null,
-      "source_hash": "e70d8eb9050021ad51462409f6024d4133e0d9706eb1d0d29100984370ae3d70",
+      "source_hash": "9ef79840bcf62ce4aac41b71331b3e8e25063767f8bb38f186bd7b14f213ff72",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image",
-      "group": "spectrogram",
+      "key": "xy.b_a_x_y_fs",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Analysis changes apply when input restarts. The captured image stays held.",
-      "new_english": "Analysis changes apply when input restarts. The captured image stays held.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d1db9ad57a7086faf005bc12d0c4c85590f519353845d73ed0892d15d58d6e44",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.auto_color_range",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Auto color range",
-      "new_english": "Auto color range",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7dc421c8df625dafa2fb2b0350743d85d2306d2dd389f928cc1562cab3329ced",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Captured: nominal %{sample_rate} Hz · window %{sample_rate_2} s · row %{sample_rate_3} ms · bin %{size} Hz",
-      "new_english": "Captured: nominal %{sample_rate} Hz · window %{sample_rate_2} s · row %{sample_rate_3} ms · bin %{size} Hz",
+      "old_english": "B−A ΔX %{delta} · ΔY %{delta_2} FS",
+      "new_english": "B−A ΔX %{delta} · ΔY %{delta_2} FS",
       "variables": [
-        "sample_rate",
-        "sample_rate_2",
-        "sample_rate_3",
-        "size"
+        "delta",
+        "delta_2"
       ],
       "translation": null,
-      "source_hash": "d16f1e6d3fb05fb0dde9a5ff04c4eeb2d8337012d33c8afd1d8112f811cb7767",
+      "source_hash": "996c24bd2258840f72bb981a724f8847447e71db1e22517d8b69f5e5b2d58007",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.ch_dbfs",
-      "group": "spectrogram",
+      "key": "xy.cursors",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "CH %{channel} · dBFS",
-      "new_english": "CH %{channel} · dBFS",
+      "old_english": "CURSORS",
+      "new_english": "CURSORS",
+      "variables": [],
+      "translation": null,
+      "source_hash": "7cb53cbcf83d1021ed0a0793b5f34a186feef092dc6e8b1fa03ceff7c1aa05a1",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.fix_x_y_amplitudes_independently_of_the_moving_trace",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.",
+      "new_english": "Fix X/Y amplitudes independently of the moving trace. Measure ΔX and ΔY.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "e014d371486e35a33b2e08343ab2509310d4a520c23c77f6feeb2131c82c29e7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.follow_a_real_sample_at_a_fixed_time_offset",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.",
+      "new_english": "Follow a real sample at a fixed time offset from the XY trigger. Uses Scope trigger settings.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "4e42e5ccdb79fe3f303f7bb289d683d6be7d1f9576228a254fecec1a2e805116",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.free",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Free",
+      "new_english": "Free",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f411a1fb62758b4c54690d0a702b4955b54dd22115416fa7b1ce51b4a084818d",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.free_click_or_drag_to_fix_x_y_amplitudes",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
+      "new_english": "Free: click or drag to fix X/Y amplitudes. A/B measure ΔX and ΔY independently of the moving trace. Free positions are retained when switching to Trace Snap.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5aebd35717c7d369e4b9b7aea71a7c08d01281ede3add2d9cd81bb9a30be22a0",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.free_keeps_x_y_amplitudes_fixed_and_reads_x",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Cursor positions are retained when switching modes.",
+      "new_english": "Free keeps X/Y amplitudes fixed and reads ΔX/ΔY. Cursor positions are retained when switching modes.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "996f5194449a730fa7e19013f7b3d6dc87a75d6e6d0dde1b8e6fb45b40103ccb",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.free_outside_plot",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Free · outside plot",
+      "new_english": "Free · outside plot",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fdb7bffa64394387fa75119f0c5e955c74566d78f54671538d8fc8e21009dd3e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.free_run_moving_reference",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": " · Free run (moving reference)",
+      "new_english": " · Free run (moving reference)",
+      "variables": [],
+      "translation": null,
+      "source_hash": "1f475bf331105a315d99576ac10f2ba5ed46f6f2fd577348d589cd0ee06b2d51",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.input_source",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Input source",
+      "new_english": "Input source",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.ms_samples",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{sample_rate} ms · samples %{start}..%{end}%{else}%{auto_no_crossing}",
+      "new_english": "%{sample_rate} ms · samples %{start}..%{end}%{else}%{auto_no_crossing}",
       "variables": [
-        "channel"
-      ],
-      "translation": null,
-      "source_hash": "5661cb3c992d2229a414fd5d8712222f77464fc2fe4398ee83960a39a78274c7",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.collecting_a_complete_stft_window",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Collecting a complete STFT window…",
-      "new_english": "Collecting a complete STFT window…",
-      "variables": [],
-      "translation": null,
-      "source_hash": "49c6a0b2dc5ac8b33ba91c3252e53c85c87d1ac8f33c616fe2c869c49e69aeb9",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_map",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "COLOR MAP",
-      "new_english": "COLOR MAP",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d3601d6d88d00a974895ed8cab71c5a7f34c293a42a18545ae156ea0dc86bae6",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.blue",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Blue",
-      "new_english": "Blue",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ec7d56a01607001e6401366417c5e2eb00ffa0df17ca1a9a831e0b32c8f11bf7",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.copper",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Copper",
-      "new_english": "Copper",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d35b0efe21288fd59dac3436ab3bd1c3b741261ef75b8b2af53ad8eb881f0c04",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.grayscale",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Grayscale",
-      "new_english": "Grayscale",
-      "variables": [],
-      "translation": null,
-      "source_hash": "93638ea9e0b0aae93af40fcc1a36e7b4ea1dea761d27de2c369563fbe5a411f3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.heat",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Heat",
-      "new_english": "Heat",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ee2556352ebb644bd7911ed707fb7e6405c8bc5c40106c94bf09945ab575bd54",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.hot",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Hot",
-      "new_english": "Hot",
-      "variables": [],
-      "translation": null,
-      "source_hash": "0ec53894d03240772964851c34600883ca3ffe327ed1c5d5593ff5940bde37c1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.inferno",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Inferno",
-      "new_english": "Inferno",
-      "variables": [],
-      "translation": null,
-      "source_hash": "79b1a3795041f402c7b0a55a12ffd95713def27a6bc99a5ea403720485a4effc",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.magma",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Magma",
-      "new_english": "Magma",
-      "variables": [],
-      "translation": null,
-      "source_hash": "4475ce64bb06e7a73fd4fc71bf4fdbfe531938d2b9d70ab23cc85a6929c485f3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.turbo",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Turbo",
-      "new_english": "Turbo",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d96a41b9d54581ab1ab1b39d89c4ef0938c7712e2a7a41854124f379812da241",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_maps.viridis",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Viridis",
-      "new_english": "Viridis",
-      "variables": [],
-      "translation": null,
-      "source_hash": "189af6c0f919a5e75dbeabcc55b7c49693da5a38b6090e0a3a62b266ddbaa039",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.color_range_dbfs",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "COLOR RANGE · dBFS",
-      "new_english": "COLOR RANGE · dBFS",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8506e93238d92cf9d255802806d559ee615790dc5aece30344e8b7f3e330d290",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.display",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Display",
-      "new_english": "Display",
-      "variables": [],
-      "translation": null,
-      "source_hash": "34e108c0896d0158ca4f2797d4f12a143943803be2151aa5d2136ea1bcd9a468",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.end_s_s_retained_n_hop",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{live} · End %{sample_rate} s · %{retained_seconds} s retained · N %{size} / hop %{hop}%{else}",
-      "new_english": "%{live} · End %{sample_rate} s · %{retained_seconds} s retained · N %{size} / hop %{hop}%{else}",
-      "variables": [
+        "auto_no_crossing",
         "else",
-        "hop",
-        "live",
-        "retained_seconds",
+        "end",
         "sample_rate",
-        "size"
-      ],
-      "translation": null,
-      "source_hash": "210a3e5582a0fa8268562ab2f207d51b518ba7d56d97094520201fd2dd5edad1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.fft_length",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "FFT LENGTH",
-      "new_english": "FFT LENGTH",
-      "variables": [],
-      "translation": null,
-      "source_hash": "49c346ec9744e0c8db353f8adb812b5bac93f47016b4b0cd9b82be545bf6ed53",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.fft_overlap",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "FFT OVERLAP",
-      "new_english": "FFT OVERLAP",
-      "variables": [],
-      "translation": null,
-      "source_hash": "37d2f52aa6b2da24b756c359c620b5c9344b1e803d4d8fd18f5a07c0685afc8d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.frequency_hz",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Frequency / Hz",
-      "new_english": "Frequency / Hz",
-      "variables": [],
-      "translation": null,
-      "source_hash": "fa46198a5193c2dee55b3e4a8a1547ee62a4816a0427ed8e36abb64ce5fc31ab",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.frequency_scale",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "FREQUENCY SCALE",
-      "new_english": "FREQUENCY SCALE",
-      "variables": [],
-      "translation": null,
-      "source_hash": "d27e2b36448d2f483b24d3e0691e7e1cd00b835effa386f0127153794b0f590d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.from",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "From",
-      "new_english": "From",
-      "variables": [],
-      "translation": null,
-      "source_hash": "218197693424e0154cefc0af31aed96c084b987e08136e91d5528ddbb5461e24",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.gestures",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
-      "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.higher_overlap_produces_more_fft_windows_and_uses_history",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Higher overlap produces more FFT windows and uses history capacity sooner.",
-      "new_english": "Higher overlap produces more FFT windows and uses history capacity sooner.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "dcdba6f8d8bcccf9e14dcb0f1da0f6e3f74a58d63aa45958fe44c2b686396e19",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.history_available_s_unavailable_time_stays_blank",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "History available: %{retained_seconds} / %{spectrogram_seconds} s · unavailable time stays blank",
-      "new_english": "History available: %{retained_seconds} / %{spectrogram_seconds} s · unavailable time stays blank",
-      "variables": [
-        "retained_seconds",
-        "spectrogram_seconds"
-      ],
-      "translation": null,
-      "source_hash": "1ee69055be8a791705eccd5ab8d9180e0696e007647f02990e59ac67b274d6d4",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.history_limited_by_capacity",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": " · history limited by capacity",
-      "new_english": " · history limited by capacity",
-      "variables": [],
-      "translation": null,
-      "source_hash": "e847f49b6b234c34ba2ac8f2ce16d2ba81dc035e4128a12c0028aa3e65c5f71a",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.hold_action",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Hold",
-      "new_english": "Hold",
-      "variables": [],
-      "translation": null,
-      "source_hash": "8e685d5409b3a543b1cadcc35b095d64847867539c12b21a36d55991ca0cdce1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.hold_input_running",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "HOLD · input running",
-      "new_english": "HOLD · input running",
-      "variables": [],
-      "translation": null,
-      "source_hash": "c394aa16e3827551aa583762017a268cf98b7df36422d3bfd259303e9aa535e6",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.hold_input_stopped",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "HOLD · input stopped",
-      "new_english": "HOLD · input stopped",
-      "variables": [],
-      "translation": null,
-      "source_hash": "117d58eb28964c120e7ec7616b3edc4b909642969eac78baa83fd7579e79fc2f",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.hz_dbfs_ch",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{index} %{size} Hz · %{bin} dBFS\nCH %{channel} · %{start}..%{end}",
-      "new_english": "%{index} %{size} Hz · %{bin} dBFS\nCH %{channel} · %{start}..%{end}",
-      "variables": [
-        "bin",
-        "channel",
-        "end",
-        "index",
-        "size",
         "start"
       ],
       "translation": null,
-      "source_hash": "aa1eb811e9bdd654be3b550653bb6cca0cd014b8e2863719bfb45f0d32da6e80",
+      "source_hash": "be2741feb19b80438d182b67c7a185c6ee25df76e3c2f35e6a89f52c1efbcba0",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.hz_dbfs_samples",
-      "group": "spectrogram",
+      "key": "xy.observation",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{size} Hz · %{bin} dBFS · samples %{start}..%{end}",
-      "new_english": "%{size} Hz · %{bin} dBFS · samples %{start}..%{end}",
-      "variables": [
-        "bin",
-        "end",
-        "size",
-        "start"
-      ],
-      "translation": null,
-      "source_hash": "481c52412bf2d5b61097d34c24d406ffc2dcc8164f6d61e11bf36b4f4f65e905",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.invalid_stft_window_non_finite_input",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{index} Invalid STFT window\nnon-finite input · %{start}..%{end}",
-      "new_english": "%{index} Invalid STFT window\nnon-finite input · %{start}..%{end}",
-      "variables": [
-        "end",
-        "index",
-        "start"
-      ],
-      "translation": null,
-      "source_hash": "7937fb7d327b321f89174067fc2a2c7efdb764a353d1a32e82e4cf36c61332ef",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.invalid_stft_window_non_finite_input_samples",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Invalid STFT window · non-finite input · samples %{start}..%{end}",
-      "new_english": "Invalid STFT window · non-finite input · samples %{start}..%{end}",
-      "variables": [
-        "end",
-        "start"
-      ],
-      "translation": null,
-      "source_hash": "ca46500cba518e0455a1fd334dc53fbd4a7842bc265b665b1a48b41b17b73cb3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.linear_hz",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Linear Hz",
-      "new_english": "Linear Hz",
+      "old_english": "OBSERVATION",
+      "new_english": "OBSERVATION",
       "variables": [],
       "translation": null,
-      "source_hash": "d35293c5b6027d55300797c15a83bdd1c89c75b00947f5fa7afcb2fa92932fbf",
+      "source_hash": "4f89ca8b4090c7befb1fc3f0f965289f3347058482a4e34be84b8d2a266b3c19",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.live",
-      "group": "spectrogram",
+      "key": "xy.observation_window",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "LIVE",
-      "new_english": "LIVE",
+      "old_english": "Observation window",
+      "new_english": "Observation window",
       "variables": [],
       "translation": null,
-      "source_hash": "35e0d0360a0af6d115f9df30e1b00b5b544ebf4bb93272aa02cd5d64b064a64b",
+      "source_hash": "af347726c2412e1d009db868bcaf860a1ef18ce0765892abe0701cd67f1d2189",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.live_action",
-      "group": "spectrogram",
+      "key": "xy.outside_xy_window_or_unavailable",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Live",
-      "new_english": "Live",
-      "variables": [],
-      "translation": null,
-      "source_hash": "b64ac05f17e64d037db81a98f51e2688216e292ae9748f979f04dfbac49fd7fc",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.log_hz",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Log Hz",
-      "new_english": "Log Hz",
-      "variables": [],
-      "translation": null,
-      "source_hash": "7b91026010d597a53c425c595786148a71e5a567e1427bb7f5925143f270d734",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.max",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Max",
-      "new_english": "Max",
-      "variables": [],
-      "translation": null,
-      "source_hash": "a1a5936d3b0f8a69fd62c91ed9990d3bd414c5e78c603e2837c65c9f46a93eb8",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.min",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Min",
-      "new_english": "Min",
-      "variables": [],
-      "translation": null,
-      "source_hash": "dea79332147ffe1fb2a81cf9a5bdf0066ddcc625699996ede0ce140e5cb004b1",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.min_and_max_must_be_finite_with_min_max",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Min and Max must be finite, with Min < Max. Previous range retained.",
-      "new_english": "Min and Max must be finite, with Min < Max. Previous range retained.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "947f04fed73801c659f93a6fa654317ac29e24bb3b94cc531476ebe93f67141c",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.no_stft_data_at_this_time_gap_or_unavailable",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "No STFT data at this time · gap or unavailable",
-      "new_english": "No STFT data at this time · gap or unavailable",
-      "variables": [],
-      "translation": null,
-      "source_hash": "1f020766cb0352b02b44771013f138c8e719f274ca50e8b9207ae9d6328e7965",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.no_stft_row_before_input_began",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{index} No STFT row\nBefore input began",
-      "new_english": "%{index} No STFT row\nBefore input began",
+      "old_english": "%{index} · outside XY window or unavailable",
+      "new_english": "%{index} · outside XY window or unavailable",
       "variables": [
         "index"
       ],
       "translation": null,
-      "source_hash": "c1c8ed98a878ba43ad6f4bcd9cd14352d234f324f89a1675f620f926b383023b",
+      "source_hash": "40b8df6f144125a08f2ec6dbb52c56f79cd025e22dfd7b991742fc846cab1b72",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.outside_visible_time_range",
-      "group": "spectrogram",
+      "key": "xy.point_limit",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "\nOutside visible time range",
-      "new_english": "\nOutside visible time range",
+      "old_english": " · point limit",
+      "new_english": " · point limit",
       "variables": [],
       "translation": null,
-      "source_hash": "d9a541fc6ca5b3cfb392ac30efe1e42d5afa76813bd9eda0d0e75564b98ab426",
+      "source_hash": "139343470b31f9a375c61f78ce39aafaf333f804b83676a5d276d53480dcebe1",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.overlap.half",
-      "group": "spectrogram",
+      "key": "xy.reset_xy_scales",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "50%",
-      "new_english": "50%",
+      "old_english": "Reset XY scales",
+      "new_english": "Reset XY scales",
       "variables": [],
       "translation": null,
-      "source_hash": "28fdae8deae31d6eafd18b70d878f6d8a3136f267ce273777c089a42ac590438",
+      "source_hash": "67527346be8d3569cc5ed892a56e70608e8454c7627bf0f978964e45e46cd2ef",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.overlap.seven_eighths",
-      "group": "spectrogram",
+      "key": "xy.shared_with_scope",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "87.5%",
-      "new_english": "87.5%",
+      "old_english": "Shared with Scope",
+      "new_english": "Shared with Scope",
       "variables": [],
       "translation": null,
-      "source_hash": "6c6ad36b010d4c388587c6f838636d95fdc357156e7a0e6878ae2113a62ebc2c",
+      "source_hash": "9657cdff2b069736e36a842e869d574697235d18d89fd360d55cfeeade6aa294",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.overlap.three_quarters",
-      "group": "spectrogram",
+      "key": "xy.source_changes_apply_on_start_held_xy_keeps_its",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "75%",
-      "new_english": "75%",
+      "old_english": "Source changes apply on Start. Held XY keeps its channels.",
+      "new_english": "Source changes apply on Start. Held XY keeps its channels.",
       "variables": [],
       "translation": null,
-      "source_hash": "10963ac2db22b5b879edcf195eaacd3866b19571110462807b83133c98182864",
+      "source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing",
-      "group": "spectrogram",
+      "key": "xy.t_ms",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Per-window bin amplitude · uncalibrated FS. Orange stripes: missing or invalid STFT. Blank: unavailable history.",
-      "new_english": "Per-window bin amplitude · uncalibrated FS. Orange stripes: missing or invalid STFT. Blank: unavailable history.",
-      "variables": [],
-      "translation": null,
-      "source_hash": "90e81bb0713d7ff08401e6aa5f27e5d7893447e63402755a987d99f26e3d3d5d",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.points",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "%{size} points",
-      "new_english": "%{size} points",
+      "old_english": "T%{sample_rate} ms · #%{sample}",
+      "new_english": "T%{sample_rate} ms · #%{sample}",
       "variables": [
-        "size"
+        "sample",
+        "sample_rate"
       ],
       "translation": null,
-      "source_hash": "9aaa22b3e64d8f96b49cd1cca8a4a3ddc4cb5f5ab2d623952fe1847032e0792b",
+      "source_hash": "62c5d2f748f07f2feb1bdb076ab476d479b8e383b35003f6bc8d6f886c47241b",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.preparing_history_view",
-      "group": "spectrogram",
+      "key": "xy.trace_snap",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Preparing history view…",
-      "new_english": "Preparing history view…",
+      "old_english": "Trace Snap",
+      "new_english": "Trace Snap",
       "variables": [],
       "translation": null,
-      "source_hash": "2f094f0bce7d4ea699322b630bc4173db8eb896a0f12bac54ccada5fc7338482",
+      "source_hash": "53c33d64cadd72144a24ae9f05ba16c99de559ec7654ce096ee24ccc2f8ef927",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.remove_dc_offset",
-      "group": "spectrogram",
+      "key": "xy.trace_snap_follows_a_trigger_relative_sample_auto_free",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Remove DC offset",
-      "new_english": "Remove DC offset",
+      "old_english": "Trace Snap follows a trigger-relative sample. Auto/free run may move the marker; Stop freezes it.",
+      "new_english": "Trace Snap follows a trigger-relative sample. Auto/free run may move the marker; Stop freezes it.",
       "variables": [],
       "translation": null,
-      "source_hash": "ab2c3442179ca283844b06668bf22596d8a844ad757a4fdb5e1c7e983a6e8a0d",
+      "source_hash": "e1b5f34ffe4a7e139af32429fa6a5bd10f3126cee62624c7d09250f8c71b78b1",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.s_ch",
-      "group": "spectrogram",
+      "key": "xy.trace_snap_selects_the_nearest_actual_pair_from_the",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{index} −%{age} s\nCH %{channel} · %{start}..%{end}",
-      "new_english": "%{index} −%{age} s\nCH %{channel} · %{start}..%{end}",
+      "old_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+      "new_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+      "variables": [],
+      "translation": null,
+      "source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.trigger",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "TRIGGER",
+      "new_english": "TRIGGER",
+      "variables": [],
+      "translation": null,
+      "source_hash": "f3bbca3a684e7f2d444140623724b2e48d741dcd44afeeae3ac4ee34f853c3f4",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.triggered",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": " · Triggered",
+      "new_english": " · Triggered",
+      "variables": [],
+      "translation": null,
+      "source_hash": "d819ec106235615ed868892b71c4a7ceaf98541191db9273daef5e2eb921ed6e",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.up_to_real_sample_pairs_longer_windows_show_the",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Up to %{xy} real sample pairs; longer windows show the latest portion.",
+      "new_english": "Up to %{xy} real sample pairs; longer windows show the latest portion.",
       "variables": [
-        "age",
-        "channel",
-        "end",
+        "xy"
+      ],
+      "translation": null,
+      "source_hash": "a1052af357dbb358884f58c52aecd817bd5841b565af2cbfaa531d5c1d23abc3",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.waiting_for_sample_pairs",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Waiting for sample pairs…",
+      "new_english": "Waiting for sample pairs…",
+      "variables": [],
+      "translation": null,
+      "source_hash": "81664c516200f18fbbaa4cb3bd592d286481f856d237ab098cc6068638f3d870",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.x_axis",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "X AXIS",
+      "new_english": "X AXIS",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ae931d3ad62c92ca84318e0a276132e367dda9b5962545d6d1020748ef452717",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.x_fs_div_y_fs_div",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2} · %{y_fs_per_div} FS/div",
+      "new_english": "X: %{channels} · %{x_fs_per_div} FS/div   Y: %{channels_2} · %{y_fs_per_div} FS/div",
+      "variables": [
+        "channels",
+        "channels_2",
+        "x_fs_per_div",
+        "y_fs_per_div"
+      ],
+      "translation": null,
+      "source_hash": "1fa29b100b8b5b30dd05a6641c6beddf2d2f5c5fb93a9ee14429b8030886d08a",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.x_fs_y_fs",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS",
+      "new_english": "X %{x_fs_per_div} FS · Y %{y_fs_per_div} FS",
+      "variables": [
+        "x_fs_per_div",
+        "y_fs_per_div"
+      ],
+      "translation": null,
+      "source_hash": "ca7cba63a07c95a6f49ac3c72162c43a8957bb6323f9c7cb08664fe4d979ea14",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.x_fs_y_fs_2",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS\n%{detail}",
+      "new_english": "%{index} X %{channels} %{point} FS · Y %{channels_2} %{point_2} FS\n%{detail}",
+      "variables": [
+        "channels",
+        "channels_2",
+        "detail",
         "index",
-        "start"
+        "point",
+        "point_2"
       ],
       "translation": null,
-      "source_hash": "8449ac870db8a743b452c4b8c79db09c34a4a7574c3169f3a2b381af66f2a338",
+      "source_hash": "b94fead5f1f653b7ccb5efc1f4582b77140181e3377a30261552800ae179a83d",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.s_no_stft_row_gap_or_unavailable",
-      "group": "spectrogram",
+      "key": "xy.x_y_use_the_same_input_frame_equal_axis",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "%{index} −%{age} s\nNo STFT row · gap or unavailable",
-      "new_english": "%{index} −%{age} s\nNo STFT row · gap or unavailable",
-      "variables": [
-        "age",
-        "index"
-      ],
-      "translation": null,
-      "source_hash": "0241ae851b3027b20f1f696b69def4a8d46780a9a28372baeb426867257bfed3",
-      "translated_source_hash": null
-    },
-    {
-      "key": "spectrogram.spectrogram",
-      "group": "spectrogram",
-      "reasons": [
-        "missing"
-      ],
-      "old_english": "Spectrogram",
-      "new_english": "Spectrogram",
+      "old_english": "X/Y use the same input frame. Equal axis scales preserve circles on the square plot.",
+      "new_english": "X/Y use the same input frame. Equal axis scales preserve circles on the square plot.",
       "variables": [],
       "translation": null,
-      "source_hash": "f913745341afc7f6e3e86396a560ebe13ffc1789e4fe750abfc94497d046b49c",
+      "source_hash": "77ab5d275570e90fd6790f25b621a772c3f28a7df1400d5e3e6b003a2bf7b8ea",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.start_input_to_begin_acquisition",
-      "group": "spectrogram",
+      "key": "xy.xy_free_cursor",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "Start input to begin acquisition",
-      "new_english": "Start input to begin acquisition",
+      "old_english": "XY · Free cursor",
+      "new_english": "XY · Free cursor",
       "variables": [],
       "translation": null,
-      "source_hash": "512194cd0ab6b2929c7d7448b04cfded03ed34e0a802615f208e56e90b8b1544",
+      "source_hash": "321138b5c172728f34f15c967c0b22ecde786ca1e38bbd033bf4f5e3cd7d867d",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.time_range",
-      "group": "spectrogram",
+      "key": "xy.xy_lissajous",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "TIME RANGE",
-      "new_english": "TIME RANGE",
+      "old_english": "XY / Lissajous",
+      "new_english": "XY / Lissajous",
       "variables": [],
       "translation": null,
-      "source_hash": "8118b633b0e99a99c0bfea89fe12502929b700fead5337161471d9d3ab6f20fe",
+      "source_hash": "3ed5889089156b6001938edbc8b7d0800ac8e3a22237c24f9879aa7edfc3dfb4",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.to",
-      "group": "spectrogram",
+      "key": "xy.xy_requires_at_least_two_input_channels",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "To",
-      "new_english": "To",
+      "old_english": "XY requires at least two input channels.",
+      "new_english": "XY requires at least two input channels.",
       "variables": [],
       "translation": null,
-      "source_hash": "f4b06ef6d3c81436f60a318c81c42f8f7e2d774d45a22f3b9b5f3b6980d28146",
+      "source_hash": "c942bb606fab6585b4e721f80677030e273187c3639f8ab7b0efbc22887172ca",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.to_uses_nyquist_log_excludes_dc",
-      "group": "spectrogram",
+      "key": "xy.xy_requires_two_input_channels",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "To = 0 uses Nyquist. Log excludes DC.",
-      "new_english": "To = 0 uses Nyquist. Log excludes DC.",
+      "old_english": "XY requires two input channels",
+      "new_english": "XY requires two input channels",
       "variables": [],
       "translation": null,
-      "source_hash": "d4d128a2809bf3c181e351f46c9c52cc124c46e2e86c120976b81020780c2e4e",
+      "source_hash": "bf1c553ca24a41dfcb0125abf5c3b1c0cc4fb5d42c25b326af574a73966c68d8",
       "translated_source_hash": null
     },
     {
-      "key": "spectrogram.window",
-      "group": "spectrogram",
+      "key": "xy.xy_trace_snap_cursor",
+      "group": "xy",
       "reasons": [
         "missing"
       ],
-      "old_english": "WINDOW",
-      "new_english": "WINDOW",
+      "old_english": "XY · Trace Snap cursor",
+      "new_english": "XY · Trace Snap cursor",
       "variables": [],
       "translation": null,
-      "source_hash": "2480270a05636e58c46f923aae9a125cc9bd241e95ac869979cc934c49e92886",
+      "source_hash": "fb77622e43950f8db39d1c1835237ac29a9a1336a4eec5dfc56433f00e2899a7",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.xy_unavailable_assigned_channel_missing",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "XY unavailable: assigned channel missing",
+      "new_english": "XY unavailable: assigned channel missing",
+      "variables": [],
+      "translation": null,
+      "source_hash": "fd05d69a74610f0946b1bfa27c3083fa2a4199f33fd32905e72631f9cbb5b596",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.xy_unavailable_mono_input",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "XY unavailable: mono input",
+      "new_english": "XY unavailable: mono input",
+      "variables": [],
+      "translation": null,
+      "source_hash": "ec5b9419b93aafd1b8bee08c950dd3979abb080860ec11561d898f7f709afa0c",
+      "translated_source_hash": null
+    },
+    {
+      "key": "xy.y_axis",
+      "group": "xy",
+      "reasons": [
+        "missing"
+      ],
+      "old_english": "Y AXIS",
+      "new_english": "Y AXIS",
+      "variables": [],
+      "translation": null,
+      "source_hash": "74022c1abdb3d772114e66a29bcb2dee7a2ea100bcaf5849fc4371616e2dc86b",
       "translated_source_hash": null
     }
   ]
