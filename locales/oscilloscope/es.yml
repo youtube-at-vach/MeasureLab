@@ -100,7 +100,7 @@ oscilloscope.source_level_raw_fs_the_level_follows_the_source: '%{display}
   %{scope_trigger_marker_status} · fuente %{channel} · nivel %{level} FS sin calibrar.
   El nivel sigue el rango vertical del canal fuente, que puede diferir del eje del
   canal seleccionado.'
-oscilloscope.spectrogram_time_hz_cursor: Spectrogram · cursor de tiempo / Hz
+oscilloscope.spectrogram_time_hz_cursor: Cursores de tiempo / frecuencia
 oscilloscope.start_input_and_wait_for_a_single_triggered_capture: Inicie la entrada
   y espere una captura disparada única
 oscilloscope.start_single_capture: Iniciar captura única
