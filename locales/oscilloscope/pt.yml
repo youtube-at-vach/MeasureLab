@@ -35,9 +35,9 @@ oscilloscope.edge_names.falling: Descendente
 oscilloscope.edge_names.free: Livre
 oscilloscope.edge_names.rising: Ascendente
 oscilloscope.falling_edge: Borda descendente
-oscilloscope.fit_amplitude: Ajustar amplitude
-oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajuste o pico bruto do
-  canal selecionado e centralize seu offset
+oscilloscope.fit_amplitude: Ajustar escala
+oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajustar a escala vertical
+  ao pico bruto do canal selecionado e zerar o offset.
 oscilloscope.free_run: Execução livre
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
