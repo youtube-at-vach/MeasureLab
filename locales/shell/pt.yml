@@ -1,0 +1,125 @@
+_version: 1
+shell.add_an_instrument_to_edit_its_details: Adicione um instrumento para editar seus
+  detalhes.
+shell.add_instrument: Adicionar instrumento…
+shell.add_instruments_to_observe_and_generate_signals_together_removing: Adicione
+  instrumentos para observar e gerar sinais em conjunto. Remover um painel mantém
+  sua análise e saída em execução.
+shell.analysis_and_output_continue: A análise e a saída continuam
+shell.analysis_enabled_input_live: Análise ativada · entrada ao vivo
+shell.analysis_enabled_waiting_for_input: Análise ativada · aguardando entrada
+shell.analysis_on: ANÁLISE ATIVADA
+shell.analysis_status: Status da análise…
+shell.analysis_stopped: Análise · parada
+shell.audio_i_o: Audio I/O
+shell.audio_i_o_settings: Configurações de Audio I/O
+shell.back_to_instruments: Voltar aos instrumentos
+shell.calibration: Calibração
+shell.compact_sidebar: Barra lateral compacta
+shell.ctrl_open_an_instrument_ctrl_left_right_select_a: 'Ctrl + 1…7: abrir um instrumento.
+  Ctrl + Esquerda / Direita: selecionar um painel do console.'
+shell.details: Detalhes
+shell.display_scale: Escala da tela
+shell.display_selection_does_not_start_or_stop_measurement: A seleção da tela não
+  inicia nem para a medição.
+shell.error: '! Erro'
+shell.escape_cancel_editing_close_the_front_menu_window_then: 'Escape: cancelar a
+  edição, fechar o menu/janela frontal e voltar de I/O ou dos detalhes estreitos.'
+shell.expand_sidebar: Expandir barra lateral
+shell.file_paths_status: Caminhos de arquivos e status
+shell.find_an_instrument: Encontrar um instrumento
+shell.finishing: … Finalizando
+shell.finishing_2: FINALIZANDO
+shell.first_pane_share: Dividir primeiro painel
+shell.font_license: Licença da fonte Noto Sans CJK
+shell.group.analysis: ANÁLISE
+shell.group.monitor: MONITORAR
+shell.group.signal: SINAL
+shell.help: Ajuda
+shell.in: ENTRADA
+shell.input: ENTRADA
+shell.input_finishing_analysis: Entrada · finalizando análise
+shell.input_live: ▶ Entrada ao vivo
+shell.input_opening_device: Entrada · abrindo dispositivo
+shell.input_output: Entrada / saída
+shell.input_stopped: ■ Entrada parada
+shell.instrument: 'Instrumento: %{name}'
+shell.instrument_names.comparison: 2 canais síncronos
+shell.instrument_names.generator: Generator
+shell.instrument_names.lockin: Lock-in
+shell.instrument_names.scope: Scope
+shell.instrument_names.spectrogram: Spectrogram
+shell.instrument_names.spectrum: Spectrum
+shell.instrument_names.xy: XY
+shell.instruments: Instrumentos
+shell.instruments_2: INSTRUMENTOS
+shell.language: Idioma
+shell.layout_names.columns: Lado a lado
+shell.layout_names.grid: 2 × 2
+shell.layout_names.rows: Empilhado
+shell.layout_names.tabs: Abas
+shell.live: AO VIVO
+shell.live_held_waiting_describe_acquisition_validity_and_calibration_are: AO VIVO
+  / RETIDO / AGUARDANDO descrevem a aquisição; validade e calibração são exibidas
+  separadamente.
+shell.lock_in: Lock-in · %{enabled}
+shell.measurement: Medição
+shell.menu: Menu
+shell.multi_instrument_arrangement: Organização de vários instrumentos
+shell.multi_instrument_view: Visualização de vários instrumentos
+shell.no_matching_instruments: Nenhum instrumento correspondente
+shell.off: ■ Desligado
+shell.on: ▶ Ligado
+shell.open_single: Abrir visualização única
+shell.opening: … Abrindo
+shell.opening_2: ABRINDO
+shell.output_error: Saída · erro
+shell.output_running: Saída · em execução
+shell.output_start_pending: Saída · início pendente
+shell.output_starting: Saída · iniciando
+shell.output_stopped: Saída · parada
+shell.output_stopping: Saída · parando
+shell.purpose.frequency_changes_over_time: Frequência ao longo do tempo
+shell.purpose.frequency_levels_and_power: Níveis de frequência e potência
+shell.purpose.generate_signals_on_output_channels: Gerar sinais nos canais de saída
+shell.purpose.ref_sig_gain_phase_and_delay: Ganho, fase e atraso REF / SIG
+shell.purpose.tone_amplitude_and_phase_vs_ref: Amplitude e fase do tom em relação
+  a REF
+shell.purpose.two_channel_x_y_relationship: Relação X/Y de dois canais
+shell.purpose.waveform_over_time: Forma de onda ao longo do tempo
+shell.remove_from_view: Remover da visualização
+shell.restoring_settings: Restaurando configurações…
+shell.running: ▶ Em execução
+shell.scope_settings: Configurações do Scope
+shell.scope_spectrum_stft_xy_input_running: Scope / Spectrum / STFT / XY · entrada
+  em execução
+shell.selected: '%{name} · Selecionado'
+shell.selected_instrument_details: Detalhes do instrumento selecionado
+shell.shared_input: Entrada compartilhada · %{state}
+shell.shared_input_for_scope_spectrum_spectrogram_and_xy_acquisition: Entrada compartilhada
+  para Scope, Spectrum, Spectrogram e XY. Aquisição e resultados retidos são exibidos
+  em cada instrumento.
+shell.shared_input_live: Entrada compartilhada · ao vivo
+shell.shared_input_stopped: Entrada compartilhada · parada
+shell.space_start_stop_shared_input_typing_in_an_editor: 'Espaço: iniciar / parar
+  a entrada compartilhada. Digitar em um editor não altera a entrada.'
+shell.split_view_with: Dividir visualização com…
+shell.starting: … Iniciando
+shell.stop_lock_in_analysis: Parar análise Lock-in
+shell.stop_synchronous_analysis: Parar análise síncrona
+shell.stopped: ■ Parado
+shell.stopped_2: PARADO
+shell.stopping: … Parando
+shell.synchronous_ch: 2 canais síncronos · %{enabled}
+shell.tab_shift_tab_move_keyboard_focus_enter_space_activate: 'Tab / Shift + Tab:
+  mover o foco do teclado. Enter / Espaço: ativar um controle em foco.'
+shell.tabs_keep_controls_and_readings_visible_at_this_size: As abas mantêm os controles
+  e as leituras visíveis neste tamanho. A organização solicitada retorna quando houver
+  espaço.
+shell.this_replaces_the_saved_multi_instrument_view_use_undo: Isso substitui a visualização
+  salva de vários instrumentos. Use Desfazer substituição lá para restaurá-la.
+shell.ui_fps_cpu_fft_ms: '%{adapter} · UI %{fps} fps · FFT da CPU %{fft_ms} ms'
+shell.undo_replacement: Desfazer substituição
+shell.view: Visualização
+shell.wait: … Aguarde
+shell.waiting_for_input: AGUARDANDO ENTRADA

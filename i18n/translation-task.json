@@ -1,7 +1,7 @@
 {
   "version": 1,
-  "base_revision": "1c5bef2488a4635829e8c43b05915f601ef9ae2d",
-  "locale": "es",
+  "base_revision": "4a8770e224b205cf4206144f074a11f2c8924575",
+  "locale": "pt",
   "groups": [
     "common",
     "comparison",
