@@ -31,7 +31,14 @@ impl ScopeApp {
                 if width < 1180.0 {
                     driver.click(self, i18n::text("shell.menu"))?;
                 }
-                driver.click(self, i18n::text("shell.view"))?;
+                // View and the inspector's Display label share a translation
+                // in some locales. Select the menu at the top of the window.
+                let view = driver
+                    .text_positions(i18n::text("shell.view"))
+                    .into_iter()
+                    .min_by(|a, b| a.y.total_cmp(&b.y))
+                    .ok_or_else(|| "View menu is not visible".to_string())?;
+                driver.click_at(self, view);
                 driver.click(self, i18n::text("shell.language"))?;
                 driver.visible_text_rect(locale.native_name())?;
                 driver.click(self, locale.native_name())?;

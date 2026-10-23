@@ -18,6 +18,7 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 
 def cases(devices=()):
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
+    yield "language-demo-controls", False, {"LANGUAGE": "1", "VIEW": "scope"}
     yield "language-ja-wide", False, {"VIEW": "scope", "IDLE": "1", "LOCALE": "ja"}
     yield "language-ja-compact", True, {"SETTINGS": "io", "IDLE": "1", "ZOOM": "1.25", "LOCALE": "ja"}
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
@@ -164,6 +165,8 @@ def main():
             log = result.stdout + result.stderr
             display_ok = "UI assertions only OK:" in log if args.assertions_only else screenshot.is_file()
             passed = result.returncode == 0 and display_ok and "GUI navigation OK:" in log
+            if "LANGUAGE" in options:
+                passed = passed and "Language UI OK: nine locales" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:

@@ -1202,6 +1202,9 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if smoke {
             app.check_redesign_navigation()?;
+            if std::env::var_os("MEASURELAB_UI_SMOKE_LANGUAGE").is_some() {
+                app.check_language_controls()?;
+            }
             if std::env::var_os("MEASURELAB_UI_SMOKE_SPECTROGRAM_DISPLAY").is_some() {
                 app.check_spectrogram_display_interactions()?;
             }

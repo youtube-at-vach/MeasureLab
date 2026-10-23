@@ -117,11 +117,12 @@ I5の独立した受け入れは完了し、以下を回帰検証の入口とす
 ./scripts/cargo.sh test --locked i18n::tests
 ./scripts/cargo.sh build --release --locked --features qa
 caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
-    --case widget-interactions --case scope-generator-views --case scope-flow-held-wide \
+    --case widget-interactions --case language-demo-controls \
+    --case scope-generator-views --case scope-flow-held-wide \
     --output dist/i18n-i5
 ```
 
-`gui_qa/language.rs`は実メニューへのクリックで全9localeを切り替え、通常幅・狭幅・zoom・模擬native scaleで停止操作の到達性、選択・測定設定・校正・入力世代・出力コマンドを維持する。保持中は入力条件・Scope生サンプル・欠落も比較する。通常Generatorの内部接続では入力フレームとSpectrum窓、出力の進行を確認し、既存の有限Stop・独立DFT／Lock-in照合・JSON／CSV再利用へ続ける。物理出力を使わない。
+`gui_qa/language.rs`は実メニューへのクリックで全9localeを切り替え、通常幅・狭幅・zoom・模擬native scaleで入出力の開始／停止ラベル全体の表示と、選択・測定設定・校正・入力世代・出力コマンドの維持を確認する。`language-demo-controls`はデモ入力の長い開始ラベルも対象にする。保持中は入力条件・Scope生サンプル・欠落も比較する。通常Generatorの内部接続では入力フレームとSpectrum窓、出力の進行を確認し、既存の有限Stop・独立DFT／Lock-in照合・JSON／CSV再利用へ続ける。物理出力を使わない。
 
 フレームCPUはフォント・レイアウトをウォームアップして、各localeと同じ画面の英語p95を比較する。メニュー切り替えに要した時間は別に記録し、GPU・scanout・物理入出力や、i18n導入前の性能を保証しない。試験中はビルド・別の音声試験を並行しない。許容差・合否はQAコードを正本とする。ログ・画像・ソース／バイナリ識別はGit管理外の指定出力先へ保存する。
 

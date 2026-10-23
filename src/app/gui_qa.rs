@@ -217,6 +217,15 @@ impl Driver {
 }
 
 impl ScopeApp {
+    pub(super) fn check_language_controls(&mut self) -> Result<(), String> {
+        let mut driver = Driver::new();
+        driver.frame(self, vec![]);
+        driver.frame(self, vec![]);
+        self.check_language_interactions(&mut driver)
+    }
+}
+
+impl ScopeApp {
     pub(super) fn check_input_guidance(&mut self) -> Result<(), String> {
         use display::ScopeNotice;
         assert!(self.core.is_none() && !self.running() && self.pending_stop.is_none());

@@ -173,7 +173,8 @@ impl ScopeApp {
                 } else {
                     self.shell_menus(ui, false);
                 }
-                ui.with_layout(
+                ui.allocate_ui_with_layout(
+                    vec2(ui.available_width(), ui.spacing().interact_size.y),
                     egui::Layout::right_to_left(egui::Align::Center).with_main_wrap(true),
                     |ui| {
                         self.transport(ui);
