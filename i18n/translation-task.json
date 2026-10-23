@@ -1,26 +1,1957 @@
 {
-  "version": 1,
-  "base_revision": "1b03534eb72dc0314396af38dfbb1535571fea31",
-  "locale": "ru",
-  "groups": [
-    "oscilloscope"
-  ],
-  "review_keys": [
-    "oscilloscope.reset_time_position"
-  ],
-  "entries": [
+  "version": 2,
+  "kind": "visual_review",
+  "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+  "source_paths": [
     {
-      "key": "oscilloscope.reset_time_position",
-      "group": "oscilloscope",
-      "reasons": [
-        "review"
+      "path": "locales/common/en-US.yml",
+      "before_hash": "1fe79ed01302d7d85df6ebdabfcc6ce7595f6736cf29b0f846e0d3f109729e7e",
+      "after_hash": "10c1b39d4bff734204cafa85c199f8c567ad9c005194e95a7b645f2cf6012abb"
+    },
+    {
+      "path": "locales/lockin/en-US.yml",
+      "before_hash": "c3ebf9b51eb00856b27a324f991fe3b89afec41217eab5d0ed4e122ceda28ff0",
+      "after_hash": "b94d44714640bc56a004d33154734c96a7627ca856d469937b72d97f9385819c"
+    },
+    {
+      "path": "locales/oscilloscope/en-US.yml",
+      "before_hash": "841834df8840ee039b4821ddc9e0c60e7c5752104fd5a37318ede536177fa94d",
+      "after_hash": "4b3e59e3164da063b8bc162e8f1e454d5177593fd796c7b4e124b0b0bde8974c"
+    },
+    {
+      "path": "scripts/i18n.py",
+      "before_hash": "9df1e24e2ec9b6f1507495c8c14fe3bdaefc60b6bdf0474aaba6eb7e5d9b1204",
+      "after_hash": "92accba92c955c0167b5ce221aec65140ae7607674720d613870dd08ed58fd10"
+    },
+    {
+      "path": "scripts/qa_gui_redesign.py",
+      "before_hash": "5e369f23b8ff276203cb650feb714d1da26858f2175b969002be1e6e3529f2c9",
+      "after_hash": "c10756b8e57cbc1417c1a1669a9e3c923a2df8f07360d9227b9627f30552558e"
+    },
+    {
+      "path": "scripts/test_i18n.py",
+      "before_hash": "4f9b9cbb4649307f4bc5c545c743ba4adcf7d624b4ec8515c56f98ecd6cf1ccf",
+      "after_hash": "fa20e017f21f41106a6fbfa597d004445ab3af7abf03d8d8302550072f5ea81f"
+    },
+    {
+      "path": "scripts/translate.py",
+      "before_hash": "d0416948427c532358afd6187ca769dc9b44a1313b4d9ec693fd09ba5704c8a6",
+      "after_hash": "086c21deafc87b82062a58416bf59039be50f52bb2f98f80c11f6966dbd562c5"
+    },
+    {
+      "path": "src/app.rs",
+      "before_hash": "c02fd2735bb4bb129ea3b72faada9a456e231e0b0df056b7f06a302f136fe6de",
+      "after_hash": "f9c13d7539fbab3fe584736245c213f62600324cf98c70ba2f334f33be3c4af4"
+    },
+    {
+      "path": "src/app/gui_qa.rs",
+      "before_hash": "93c5b77364a9ad893b806a6b5db6c9a430001fa9153dfa9ae530234f5d6af089",
+      "after_hash": "f12e89dc831d0f92f79a64650ecba7bf597b372f01c5efce9179407b8439b063"
+    },
+    {
+      "path": "src/app/gui_qa/language.rs",
+      "before_hash": "6da666798226a1fedbb1cbf0fe022990bdd3899badbf7ccc3a46d48e6af00805",
+      "after_hash": "053ae6faa3984dd9013dcbcc3fc3d19d9ad931393a9032eef9bd38ab325d27f4"
+    },
+    {
+      "path": "src/app/lockin_panel.rs",
+      "before_hash": "72ee5e28f1e94a676305a050a06b442040411204d9dbd30991cba46db509b091",
+      "after_hash": "d3a92e028f686e32274fb5a45e469d041eb27e673168252581894590307f4378"
+    },
+    {
+      "path": "src/app/monitor_controls.rs",
+      "before_hash": "e599fe8b6639c9bb1a99eed15f23965ddaae28c9c84c3c3f47c657f69b078de8",
+      "after_hash": "31f27f27900a0fff3af466652d208a07d44ed0e1616517321824eec15f6e78ba"
+    },
+    {
+      "path": "src/app/shell.rs",
+      "before_hash": "5d14c50ff94b008a82aef13282607d8c85bf4cb5c57eaef46202123906fe6914",
+      "after_hash": "5baba32c3ca16af105e2c5ad63eb45f27d7465e975a5c5cae450c93900a7f2d9"
+    }
+  ],
+  "tasks": [
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "common"
       ],
-      "old_english": "Reset time position",
-      "new_english": "Reset time position",
-      "variables": [],
-      "translation": "Сбросить положение времени",
-      "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
-      "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
+      "entries": [
+        {
+          "key": "common.choose_an_available_trigger_source_in_scope_settings_or",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Choose an available trigger source in Scope settings, or change the input source in Audio I/O.",
+          "new_english": "Choose an available trigger source in Scope settings, or change the input source in Audio I/O.",
+          "variables": [],
+          "translation": "スコープ設定で利用可能なトリガー元を選ぶか、オーディオ入出力で入力元を変更してください。",
+          "source_hash": "a1de7ea47b21c5e0d54d08a9d75481f9645fff627fca62ed3a8f1a471e2ce655",
+          "translated_source_hash": "a1de7ea47b21c5e0d54d08a9d75481f9645fff627fca62ed3a8f1a471e2ce655"
+        },
+        {
+          "key": "common.input_is_active_check_the_trigger_source_level_and",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Input is active. Check the trigger source, level and edge in Scope settings, or use Auto mode.",
+          "new_english": "Input is active. Check the trigger source, level and edge in Scope settings, or use Auto mode.",
+          "variables": [],
+          "translation": "入力は動作中です。スコープ設定でトリガー元・レベル・エッジを確認するか、Autoモードを使用してください。",
+          "source_hash": "a9b71b1e6bf93ffb4ff6de96b6d1cdca34d58337407e4803c81376c40ef0e15d",
+          "translated_source_hash": "a9b71b1e6bf93ffb4ff6de96b6d1cdca34d58337407e4803c81376c40ef0e15d"
+        },
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "未翻訳の文言は英語で表示します。計器の翻訳は準備中です。",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        },
+        {
+          "key": "common.open_input_settings_to_choose_the_source_then_press",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Open input settings to choose the source, then press Start input in the top bar.",
+          "new_english": "Open input settings to choose the source, then press Start input in the top bar.",
+          "variables": [],
+          "translation": "入力設定を開いて入力元を選び、上部バーの「入力を開始」を押してください。",
+          "source_hash": "b866cfc60be8771b45c1f65e10b9fa83cb644af332e6a63a565683df5328d366",
+          "translated_source_hash": "b866cfc60be8771b45c1f65e10b9fa83cb644af332e6a63a565683df5328d366"
+        },
+        {
+          "key": "common.raw_scope_fs_relative_sample_position",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Raw Scope FS · relative sample position",
+          "new_english": "Raw Scope FS · relative sample position",
+          "variables": [],
+          "translation": "スコープの生FS · 相対サンプル位置",
+          "source_hash": "f1318d5af8acc86fc938d554418b8a6f4f207203ce141fc1216c530e1770e67b",
+          "translated_source_hash": "f1318d5af8acc86fc938d554418b8a6f4f207203ce141fc1216c530e1770e67b"
+        },
+        {
+          "key": "common.select_a_channel_below_the_plot_and_choose_its",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Select a channel below the plot and choose its Input source in Scope settings, or change the input source in Audio I/O.",
+          "new_english": "Select a channel below the plot and choose its Input source in Scope settings, or change the input source in Audio I/O.",
+          "variables": [],
+          "translation": "プロット下でチャンネルを選び、スコープ設定でその入力元を指定するか、オーディオ入出力で入力元を変更してください。",
+          "source_hash": "890c83c345ee63570142f8e15f1cf30312c0af9b9b3d12e654c70a4e300c491f",
+          "translated_source_hash": "890c83c345ee63570142f8e15f1cf30312c0af9b9b3d12e654c70a4e300c491f"
+        },
+        {
+          "key": "common.select_an_input_source",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Select an input source",
+          "new_english": "Select an input source",
+          "variables": [],
+          "translation": "入力元を選択",
+          "source_hash": "3150a9f6fe0e0e28c45f3d881e024ef961c095d1cb252ded1bbee3e1c0a5c558",
+          "translated_source_hash": "3150a9f6fe0e0e28c45f3d881e024ef961c095d1cb252ded1bbee3e1c0a5c558"
+        },
+        {
+          "key": "common.trigger_help",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "T at the top marks the time reference (0 ms); T on the right marks the trigger level in raw FS for its source channel. Without a confirmed trigger, both are settings only.",
+          "new_english": "T at the top marks the time reference (0 ms); T on the right marks the trigger level in raw FS for its source channel. Without a confirmed trigger, both are settings only.",
+          "variables": [],
+          "translation": "上端のTは時間基準（0 ms）、右端のTはトリガー元チャンネルの生FSでのトリガーレベルを示します。トリガーが確定していないときは、どちらも設定値のみを示します。",
+          "source_hash": "dc64076523a8dcbdd239ed8d76cf6e7bf53b28dc83a3d5dff0ef27bcc1c64437",
+          "translated_source_hash": "dc64076523a8dcbdd239ed8d76cf6e7bf53b28dc83a3d5dff0ef27bcc1c64437"
+        },
+        {
+          "key": "common.trigger_source_outside_the_input_range",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Trigger source outside the input range",
+          "new_english": "Trigger source outside the input range",
+          "variables": [],
+          "translation": "トリガー元が入力範囲外です",
+          "source_hash": "0f9bea0380c5582a986c01f533907bc4a0fda7e2075147929bb8f4156af3be0d",
+          "translated_source_hash": "0f9bea0380c5582a986c01f533907bc4a0fda7e2075147929bb8f4156af3be0d"
+        },
+        {
+          "key": "common.waiting_for_the_input_source_and_its_channel_count",
+          "group": "common",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Waiting for the input source and its channel count to be ready.",
+          "new_english": "Waiting for the input source and its channel count to be ready.",
+          "variables": [],
+          "translation": "入力元とチャンネル数の準備を待っています。",
+          "source_hash": "42abde93b63b51679b446ead2f3701d19358fc60b78f9129e3ff88443efbe596",
+          "translated_source_hash": "42abde93b63b51679b446ead2f3701d19358fc60b78f9129e3ff88443efbe596"
+        }
+      ],
+      "review_keys": [
+        "common.choose_an_available_trigger_source_in_scope_settings_or",
+        "common.input_is_active_check_the_trigger_source_level_and",
+        "common.open_input_settings_to_choose_the_source_then_press",
+        "common.raw_scope_fs_relative_sample_position",
+        "common.select_a_channel_below_the_plot_and_choose_its",
+        "common.select_an_input_source",
+        "common.trigger_help",
+        "common.trigger_source_outside_the_input_range",
+        "common.waiting_for_the_input_source_and_its_channel_count"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "io"
+      ],
+      "entries": [
+        {
+          "key": "io.input_source",
+          "group": "io",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Input source: %{source}",
+          "new_english": "Input source: %{source}",
+          "variables": [
+            "source"
+          ],
+          "translation": "入力元：%{source}",
+          "source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b",
+          "translated_source_hash": "d14e160a3c04fbb8f70885a42b82c35d45127223b32640fcc74159864665e16b"
+        }
+      ],
+      "review_keys": [
+        "io.input_source"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.autoset_held",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+          "new_english": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+          "variables": [
+            "frequency"
+          ],
+          "translation": "保持中の捕捉波形に振幅を合わせました。時間軸／トリガーは次回開始時に適用します（%{frequency} Hz）",
+          "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
+          "translated_source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e"
+        },
+        {
+          "key": "oscilloscope.capture_once_on_the_next_trigger_crossing",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Capture once on the next trigger crossing",
+          "new_english": "Capture once on the next trigger crossing",
+          "variables": [],
+          "translation": "次のトリガー交差で1回捕捉",
+          "source_hash": "9db8198e1d68e5270e330e824e0c4295685bbb03af049a84b7ccff68626e6ed6",
+          "translated_source_hash": "9db8198e1d68e5270e330e824e0c4295685bbb03af049a84b7ccff68626e6ed6"
+        },
+        {
+          "key": "oscilloscope.fit_amplitude",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit amplitude",
+          "new_english": "Fit amplitude",
+          "variables": [],
+          "translation": "振幅を合わせる",
+          "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+          "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+        },
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "選択したチャンネルの生ピークに振幅を合わせ、オフセットを中央に設定",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.input_source",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Input source",
+          "new_english": "Input source",
+          "variables": [],
+          "translation": "入力元",
+          "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+          "translated_source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b"
+        },
+        {
+          "key": "oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "%{channel} · %{reading}\nInterval %{start}..%{end} (exclusive end) · generation %{input_generation} · nominal %{sample_rate} Hz. %{channel_2}. Waveform and trigger are raw FS.",
+          "new_english": "%{channel} · %{reading}\nInterval %{start}..%{end} (exclusive end) · generation %{input_generation} · nominal %{sample_rate} Hz. %{channel_2}. Waveform and trigger are raw FS.",
+          "variables": [
+            "channel",
+            "channel_2",
+            "end",
+            "input_generation",
+            "reading",
+            "sample_rate",
+            "start"
+          ],
+          "translation": "%{channel} · %{reading}\n区間 %{start}..%{end}（終端を含まない） · 入力世代 %{input_generation} · 公称 %{sample_rate} Hz。%{channel_2}。波形とトリガーには生FSを使用します。",
+          "source_hash": "cf579ed063d29423a695710ec193d4a738ddfc757686d3a4d4bd1db0d5873c33",
+          "translated_source_hash": "cf579ed063d29423a695710ec193d4a738ddfc757686d3a4d4bd1db0d5873c33"
+        },
+        {
+          "key": "oscilloscope.ms_div_waveform_raw_fs",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
+          "new_english": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
+          "variables": [
+            "scope_display_ms_per_div"
+          ],
+          "translation": "%{scope_display_ms_per_div} ms/div · 波形：生FS",
+          "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
+          "translated_source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759"
+        },
+        {
+          "key": "oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "%{channel} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
+          "new_english": "%{channel} · No acquired samples\nInput conditions are not acquired. Waveform and trigger settings use raw FS.",
+          "variables": [
+            "channel"
+          ],
+          "translation": "%{channel} · 取得サンプルなし\n入力条件は未取得です。波形とトリガーの設定には生FSを使用します。",
+          "source_hash": "ceff997455de4f81e86663a3a5cc73d4814d450c052e79adf95e20f00552b7db",
+          "translated_source_hash": "ceff997455de4f81e86663a3a5cc73d4814d450c052e79adf95e20f00552b7db"
+        },
+        {
+          "key": "oscilloscope.source",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Source",
+          "new_english": "Source",
+          "variables": [],
+          "translation": "トリガー元",
+          "source_hash": "0e570ca6fabe24f94e52c1833f3ffd25567022beb826fa16891f3322051bc221",
+          "translated_source_hash": "0e570ca6fabe24f94e52c1833f3ffd25567022beb826fa16891f3322051bc221"
+        },
+        {
+          "key": "oscilloscope.source_level_raw_fs_the_level_follows_the_source",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "%{display}\n%{scope_trigger_marker_status} · source %{channel} · level %{level} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
+          "new_english": "%{display}\n%{scope_trigger_marker_status} · source %{channel} · level %{level} raw FS. The level follows the source channel's vertical range, which may differ from the selected channel's axis.",
+          "variables": [
+            "channel",
+            "display",
+            "level",
+            "scope_trigger_marker_status"
+          ],
+          "translation": "%{display}\n%{scope_trigger_marker_status} · トリガー元 %{channel} · レベル %{level} 生FS。レベルはトリガー元チャンネルの縦軸レンジに従います。選択中のチャンネルの軸とは異なる場合があります。",
+          "source_hash": "36e8de28ee92f6ce75298ff4141140d94f69d2766da27dadbec893489125aa27",
+          "translated_source_hash": "36e8de28ee92f6ce75298ff4141140d94f69d2766da27dadbec893489125aa27"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "スペクトログラム · 時間／周波数カーソル",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        },
+        {
+          "key": "oscilloscope.start_input_and_wait_for_a_single_triggered_capture",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Start input and wait for a single triggered capture",
+          "new_english": "Start input and wait for a single triggered capture",
+          "variables": [],
+          "translation": "入力を開始して、トリガーで1回捕捉するまで待ちます",
+          "source_hash": "66f0436edf78fe6e103cd927a2748a1d4144219f94473bfd4f623e83d32331d4",
+          "translated_source_hash": "66f0436edf78fe6e103cd927a2748a1d4144219f94473bfd4f623e83d32331d4"
+        },
+        {
+          "key": "oscilloscope.start_single_capture",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Start single capture",
+          "new_english": "Start single capture",
+          "variables": [],
+          "translation": "シングル捕捉を開始",
+          "source_hash": "a8d5bf0618eaf606dee759a890894499efe99511b9bdc89b5fc9faaa8716e002",
+          "translated_source_hash": "a8d5bf0618eaf606dee759a890894499efe99511b9bdc89b5fc9faaa8716e002"
+        },
+        {
+          "key": "oscilloscope.t_markers_captured",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "T markers: captured",
+          "new_english": "T markers: captured",
+          "variables": [],
+          "translation": "Tマーカー：捕捉済み",
+          "source_hash": "07d577d66fdc84977acf98b0d62d61ccdc318db4e6bf59417a21dd314fcd9857",
+          "translated_source_hash": "07d577d66fdc84977acf98b0d62d61ccdc318db4e6bf59417a21dd314fcd9857"
+        },
+        {
+          "key": "oscilloscope.trigger_source_unavailable",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Trigger source unavailable",
+          "new_english": "Trigger source unavailable",
+          "variables": [],
+          "translation": "トリガー元を利用できません",
+          "source_hash": "4d4b4daeaf32356594e2a8169b4132ed85a904bb6011678b91a1febafd463430",
+          "translated_source_hash": "4d4b4daeaf32356594e2a8169b4132ed85a904bb6011678b91a1febafd463430"
+        },
+        {
+          "key": "oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Update on trigger crossings; hold the last capture while waiting",
+          "new_english": "Update on trigger crossings; hold the last capture while waiting",
+          "variables": [],
+          "translation": "トリガー交差で更新し、待機中は最後の捕捉を保持",
+          "source_hash": "14c8dc71bc614c180b8ae751814dd82a97de7fd70527439c8621170049894ede",
+          "translated_source_hash": "14c8dc71bc614c180b8ae751814dd82a97de7fd70527439c8621170049894ede"
+        },
+        {
+          "key": "oscilloscope.waiting_previous_capture",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Waiting · previous capture",
+          "new_english": "Waiting · previous capture",
+          "variables": [],
+          "translation": "待機中 · 前回の捕捉を保持",
+          "source_hash": "200c7c4b2c0853e7544ab0b31c68b854678dc050584f665c4dd7267d902b18dd",
+          "translated_source_hash": "200c7c4b2c0853e7544ab0b31c68b854678dc050584f665c4dd7267d902b18dd"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.autoset_held",
+        "oscilloscope.capture_once_on_the_next_trigger_crossing",
+        "oscilloscope.fit_amplitude",
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+        "oscilloscope.input_source",
+        "oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger",
+        "oscilloscope.ms_div_waveform_raw_fs",
+        "oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform",
+        "oscilloscope.source",
+        "oscilloscope.source_level_raw_fs_the_level_follows_the_source",
+        "oscilloscope.start_input_and_wait_for_a_single_triggered_capture",
+        "oscilloscope.start_single_capture",
+        "oscilloscope.t_markers_captured",
+        "oscilloscope.trigger_source_unavailable",
+        "oscilloscope.update_on_trigger_crossings_hold_the_last_capture_while",
+        "oscilloscope.waiting_previous_capture"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "spectrum"
+      ],
+      "entries": [
+        {
+          "key": "spectrum.captured_fft_source_units_and_averaging_are_read_only",
+          "group": "spectrum",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
+          "new_english": "Captured FFT, Source, units and averaging are read-only. Normal Spectrum continues independently.",
+          "variables": [],
+          "translation": "取得時のFFT、入力元、単位、平均化設定は読み取り専用です。通常スペクトラムの解析は独立して続きます。",
+          "source_hash": "791c826af16c642a880363aac3af9e1ffd1f5f868f5009c13718e931c6872cd7",
+          "translated_source_hash": "791c826af16c642a880363aac3af9e1ffd1f5f868f5009c13718e931c6872cd7"
+        },
+        {
+          "key": "spectrum.input_source",
+          "group": "spectrum",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Input source",
+          "new_english": "Input source",
+          "variables": [],
+          "translation": "入力元",
+          "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+          "translated_source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b"
+        }
+      ],
+      "review_keys": [
+        "spectrum.captured_fft_source_units_and_averaging_are_read_only",
+        "spectrum.input_source"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "spectrogram"
+      ],
+      "entries": [
+        {
+          "key": "spectrogram.gestures",
+          "group": "spectrogram",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "variables": [],
+          "translation": "スペクトログラム：ホイールで周波数をズーム、ドラッグで周波数／時間をパンします。Shift＋ホイールまたは時間軸上のホイールで履歴をスクロールします。クリックで履歴を保持してフレームを選択し、カーソル線のドラッグで位置を移動します。ライブで履歴固定を解除します。ダブルクリックで周波数／時間位置をリセットします。",
+          "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
+          "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
+        }
+      ],
+      "review_keys": [
+        "spectrogram.gestures"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "xy"
+      ],
+      "entries": [
+        {
+          "key": "xy.input_source",
+          "group": "xy",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Input source",
+          "new_english": "Input source",
+          "variables": [],
+          "translation": "入力元",
+          "source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b",
+          "translated_source_hash": "ef2afb525eac508f08716c8f27e8401179dbd7f4a0a1618d33dc39a1a4bba37b"
+        },
+        {
+          "key": "xy.source_changes_apply_on_start_held_xy_keeps_its",
+          "group": "xy",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Source changes apply on Start. Held XY keeps its channels.",
+          "new_english": "Source changes apply on Start. Held XY keeps its channels.",
+          "variables": [],
+          "translation": "入力元の変更はStart時に適用されます。保持中のXYは取得時のチャンネルを維持します。",
+          "source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89",
+          "translated_source_hash": "b8009d9a2b85a48ea99f3656d9de2a3d9d5340de6294b8b67748b71b25bf3e89"
+        },
+        {
+          "key": "xy.trace_snap_selects_the_nearest_actual_pair_from_the",
+          "group": "xy",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+          "new_english": "Trace Snap: selects the nearest actual pair from the assigned X/Y channels and keeps its sample offset from the XY trigger. Uses Scope's trigger source, edge and level. Without a crossing, the reference moves with the latest window. Overlapping points select the latest sample; Stop freezes the capture.",
+          "variables": [],
+          "translation": "Trace Snap：割り当てたX/Yチャンネルの実サンプル対から最も近い点を選び、そのサンプルのXYトリガーからのオフセットを保ちます。スコープのトリガー元・エッジ・レベルを使います。トリガー交差がない場合は、参照位置が最新ウィンドウに合わせて移動します。点が重なる場合は最新サンプルを選びます。Stopすると取得結果を固定します。",
+          "source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621",
+          "translated_source_hash": "5faa7edf5422b1b5efc1f2b68dc5d463f057ea7e59fadc48f4f43a6f19a42621"
+        }
+      ],
+      "review_keys": [
+        "xy.input_source",
+        "xy.source_changes_apply_on_start_held_xy_keeps_its",
+        "xy.trace_snap_selects_the_nearest_actual_pair_from_the"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ja",
+      "groups": [
+        "comparison"
+      ],
+      "entries": [
+        {
+          "key": "comparison.finishing_analysis_before_holding_the_result",
+          "group": "comparison",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Finishing analysis before holding the result.",
+          "new_english": "Finishing analysis before holding the result.",
+          "variables": [],
+          "translation": "結果を保持する前に解析を完了しています。",
+          "source_hash": "0e2a31120745ccf5f4a81dfdc910f3819e1f78519eabae70ed2496bdfd6ed0c6",
+          "translated_source_hash": "0e2a31120745ccf5f4a81dfdc910f3819e1f78519eabae70ed2496bdfd6ed0c6"
+        }
+      ],
+      "review_keys": [
+        "comparison.finishing_analysis_before_holding_the_result"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "fr",
+      "groups": [
+        "common"
+      ],
+      "entries": [
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "Le texte non traduit s’affiche en anglais. La traduction des instruments est en préparation.",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "fr",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.centre_offset",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Centre offset",
+          "new_english": "Centre offset",
+          "variables": [],
+          "translation": "Centrer le décalage",
+          "source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a",
+          "translated_source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a"
+        },
+        {
+          "key": "oscilloscope.fit_amplitude",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit amplitude",
+          "new_english": "Fit amplitude",
+          "variables": [],
+          "translation": "Ajuster l’amplitude",
+          "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+          "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+        },
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "Ajuster l’amplitude au pic brut du canal sélectionné et centrer son décalage",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.reset_time_position",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Reset time position",
+          "new_english": "Reset time position",
+          "variables": [],
+          "translation": "Réinitialiser la position temporelle",
+          "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
+          "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "Spectrogramme · curseur temps / Hz",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.centre_offset",
+        "oscilloscope.fit_amplitude",
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+        "oscilloscope.reset_time_position"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "fr",
+      "groups": [
+        "spectrogram"
+      ],
+      "entries": [
+        {
+          "key": "spectrogram.gestures",
+          "group": "spectrogram",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "variables": [],
+          "translation": "Spectrogramme : molette pour zoomer sur la fréquence ; glisser pour déplacer la fréquence ou le temps ; Maj + molette ou molette sur l’axe temporel pour parcourir l’historique ; cliquer pour maintenir et sélectionner une trame ; faire glisser une ligne de curseur pour la déplacer ; En direct libère l’historique ; double-cliquer réinitialise la position de fréquence et de temps.",
+          "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
+          "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
+        }
+      ],
+      "review_keys": [
+        "spectrogram.gestures"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "fr",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "de",
+      "groups": [
+        "common"
+      ],
+      "entries": [
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "Nicht übersetzte Texte werden auf Englisch angezeigt. Die Instrumentübersetzung wird vorbereitet.",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "de",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.fit_amplitude",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit amplitude",
+          "new_english": "Fit amplitude",
+          "variables": [],
+          "translation": "Amplitude anpassen",
+          "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+          "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+        },
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "Rohspitze des ausgewählten Kanals anpassen und Offset zentrieren",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.reset_time_position",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Reset time position",
+          "new_english": "Reset time position",
+          "variables": [],
+          "translation": "Zeitposition zurücksetzen",
+          "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
+          "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "Spectrogram · Zeit-/Hz-Cursor",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.fit_amplitude",
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+        "oscilloscope.reset_time_position"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "de",
+      "groups": [
+        "spectrogram"
+      ],
+      "entries": [
+        {
+          "key": "spectrogram.gestures",
+          "group": "spectrogram",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "variables": [],
+          "translation": "Spectrogram: Mausrad zum Zoomen der Frequenz; ziehen zum Verschieben von Frequenz/Zeit; Umschalt+Mausrad oder Mausrad auf der Zeitachse zum Scrollen des Verlaufs; klicken, um einen Frame zu halten und auszuwählen; Cursorlinie ziehen, um sie zu verschieben; „Live“ gibt den Verlauf frei; Doppelklick setzt Frequenz-/Zeitposition zurück.",
+          "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
+          "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
+        }
+      ],
+      "review_keys": [
+        "spectrogram.gestures"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "de",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "es",
+      "groups": [
+        "common"
+      ],
+      "entries": [
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "El texto sin traducir se muestra en inglés. La traducción de los instrumentos está en preparación.",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "es",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.centre_offset",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Centre offset",
+          "new_english": "Centre offset",
+          "variables": [],
+          "translation": "Desplazamiento central",
+          "source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a",
+          "translated_source_hash": "4d06e04bbcb537a7320478712a139508482ff129ebbb88b57297fe852b38fd8a"
+        },
+        {
+          "key": "oscilloscope.fit_amplitude",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit amplitude",
+          "new_english": "Fit amplitude",
+          "variables": [],
+          "translation": "Ajustar amplitud",
+          "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+          "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+        },
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "Ajustar el pico sin calibrar del canal seleccionado y centrar su desplazamiento",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.reset_time_position",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Reset time position",
+          "new_english": "Reset time position",
+          "variables": [],
+          "translation": "Reiniciar posición temporal",
+          "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
+          "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "Spectrogram · cursor de tiempo / Hz",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.centre_offset",
+        "oscilloscope.fit_amplitude",
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+        "oscilloscope.reset_time_position"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "es",
+      "groups": [
+        "spectrogram"
+      ],
+      "entries": [
+        {
+          "key": "spectrogram.gestures",
+          "group": "spectrogram",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "variables": [],
+          "translation": "Spectrogram: use la rueda para acercar la frecuencia; arrastre para desplazar frecuencia/tiempo; Mayús+rueda o rueda sobre el eje temporal para recorrer el historial; haga clic para retener y seleccionar un cuadro; arrastre una línea de cursor para moverla; En vivo libera el historial; doble clic restablece la posición de frecuencia/tiempo.",
+          "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
+          "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
+        }
+      ],
+      "review_keys": [
+        "spectrogram.gestures"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "es",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "pt",
+      "groups": [
+        "common"
+      ],
+      "entries": [
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "Textos sem tradução são exibidos em inglês. A tradução dos instrumentos está em preparação.",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "pt",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.fit_amplitude",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit amplitude",
+          "new_english": "Fit amplitude",
+          "variables": [],
+          "translation": "Ajustar amplitude",
+          "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+          "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+        },
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "Ajuste o pico bruto do canal selecionado e centralize seu offset",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.reset_time_position",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Reset time position",
+          "new_english": "Reset time position",
+          "variables": [],
+          "translation": "Redefinir posição de tempo",
+          "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
+          "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "Spectrogram · cursor de tempo / Hz",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.fit_amplitude",
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+        "oscilloscope.reset_time_position"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "pt",
+      "groups": [
+        "spectrogram"
+      ],
+      "entries": [
+        {
+          "key": "spectrogram.gestures",
+          "group": "spectrogram",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "variables": [],
+          "translation": "Spectrogram: use a roda para ampliar a frequência; arraste para deslocar frequência/tempo; Shift+roda ou roda no eixo de tempo para percorrer o histórico; clique para reter e selecionar um quadro; arraste uma linha de cursor para movê-la; Ao vivo libera o histórico; clique duplo redefine a posição de frequência/tempo.",
+          "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
+          "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
+        }
+      ],
+      "review_keys": [
+        "spectrogram.gestures"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "pt",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ru",
+      "groups": [
+        "common"
+      ],
+      "entries": [
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "Непереведённый текст отображается на английском. Перевод приборов готовится.",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ru",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.fit_amplitude",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit amplitude",
+          "new_english": "Fit amplitude",
+          "variables": [],
+          "translation": "Подогнать амплитуду",
+          "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+          "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+        },
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "Подогнать необработанный пик выбранного канала и центрировать смещение",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.reset_time_position",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Reset time position",
+          "new_english": "Reset time position",
+          "variables": [],
+          "translation": "Сбросить положение времени",
+          "source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87",
+          "translated_source_hash": "4ebbbd8a438a0fa10fdcad44c49752094fb7855ed619c613670bc9eece483b87"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "Курсор времени / Hz в Spectrogram",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.fit_amplitude",
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+        "oscilloscope.reset_time_position"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ru",
+      "groups": [
+        "spectrogram"
+      ],
+      "entries": [
+        {
+          "key": "spectrogram.gestures",
+          "group": "spectrogram",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "new_english": "Spectrogram: wheel to zoom frequency; drag to pan frequency/time; Shift+wheel or wheel on time axis to scroll history; click to Hold and select a frame; drag a cursor line to move it; Live releases history; double-click resets frequency/time position.",
+          "variables": [],
+          "translation": "Spectrogram: прокрутите колесо для масштабирования частоты; перетаскивайте для панорамирования частоты/времени; Shift+колесо или колесо на оси времени прокручивает историю; щёлкните, чтобы удержать и выбрать кадр; перетащите линию курсора; «Активно» отключает историю; двойной щелчок сбрасывает положение частоты/времени.",
+          "source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a",
+          "translated_source_hash": "ec8d7e11f600c849f5d3fa8344890a0a334838bd61342e91125fa1884093434a"
+        }
+      ],
+      "review_keys": [
+        "spectrogram.gestures"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ru",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "zh",
+      "groups": [
+        "common"
+      ],
+      "entries": [
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "未翻译文本将显示为英语。仪器翻译正在准备中。",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "zh",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.fit_amplitude",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit amplitude",
+          "new_english": "Fit amplitude",
+          "variables": [],
+          "translation": "拟合幅度",
+          "source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2",
+          "translated_source_hash": "22db468246247f1083a70df2a98c0446b6306532c756c7d9276b157bab8803b2"
+        },
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "拟合所选通道的原始峰值并将偏移居中",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "Spectrogram · 时间 / Hz 光标",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.fit_amplitude",
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "zh",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ko",
+      "groups": [
+        "common"
+      ],
+      "entries": [
+        {
+          "key": "common.language_fallback",
+          "group": "common",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Untranslated text uses English. Instrument translation is in preparation.",
+          "new_english": "Untranslated text uses English.",
+          "variables": [],
+          "translation": "번역되지 않은 텍스트는 영어로 표시됩니다. 기기 번역을 준비 중입니다.",
+          "source_hash": "069a0217eed30dfd444807b47315f864a70204124eb00e7ccbbd043d149a5e55",
+          "translated_source_hash": "9eb65ce533e6616c5a4b794ce6f42b95350c97c0890aced506c7aff1e5e677f9"
+        }
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ko",
+      "groups": [
+        "oscilloscope"
+      ],
+      "entries": [
+        {
+          "key": "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
+          "group": "oscilloscope",
+          "reasons": [
+            "review"
+          ],
+          "old_english": "Fit the selected channel's raw peak and centre its offset",
+          "new_english": "Fit the selected channel's raw peak and centre its offset",
+          "variables": [],
+          "translation": "선택한 채널의 원시 피크에 맞추고 오프셋을 중심에 맞춥니다",
+          "source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e",
+          "translated_source_hash": "88c00ce1b17b0273c5d08f7007bae11c3e9117d1bc67830206f5ccfe284d547e"
+        },
+        {
+          "key": "oscilloscope.spectrogram_time_hz_cursor",
+          "group": "oscilloscope",
+          "reasons": [
+            "changed",
+            "stale"
+          ],
+          "old_english": "Spectrogram · time / Hz cursor",
+          "new_english": "Time / frequency cursors",
+          "variables": [],
+          "translation": "Spectrogram · 시간 / Hz 커서",
+          "source_hash": "2adb98e40b7fc2b45160b6b7dd5fcab84d5dcc1b99c23ff6daae3848e1793eac",
+          "translated_source_hash": "b3ded0e7a281542882d0ebc77fb543c112f6ec2a6fb254ce6839e139df3cacac"
+        }
+      ],
+      "review_keys": [
+        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre"
+      ]
+    },
+    {
+      "version": 1,
+      "base_revision": "1c984cba813c55b14b4500dadbf3517260a41136",
+      "locale": "ko",
+      "groups": [
+        "lockin"
+      ],
+      "entries": [
+        {
+          "key": "lockin.amplitude_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Amplitude · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "fd96e9c9f8f561e48da88841b91616ecfaa0e5e6b0c4080d8cf446a6af68a6ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.in_phase_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "In-phase · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "36303b5a6deecd53e4f4cea173f28cfa589a328a2ab464727382f6c473c9b2ca",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.phase_leads_ref",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Phase · leads REF",
+          "variables": [],
+          "translation": null,
+          "source_hash": "df767ec7f769bb55baf0560be456885c928f3c906121608d9ec8178cb35cf62c",
+          "translated_source_hash": null
+        },
+        {
+          "key": "lockin.quadrature_peak",
+          "group": "lockin",
+          "reasons": [
+            "added",
+            "missing"
+          ],
+          "old_english": null,
+          "new_english": "Quadrature · peak",
+          "variables": [],
+          "translation": null,
+          "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
+          "translated_source_hash": null
+        }
+      ]
     }
   ]
 }
