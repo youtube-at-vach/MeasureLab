@@ -5098,8 +5098,8 @@ impl ScopeApp {
                     ui.label(RichText::new(i18n::text("oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next")).small().color(YELLOW));
                 }
                 self.scope_quick_controls(ui);
-                // Reserve a single 40-point channel strip immediately below the plot.
-                let height = (ui.available_height() - 40.0 - ui.spacing().item_spacing.y).max(40.0);
+                // Reserve fixed readout cards independently of their current values.
+                let height = (ui.available_height() - monitor_controls::scope_channel_bar_height(ui.available_width()) - ui.spacing().item_spacing.y).max(40.0);
                 ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), height))), |ui| self.plot(ui));
                 self.scope_channel_bar(ui);
             });

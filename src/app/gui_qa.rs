@@ -1320,7 +1320,10 @@ impl ScopeApp {
                 .ctx
                 .interactive_rects_last_pass()
                 .into_iter()
-                .find(|r| r.contains(pos) && (r.height() - 40.0).abs() < 1.0)
+                .find(|r| {
+                    r.contains(pos)
+                        && (r.height() - monitor_controls::SCOPE_CHANNEL_CARD_HEIGHT).abs() < 1.0
+                })
                 .ok_or("Scope channel selection area missing")?;
             driver.click_at(self, pos2(selection.right() + 10.0, selection.top() + 13.0));
             assert_ne!(self.enabled[index], scope_display.0[index]);

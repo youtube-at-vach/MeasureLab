@@ -196,12 +196,6 @@ impl ScopeApp {
                 {
                     self.fit_scope_amplitude();
                 }
-                ui.label(
-                    RichText::new(self.scope_readout(index))
-                        .small()
-                        .color(color),
-                )
-                .on_hover_text(self.scope_readout_details(index));
             },
         );
 

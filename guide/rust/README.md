@@ -139,7 +139,7 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 | Horizontal / ホイール | 時間軸の変更（0.05〜100 ms/div） |
 | Vertical / Vertical range / Shift＋ホイール | 選択中CHの振幅の変更（0.001〜0.5 FS/div） |
 | Vertical / Fit amplitude | 選択中CHの生サンプルPeakに合わせ、オフセットを0へ戻す |
-| Scope下部 CH1〜CH4 / チェックボックス | CH選択と波形の表示ON/OFFを独立に操作。各CHのFS/div、入力なしを表示 |
+| Scope下部 CH1〜CH4 / チェックボックス | CH選択と波形の表示ON/OFFを独立に操作。各CHのFS/div・RMS・P-P・範囲外などの状態を固定枠に表示。数値は等幅・右揃え、ラベルと単位は別の固定列とし、桁数や指数表記が変わっても他の項目と波形は動かない。狭幅では2列に配置 |
 | Vertical / Input source / Centre offset / Zero offset | 選択CHの入力を1〜16chから割当、波形中央のraw FS値を設定／0へ戻す |
 | Horizontal / Position / Reset time position | 波形を左右へ移動／位置を初期化。生サンプルと測定区間は変更しない |
 | Trigger / Edge / Source / Level / Zero level | フリーラン／立ち上がり／立ち下がり、ソースと閾値の設定／閾値を0へ戻す |

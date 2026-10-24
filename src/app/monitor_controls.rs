@@ -1,6 +1,22 @@
 //! Frequently used monitor controls stay beside the trace they affect.
 use super::*;
 
+pub(super) const SCOPE_CHANNEL_CARD_HEIGHT: f32 = 72.0;
+const SCOPE_CHANNEL_GAP: f32 = 3.0;
+
+fn scope_channel_columns(width: f32) -> usize {
+    if width >= 4.0 * 140.0 + 3.0 * SCOPE_CHANNEL_GAP {
+        SCOPE_CHANNELS
+    } else {
+        2
+    }
+}
+
+pub(super) fn scope_channel_bar_height(width: f32) -> f32 {
+    let rows = SCOPE_CHANNELS / scope_channel_columns(width);
+    rows as f32 * SCOPE_CHANNEL_CARD_HEIGHT + (rows - 1) as f32 * SCOPE_CHANNEL_GAP
+}
+
 impl ScopeApp {
     pub(super) fn scope_axis_label(&self) -> Arc<str> {
         i18n::format(
@@ -78,19 +94,6 @@ impl ScopeApp {
                 .changed();
             self.scope_autoset_button(ui);
         });
-        ui.horizontal_wrapped(|ui| {
-            for index in 0..SCOPE_CHANNELS {
-                if self.enabled[index] {
-                    ui.label(
-                        RichText::new(format!("CH{} · {}", index + 1, self.scope_readout(index)))
-                            .monospace()
-                            .size(12.0)
-                            .color(scope_color(index)),
-                    )
-                    .on_hover_text(self.scope_readout_details(index));
-                }
-            }
-        });
         if let Some(status) = &self.autoset_status {
             ui.label(RichText::new(status.render().as_ref()).small().color(MUTED));
         }
@@ -167,139 +170,175 @@ impl ScopeApp {
 
     pub(super) fn scope_channel_bar(&mut self, ui: &mut egui::Ui) {
         let sources = self.scope_view_channels();
-        let width = ((ui.available_width() - 3.0 * (SCOPE_CHANNELS - 1) as f32)
-            / SCOPE_CHANNELS as f32)
+        let columns = scope_channel_columns(ui.available_width());
+        let width = ((ui.available_width() - SCOPE_CHANNEL_GAP * (columns - 1) as f32)
+            / columns as f32)
             .max(1.0);
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 3.0;
-            for index in 0..SCOPE_CHANNELS {
-                let color = scope_color(index);
-                let channel = sources.0[index];
-                let out_of_range = self
-                    .scope_input_channels()
-                    .is_some_and(|count| !channel::available(channel, count as usize));
-                let show_range = out_of_range && self.scope_notice().is_none();
-                let selected = index == self.scope_selected;
-                let (rect, _) = ui.allocate_exact_size(vec2(width, 40.0), egui::Sense::hover());
-                ui.painter().rect(
-                    rect,
-                    3.0,
-                    if selected {
-                        color.gamma_multiply(0.12)
-                    } else {
-                        Color32::from_rgb(22, 34, 43)
-                    },
-                    Stroke::new(
-                        if selected { 1.5 } else { 1.0 },
-                        if selected { color } else { BORDER },
-                    ),
-                    egui::StrokeKind::Inside,
-                );
-                let selection = egui::Rect::from_min_max(rect.min, rect.max - vec2(24.0, 0.0));
-                let response = ui.interact(
-                    selection,
-                    ui.id().with(("scope_select", index)),
-                    egui::Sense::click(),
-                );
-                if response.clicked() {
-                    self.scope_selected = index;
-                    self.dirty = true;
-                }
-                ui.painter().text(
-                    rect.min + vec2(6.0, 4.0),
-                    egui::Align2::LEFT_TOP,
-                    i18n::format(
-                        "oscilloscope.ch_2",
-                        &[
-                            ("index", &(index + 1).to_string()),
-                            (
-                                "else",
-                                (if show_range && width <= 150.0 {
-                                    " —"
-                                } else {
-                                    ""
-                                }),
+        ui.vertical(|ui| {
+            ui.spacing_mut().item_spacing = vec2(SCOPE_CHANNEL_GAP, SCOPE_CHANNEL_GAP);
+            for row in (0..SCOPE_CHANNELS).step_by(columns) {
+                ui.horizontal(|ui| {
+                    for index in row..row + columns {
+                        let color = scope_color(index);
+                        let channel = sources.0[index];
+                        let out_of_range = self
+                            .scope_input_channels()
+                            .is_some_and(|count| !channel::available(channel, count as usize));
+                        let selected = index == self.scope_selected;
+                        let (rect, _) = ui.allocate_exact_size(
+                            vec2(width, SCOPE_CHANNEL_CARD_HEIGHT),
+                            egui::Sense::hover(),
+                        );
+                        ui.painter().rect(
+                            rect,
+                            3.0,
+                            if selected {
+                                color.gamma_multiply(0.12)
+                            } else {
+                                Color32::from_rgb(22, 34, 43)
+                            },
+                            Stroke::new(
+                                if selected { 1.5 } else { 1.0 },
+                                if selected { color } else { BORDER },
                             ),
-                        ],
-                    )
-                    .to_string(),
-                    egui::FontId::proportional(12.0),
-                    color,
-                );
-                ui.painter().text(
-                    rect.min + vec2(6.0, 23.0),
-                    egui::Align2::LEFT_TOP,
-                    i18n::format(
-                        "oscilloscope.fs_div",
-                        &[(
-                            "fs_per_div",
-                            &(display::number(Some(
-                                self.scope_display_vertical(index).fs_per_div as f64,
-                            )))
+                            egui::StrokeKind::Inside,
+                        );
+                        let selection =
+                            egui::Rect::from_min_max(rect.min, rect.max - vec2(24.0, 0.0));
+                        let response = ui.interact(
+                            selection,
+                            ui.id().with(("scope_select", index)),
+                            egui::Sense::click(),
+                        );
+                        if response.clicked() {
+                            self.scope_selected = index;
+                            self.dirty = true;
+                        }
+                        ui.painter().text(
+                            rect.min + vec2(6.0, 4.0),
+                            egui::Align2::LEFT_TOP,
+                            i18n::format(
+                                "oscilloscope.ch_2",
+                                &[("index", &(index + 1).to_string()), ("else", "")],
+                            )
                             .to_string(),
-                        )],
-                    )
-                    .to_string(),
-                    egui::FontId::monospace(10.0),
-                    color,
-                );
-                if show_range && width > 150.0 {
-                    ui.painter().text(
-                        rect.min + vec2(44.0, 5.0),
-                        egui::Align2::LEFT_TOP,
-                        i18n::text("oscilloscope.out_of_range"),
-                        egui::FontId::proportional(10.0),
-                        MUTED,
-                    );
-                }
-                response.on_hover_text(
-                    i18n::format(
-                        "oscilloscope.ch_select_to_edit_this_channel_in_scope_settings",
-                        &[
-                            ("index", &(index + 1).to_string()),
-                            ("channel", &(channel::name(channel)).to_string()),
-                            (
-                                "else",
-                                (if out_of_range {
-                                    i18n::text("oscilloscope.outside_input_channel_range")
-                                } else {
-                                    ""
-                                }),
-                            ),
-                            ("index_2", &(self.scope_readout_details(index)).to_string()),
-                            ("display", (display::div_help())),
-                        ],
-                    )
-                    .as_ref(),
-                );
-                let toggle = egui::Rect::from_min_size(
-                    rect.right_top() + vec2(-23.0, 3.0),
-                    vec2(20.0, 20.0),
-                );
-                self.dirty |= ui
-                    .put(
-                        toggle,
-                        egui::Checkbox::without_text(&mut self.enabled[index]),
-                    )
-                    .on_hover_text(
-                        i18n::format(
+                            egui::FontId::proportional(12.0),
+                            color,
+                        );
+                        ui.painter().text(
+                            rect.min + vec2(6.0, 23.0),
+                            egui::Align2::LEFT_TOP,
+                            i18n::format(
+                                "oscilloscope.fs_div",
+                                &[(
+                                    "fs_per_div",
+                                    &(display::number(Some(
+                                        self.scope_display_vertical(index).fs_per_div as f64,
+                                    )))
+                                    .to_string(),
+                                )],
+                            )
+                            .to_string(),
+                            egui::FontId::monospace(10.0),
+                            color,
+                        );
+                        self.scope_card_reading(ui, index, rect);
+                        response.on_hover_text(
+                            i18n::format(
+                                "oscilloscope.ch_select_to_edit_this_channel_in_scope_settings",
+                                &[
+                                    ("index", &(index + 1).to_string()),
+                                    ("channel", &(channel::name(channel)).to_string()),
+                                    (
+                                        "else",
+                                        (if out_of_range {
+                                            i18n::text("oscilloscope.outside_input_channel_range")
+                                        } else {
+                                            ""
+                                        }),
+                                    ),
+                                    ("index_2", &(self.scope_readout_details(index)).to_string()),
+                                    ("display", (display::div_help())),
+                                ],
+                            )
+                            .as_ref(),
+                        );
+                        let toggle = egui::Rect::from_min_size(
+                            rect.right_top() + vec2(-23.0, 3.0),
+                            vec2(20.0, 20.0),
+                        );
+                        let toggle_help = i18n::format(
                             "oscilloscope.show_ch_waveform_keeps_selection_and_measurements",
                             &[("index", &(index + 1).to_string())],
-                        )
-                        .as_ref(),
-                    )
-                    .changed();
-                if show_range {
-                    ui.painter().line_segment(
-                        [
-                            rect.right_bottom() - vec2(18.0, 7.0),
-                            rect.right_bottom() - vec2(6.0, 7.0),
-                        ],
-                        Stroke::new(1.5, MUTED),
-                    );
-                }
+                        );
+                        self.dirty |= ui
+                            .put(
+                                toggle,
+                                egui::Checkbox::without_text(&mut self.enabled[index]),
+                            )
+                            .on_hover_text(toggle_help.as_ref())
+                            .changed();
+                    }
+                });
             }
         });
+    }
+
+    fn scope_card_reading(&self, ui: &egui::Ui, index: usize, rect: egui::Rect) {
+        let painter = ui.painter().with_clip_rect(rect.shrink(4.0));
+        let color = scope_color(index);
+        let font = egui::FontId::monospace(10.0);
+        if let Reading::Valid(m) = self.scope_readings[index] {
+            // Each label, number and unit has its own fixed column. Changing
+            // digits never changes another field, card or the plot's geometry.
+            let unit_width = (rect.width() * 0.2).clamp(20.0, 72.0);
+            let unit_x = rect.right() - 6.0 - unit_width;
+            let value_right = unit_x - 4.0;
+            let value_left = rect.left() + 30.0;
+            let unit = self
+                .calibration
+                .captured
+                .unit(self.scope_view_channels().0[index]);
+            for (row, label, value) in [
+                (0, i18n::text("oscilloscope.rms"), m.rms),
+                (1, i18n::text("oscilloscope.p_p"), m.peak_to_peak),
+            ] {
+                let y = rect.top() + 39.0 + row as f32 * 15.0;
+                painter.text(
+                    pos2(rect.left() + 6.0, y),
+                    egui::Align2::LEFT_TOP,
+                    label,
+                    font.clone(),
+                    color,
+                );
+                let mut number = display::number(Some(value));
+                let mut galley = painter.layout_no_wrap(number.clone(), font.clone(), color);
+                if galley.size().x > value_right - value_left {
+                    number = format!("{value:.3e}");
+                    galley = painter.layout_no_wrap(number, font.clone(), color);
+                }
+                let value_rect =
+                    egui::Rect::from_min_max(pos2(value_left, y), pos2(value_right, y + 14.0));
+                painter.with_clip_rect(value_rect).galley(
+                    pos2(value_right - galley.size().x, y),
+                    galley,
+                    color,
+                );
+                let mut job =
+                    egui::text::LayoutJob::simple_singleline(unit.into(), font.clone(), color);
+                job.wrap.max_width = unit_width;
+                job.wrap.max_rows = 1;
+                let galley = painter.layout_job(job);
+                painter.galley(pos2(unit_x, y), galley, color);
+            }
+        } else {
+            let mut job =
+                egui::text::LayoutJob::simple_singleline(self.scope_readout(index), font, MUTED);
+            job.wrap.max_width = (rect.width() - 12.0).max(1.0);
+            job.wrap.max_rows = 2;
+            let galley = painter.layout_job(job);
+            painter.galley(rect.min + vec2(6.0, 39.0), galley, MUTED);
+        }
     }
 
     pub(super) fn scope_readout(&self, index: usize) -> String {
@@ -314,7 +353,7 @@ impl ScopeApp {
                     !channel::available(self.scope_view_channels().0[index], count as usize)
                 }) =>
             {
-                i18n::text("oscilloscope.channel_out_of_range").into()
+                i18n::text("oscilloscope.out_of_range").into()
             }
             Reading::Unavailable => i18n::text("oscilloscope.no_samples_in_this_interval").into(),
             Reading::NonFinite => i18n::text("oscilloscope.invalid_value").into(),
