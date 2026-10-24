@@ -324,6 +324,14 @@ OS別には次を追加する。
 
 ## コードで代替できない確認の要約
 
+### Windowsネイティブでの開発環境と起動確認
+
+`80e8c54e`のRustソースを、Windows 11 Pro（10.0.26300 x64）のネイティブ起動／Apple iMac15,1・Core i5-4690・4論理CPU・32 GiB RAMで確認した。Rust 1.99.0の`x86_64-pc-windows-msvc`、Visual Studio Build Tools 2022 17.14.42、Windows SDK 10.0.26100.0を導入し、`dev-fast`・既定`desktop`・`qa`なしでビルドした。[MSVC手順](WINDOWS.md#msvcでのセットアップ)に従い、GNU／LLD用の追加指定なしで`--help`、`--gpu-smoke`と通常GUI（`--compact`）のウィンドウ生成を確認した。ZOOM UAC-232の入力デバイス列挙も成功したが、入出力ストリームは開始していない。
+
+同じRustソースの`dev`・`qa`ビルド（デバッグ情報・インクリメンタルなし）で`--ui-smoke`も成功し、7計器の移動・構成変更の自動検証と、停止・保持中の2ch QA波形のPNGを確認した。実デバイスの入力取得・信号出力は実施していない。
+
+表示ドライバーはMicrosoft基本ディスプレイアダプターで、読み戻しと自動UI検証は`Dx12 · Microsoft Basic Render Driver`を使用した。Vulkanドライバーなし・OpenGL 1.1の診断も出たが、Dx12の検証は終了コード0で完了した。ネイティブ起動でもソフトウェア描画の確認であり、iMacのGPUによるハードウェア描画の受け入れではない。画面内の手動操作、OpenGL、実音声入出力・測定精度、保存復元、DPI切り替え、負荷・長時間動作、配布パッケージの受け入れは未確認とする。環境・バイナリSHA-256・起動／描画ログとQA画像はGit管理外の`dist/windows-native-setup/`に保存する。
+
 ### Windows VMでの起動確認
 
 `7a7df79a`のソースを、Windows 11 Pro（10.0.26300 x64）／VMware20,1・2論理CPU・4 GiB RAMで確認した。Rust 1.99.0の`x86_64-pc-windows-gnu`、LLVM-MinGW 20261006の`llvm-dlltool`／LLDを使用し、`dev-fast`・既定`desktop`・`qa`なしでビルドした。[再現手順](WINDOWS.md) に従う通常GUI（`--compact`）のScope初期画面、入力・出力停止、Helpの開閉を確認した。

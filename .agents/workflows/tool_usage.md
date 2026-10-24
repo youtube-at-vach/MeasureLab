@@ -17,6 +17,8 @@ source .tools/env.sh
 
 OSライブラリを導入済みなら`--install-os-deps`を省略できる。引数なしでは依存関係の導入・`dev-fast`ビルド・文書用ライブラリの読み込みを確認し、`--verify`で以下の検証を一括実行する。
 
+ネイティブWindowsは [MSVCでのセットアップ](../../guide/rust/WINDOWS.md#msvcでのセットアップ) を使う。以下のBashコマンドはPowerShellへそのまま貼り付けず、Rustは`cargo`、Python／Ruffは`.venv/Scripts/`、npm／npxは`npm.cmd`／`npx.cmd`に置き換える。各検証の終了コードを個別に確認する。
+
 ## Rust アプリ
 
 Rust 1.95 以降と OS のビルドツールを使う。`scripts/cargo.sh` は PATH 上の Cargo または `.tools/` にあるローカル環境を使う。
