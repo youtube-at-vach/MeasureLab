@@ -448,7 +448,7 @@ impl ScopeApp {
                 .iter()
                 .position(|ch| *ch == trigger.channel)
                 .map(|i| self.scope_display_vertical(i))
-                .unwrap_or_default();
+                .unwrap_or_else(|| self.scope_common_vertical.unwrap_or_default());
             rect.top() + vertical.y(trigger.level) * rect.height()
         };
         let guide_color = TRIGGER.gamma_multiply(0.65);

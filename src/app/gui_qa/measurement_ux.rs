@@ -48,6 +48,44 @@ impl ScopeApp {
         let zero = shared.y(0.0);
         let ratio = (zero - shared.y(0.05)) / (zero - shared.y(0.1));
         assert!((ratio - 0.5).abs() < 1e-6);
+        // A trigger source outside the displayed traces still uses the shared axis.
+        let trigger_state = (
+            self.trigger,
+            self.core_scope.trigger,
+            self.scope_trigger_display,
+        );
+        self.trigger.channel = 15;
+        self.trigger.level = 0.08;
+        self.trigger.edge = Edge::Rising;
+        self.core_scope.trigger = self.trigger;
+        self.scope_trigger_display = settings::TriggerDisplay::Markers;
+        driver.frame(self, vec![]);
+        let plot = driver.scope_plot()?;
+        let marker_y = driver
+            .output
+            .shapes
+            .iter()
+            .find_map(|s| {
+                if let egui::Shape::Path(path) = &s.shape
+                    && path.fill == TRIGGER
+                    && path.points.len() == 3
+                    && path.points[0].x > plot.right()
+                {
+                    Some(path.points[0].y)
+                } else {
+                    None
+                }
+            })
+            .ok_or("Shared-axis trigger marker is missing")?;
+        assert!(
+            (marker_y - (plot.top() + shared.y(self.trigger.level) * plot.height())).abs() < 0.1
+        );
+        (
+            self.trigger,
+            self.core_scope.trigger,
+            self.scope_trigger_display,
+        ) = trigger_state;
+        driver.frame(self, vec![]);
         driver.click(self, "CH2")?;
         assert_eq!(self.scope_display_vertical(0), shared);
         driver.visible_text_rect(self.scope_axis_label().as_ref())?;
