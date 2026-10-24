@@ -52,6 +52,7 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 * 通常の機能開発では必要な英語キー・英語文言・呼出箇所だけを変更する。他言語の翻訳・一括同期・英語コピーによる穴埋めは行わず、AIにも全言語の翻訳を指示しない。英語キー削除後の旧訳整理も翻訳タスクへ渡す。
 * 翻訳は対象言語・機能グループ・基準リビジョンを指定した独立タスク／PRにする。[開発・翻訳手順](guide/rust/I18N.md) に従い、抽出したキーと翻訳元ハッシュの範囲だけを変更する。`i18n/source-hashes.json`は翻訳PRだけで更新し、機能実装と他言語本文を混在させない。
 * 翻訳の標準手順は`scripts/translate.py prepare --locale <言語> --group <グループ>`→`dist/i18n/answers.json`の`text`だけを編集→`apply`→`verify`とする。1タスクは1言語・1グループ。YAML・ハッシュをAIに手計算させず、定型指示は [開発・翻訳手順](guide/rust/I18N.md#翻訳モデルへの定型指示) を使う。`prepare`／`apply`は明示的な翻訳タスクだけで実行し、通常開発・CIから呼ばない。
+* 回答・詳細タスクなどの中間生成物はGit管理外の`dist/i18n/`へ置き、コミットしない。`i18n/translation-task.json`には基準SHA・対象・内容ハッシュだけの検証マニフェストを保存する。翻訳担当が既存訳・旧英語・変数を確認する入口は`dist/i18n/translation-task.json`とする。
 * `scripts/i18n.py check`／`diff`／`export-csv`は検査・レビュー出力専用で、翻訳生成やカタログの自動修正を行わない。他言語の欠落・古い訳は警告とし、英語変更の機能PRを止めない。PR前には`check --base <基準SHA>`で変更範囲も確認する。
 
 ## GitHub と Pull Request

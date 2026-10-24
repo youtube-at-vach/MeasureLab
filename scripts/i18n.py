@@ -483,6 +483,78 @@ def review_component(old: Catalog, source: Catalog, locale: str, group: str, key
     return task
 
 
+def task_selection(task: dict) -> tuple[str, list[str]]:
+    locale = task.get("locale")
+    if locale not in LOCALES[1:]:
+        raise InvalidCatalog("translation task must select one supported non-English locale")
+    groups = task.get("groups")
+    if (
+        not isinstance(groups, list)
+        or not groups
+        or not all(isinstance(group, str) for group in groups)
+        or len(groups) != len(set(groups))
+    ):
+        raise InvalidCatalog("translation task must select distinct groups")
+    if any(group not in GROUPS for group in groups):
+        raise InvalidCatalog("translation task contains unknown groups")
+    return locale, groups
+
+
+def compact_task(task: dict) -> dict:
+    """Keep selectors and a canonical content hash in Git; details are reproducible."""
+    if type(task.get("version")) is not int or task["version"] not in (1, 2):
+        raise InvalidCatalog("only version 1/2 task details can be compacted")
+    result = {key: value for key, value in task.items() if key not in ("entries", "tasks")}
+    result["version"] = 3
+    if task["version"] == 1:
+        result["kind"] = "translation"
+        result["entries_hash"] = digest(
+            json.dumps(task["entries"], ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        )
+    else:
+        result["tasks"] = [compact_task(component) for component in task["tasks"]]
+    return result
+
+
+def expand_task(task: dict | None, base: str, old: Catalog, current: Catalog) -> dict | None:
+    """Rebuild version 3 from Git/catalog inputs, never from ignored working files."""
+    if not isinstance(task, dict) or type(task.get("version")) is not int or task["version"] != 3:
+        return task  # Existing version 1/2 tasks remain valid.
+    if task.get("kind") == "translation":
+        locale, groups = task_selection(task)
+        expected = (
+            make_review(old, locale, groups, task["review_keys"], base)
+            if "review_keys" in task
+            else make_diff(old, old, locale, groups, base)
+        )
+    elif task.get("kind") == "visual_review":
+        components = task.get("tasks")
+        if not isinstance(components, list) or not components:
+            raise InvalidCatalog("review bundle needs locale/group tasks")
+        captured = review_source(old, current)
+        expanded = []
+        for component in components:
+            if not isinstance(component, dict):
+                raise InvalidCatalog("invalid review component")
+            locale, groups = task_selection(component)
+            keys = component.get("review_keys", [])
+            if len(groups) != 1 or not isinstance(keys, list):
+                raise InvalidCatalog("each review component must select one group and a list of review keys")
+            expanded.append(review_component(old, captured, locale, groups[0], keys, base))
+        expected = dict(
+            version=2,
+            kind="visual_review",
+            base_revision=base,
+            source_paths=task.get("source_paths"),
+            tasks=expanded,
+        )
+    else:
+        raise InvalidCatalog("invalid compact task kind")
+    if compact_task(expected) != task:
+        raise InvalidCatalog("compact translation task does not match its base snapshot/reviewed source; re-extract")
+    return expected
+
+
 def reviewed_source_paths(root: Path, base: str) -> list[dict]:
     before, after = snapshot(root, base), snapshot(root)
     paths = []
@@ -576,6 +648,7 @@ def check_review_bundle(root: Path, base: str, old: Catalog, current: Catalog, t
 def check_scope(
     root: Path, base: str, old: Catalog, current: Catalog, task: dict | None, *, paths: set[str] | None = None
 ) -> None:
+    task = expand_task(task, base, old, current)
     if isinstance(task, dict) and type(task.get("version")) is int and task["version"] == 2:
         check_review_bundle(root, base, old, current, task)
         return
@@ -596,17 +669,7 @@ def check_scope(
         or task.get("locale") not in LOCALES[1:]
     ):
         raise InvalidCatalog("translation task must use version 1 and select one supported non-English locale")
-    locale = task["locale"]
-    groups = task.get("groups")
-    if (
-        not isinstance(groups, list)
-        or not groups
-        or not all(isinstance(group, str) for group in groups)
-        or len(groups) != len(set(groups))
-    ):
-        raise InvalidCatalog("translation task must select distinct groups")
-    if any(group not in GROUPS for group in groups):
-        raise InvalidCatalog("translation task contains unknown groups")
+    locale, groups = task_selection(task)
     expected = (
         make_review(old, locale, groups, task["review_keys"], base)
         if "review_keys" in task

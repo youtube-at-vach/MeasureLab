@@ -19,6 +19,7 @@ from i18n import (
     InvalidCatalog,
     check_calls,
     check_scope,
+    compact_task,
     digest,
     export_csv,
     git,
@@ -28,7 +29,7 @@ from i18n import (
     snapshot,
     warnings,
 )
-from translate import ANSWERS, apply, bundle, prepare, verify
+from translate import ANSWERS, DETAILS, apply, bundle, prepare, verify
 
 
 def catalog_files(english=None, translation=None, source=None):
@@ -461,6 +462,78 @@ class RepositoryTests(unittest.TestCase):
     def save_answers(self, answers):
         self.write({ANSWERS: json.dumps(answers, ensure_ascii=False)})
 
+    def test_prepared_details_and_answers_are_ignored_and_only_compact_manifest_is_tracked(self):
+        task, _ = self.prepared_answers()
+        manifest = json.loads((self.root / TASK).read_text(encoding="utf-8"))
+        self.assertEqual(manifest, compact_task(task))
+        self.assertEqual(manifest["version"], 3)
+        self.assertNotIn("entries", manifest)
+        self.assertEqual(json.loads((self.root / DETAILS).read_text(encoding="utf-8")), task)
+        self.assertEqual(git(self.root, "ls-files", "--others", "--exclude-standard").splitlines(), [TASK])
+        self.commit()
+        self.assertEqual(git(self.root, "ls-files", "dist"), "")
+
+    def test_compact_manifest_works_without_intermediate_files_including_after_commit(self):
+        task, answers = self.prepared_answers()
+        answers["entries"][1]["text"] = "準備完了"
+        self.save_answers(answers)
+        # The verbose task is context only. Applying must rebuild it from Git.
+        self.write({DETAILS: '{"entries": "tampered context"}'})
+        self.assertEqual(apply(self.root), 1)
+        self.commit()
+        (self.root / DETAILS).unlink()
+        (self.root / ANSWERS).unlink()
+        self.assertEqual(verify(self.root), (1, 1))
+        script = str(Path(__file__).with_name("i18n.py"))
+        result = subprocess.run(  # noqa: S603 - local CLI with fixed test paths
+            [
+                sys.executable,
+                script,
+                "--root",
+                str(self.root),
+                "check",
+                "--base",
+                task["base_revision"],
+                "--task",
+                str(self.root / TASK),
+            ],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+
+    def test_compact_manifest_rejects_tampered_digest_selectors_and_extra_fields(self):
+        task, answers = self.prepared_answers()
+        answers["entries"][1]["text"] = "準備完了"
+        self.save_answers(answers)
+        before = snapshot(self.root)
+        manifest = compact_task(task)
+        for field, value in (
+            ("entries_hash", "0" * 64),
+            ("base_revision", "0" * 40),
+            ("locale", "fr"),
+            ("groups", ["io"]),
+            ("groups", [{}]),
+            ("kind", "unknown"),
+            ("entries", task["entries"]),
+        ):
+            self.write({TASK: json.dumps({**manifest, field: value})})
+            with self.subTest(field=field, value=value), self.assertRaises(InvalidCatalog):
+                apply(self.root)
+            self.assertEqual(snapshot(self.root), before)
+
+    def test_compact_manifest_does_not_grow_with_translation_prose(self):
+        task = self.task()
+        task["entries"] *= 100
+        short = compact_task(task)
+        for entry in task["entries"]:
+            entry["new_english"] = "Long source text. " * 1000
+        long = compact_task(task)
+        self.assertNotEqual(short["entries_hash"], long["entries_hash"])
+        self.assertEqual(len(json.dumps(short)), len(json.dumps(long)))
+        self.assertLess(len(json.dumps(long)), 400)
+
     def test_simple_workflow_applies_partial_answers_and_computes_both_hashes(self):
         task, answers = self.prepared_answers()
         answers["entries"][1]["text"] = "準備完了"
@@ -609,6 +682,7 @@ class RepositoryTests(unittest.TestCase):
             apply(self.root)
 
     def review_bundle_fixture(self):
+        self.write({".gitignore": "dist/\n"})
         self.translate()
         files = snapshot(self.root)
         metadata = json.loads(files[METADATA])
@@ -644,6 +718,9 @@ class RepositoryTests(unittest.TestCase):
         base, source = self.review_bundle_fixture()
         before = snapshot(self.root)
         task = bundle(self.root, base)
+        manifest = json.loads((self.root / TASK).read_text(encoding="utf-8"))
+        self.assertEqual(manifest, compact_task(task))
+        self.assertTrue(all("entries" not in item for item in manifest["tasks"]))
         self.assertEqual(snapshot(self.root), before)
         self.assertEqual(
             [(item["locale"], item["groups"]) for item in task["tasks"]], [("ja", ["common"]), ("fr", ["common"])]
@@ -652,10 +729,33 @@ class RepositoryTests(unittest.TestCase):
         with self.assertRaisesRegex(InvalidCatalog, "read-only"):
             apply(self.root)
         self.commit()
+        (self.root / DETAILS).unlink()
         self.assertEqual(verify(self.root), (3, 1))
         squashed = git(self.root, "commit-tree", "HEAD^{tree}", "-p", base, "-m", "squashed review").strip()
         git(self.root, "update-ref", "HEAD", squashed)
         self.assertEqual(verify(self.root), (3, 1))
+
+    def test_compact_review_bundle_rejects_tampering_and_feature_changes(self):
+        base, _ = self.review_bundle_fixture()
+        manifest = compact_task(bundle(self.root, base))
+        for mutation in ("hash", "extra", "duplicate", "groups", "component"):
+            candidate = json.loads(json.dumps(manifest))
+            if mutation == "hash":
+                candidate["tasks"][0]["entries_hash"] = "0" * 64
+            elif mutation == "extra":
+                candidate["tasks"][0]["review_keys"] = ["common.ready", "common.other"]
+            elif mutation == "duplicate":
+                candidate["tasks"].append(candidate["tasks"][0])
+            elif mutation == "groups":
+                candidate["tasks"][0]["groups"] = ["common", "io"]
+            else:
+                candidate["tasks"][0] = None
+            self.write({TASK: json.dumps(candidate)})
+            with self.subTest(mutation=mutation), self.assertRaises(InvalidCatalog):
+                verify(self.root)
+        self.write({TASK: json.dumps(manifest), "src/app.rs": "fn changed() {}"})
+        with self.assertRaisesRegex(InvalidCatalog, "sources changed"):
+            verify(self.root)
 
     def test_review_bundle_rejects_changes_outside_localization(self):
         base, _ = self.review_bundle_fixture()
