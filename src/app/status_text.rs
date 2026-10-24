@@ -132,7 +132,7 @@ mod tests {
             }
             .render()
             .as_ref(),
-            "Held capture amplitude fitted; time/trigger apply on next Start (750.125 Hz)"
+            "Last Autoset: held amplitude fitted; time/trigger apply on next Start (750.125 Hz)"
         );
         let detail = Status::Detail("CoreAudio: original external detail".into());
         assert_eq!(

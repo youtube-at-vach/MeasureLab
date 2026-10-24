@@ -1242,6 +1242,37 @@ impl ScopeApp {
                         }
                     });
                 });
+                ui.horizontal_wrapped(|ui| {
+                    let output = if self.generator.target == output::Target::Internal {
+                        i18n::text("io.internal_loopback")
+                    } else {
+                        self.generator.target.label()
+                    };
+                    ui.label(
+                        i18n::format(
+                            "generator.connection_summary",
+                            &[("output", output), ("input", &self.input_source_label())],
+                        )
+                        .as_ref(),
+                    );
+                    if ui
+                        .small_button(i18n::text("common.open_input_settings"))
+                        .clicked()
+                    {
+                        self.shell.io = Some(shell::IoTab::Connections);
+                    }
+                });
+                ui.label(
+                    RichText::new(if self.source == Source::Generator {
+                        i18n::text("io.out_ch_out_ch_start_input_and_output_separately")
+                    } else if self.generator.target == output::Target::Internal {
+                        i18n::text("generator.loopback_not_selected")
+                    } else {
+                        i18n::text("generator.external_connection")
+                    })
+                    .small()
+                    .color(MUTED),
+                );
                 if ui
                     .small_button(if self.generator.controls_expanded {
                         i18n::text("generator.hide_signal_controls")

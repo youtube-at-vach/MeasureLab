@@ -1,4 +1,5 @@
 _version: 1
+shell.arrange_view: "Arrange view…"
 shell:
   language: Language
   font_license: Noto Sans CJK font license

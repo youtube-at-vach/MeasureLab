@@ -319,6 +319,7 @@ pub struct ScopeApp {
     enabled: [bool; SCOPE_CHANNELS],
     ms_per_div: f32,
     scope_vertical: [Vertical; SCOPE_CHANNELS],
+    scope_common_vertical: Option<Vertical>,
     scope_selected: usize,
     scope_horizontal_position: f32,
     scope_trigger_display: settings::TriggerDisplay,
@@ -604,6 +605,7 @@ impl ScopeApp {
             enabled: [true; SCOPE_CHANNELS],
             ms_per_div: 1.0,
             scope_vertical: [Vertical::default(); SCOPE_CHANNELS],
+            scope_common_vertical: None,
             scope_selected: 0,
             scope_horizontal_position: 0.0,
             scope_trigger_display: settings::TriggerDisplay::default(),
@@ -1962,6 +1964,8 @@ impl ScopeApp {
     }
 
     fn begin_observation(&mut self) {
+        self.autoset_pending = None;
+        self.autoset_status = None;
         self.error = None;
         self.generator_output = None;
         self.external_output = None;
@@ -2098,12 +2102,17 @@ impl ScopeApp {
             self.autoset_pending = None;
             self.autoset_status = Some(match result {
                 Ok(result) => {
-                    for (index, channel) in self.scope_view_channels().0.into_iter().enumerate() {
-                        if channel == result.trigger.channel {
-                            self.scope_vertical[index] = Vertical {
-                                fs_per_div: result.fs_per_div as f32,
-                                offset: 0.0,
-                            };
+                    if self.scope_common_vertical.is_some() {
+                        self.fit_scope_amplitude();
+                    } else {
+                        for (index, channel) in self.scope_view_channels().0.into_iter().enumerate()
+                        {
+                            if channel == result.trigger.channel {
+                                self.scope_vertical[index] = Vertical {
+                                    fs_per_div: result.fs_per_div as f32,
+                                    offset: 0.0,
+                                };
+                            }
                         }
                     }
                     self.scope_horizontal_position = 0.0;
@@ -3039,6 +3048,8 @@ impl ScopeApp {
     }
 
     fn switch_source(&mut self) {
+        self.autoset_pending = None;
+        self.autoset_status = None;
         self.restored_input = None;
         self.calibration.clear_input();
         self.cursors.new_epoch();
@@ -3610,7 +3621,8 @@ impl ScopeApp {
                         };
                         let position = pos2(
                             rect.left() + x as f32 * rect.width(),
-                            rect.top() + self.scope_vertical[trace].y(*value) * rect.height(),
+                            rect.top()
+                                + self.scope_display_vertical(trace).y(*value) * rect.height(),
                         );
                         if rect.contains(position) {
                             ui.painter()
@@ -4832,6 +4844,7 @@ impl ScopeApp {
                 lockin_display: self.lockin_display,
                 scope_enabled: self.enabled,
                 scope_vertical: self.scope_vertical,
+                scope_common_vertical: self.scope_common_vertical,
                 scope_selected: self.scope_selected,
                 scope_horizontal_position: self.scope_horizontal_position,
                 scope_trigger_display: self.scope_trigger_display,
@@ -4954,6 +4967,7 @@ impl ScopeApp {
         self.lockin_display = w.lockin_display;
         self.enabled = w.scope_enabled;
         self.scope_vertical = w.scope_vertical;
+        self.scope_common_vertical = w.scope_common_vertical;
         self.scope_selected = w.scope_selected;
         self.scope_horizontal_position = w.scope_horizontal_position;
         self.scope_trigger_display = w.scope_trigger_display;
@@ -5029,8 +5043,17 @@ impl ScopeApp {
     }
 
     fn fit_scope_amplitude(&mut self) {
-        let peak = self.measurements[self.scope_selected].peak;
-        self.scope_vertical[self.scope_selected] = Vertical {
+        let peak = if self.scope_common_vertical.is_some() {
+            self.measurements
+                .iter()
+                .zip(self.enabled)
+                .filter(|(_, enabled)| *enabled)
+                .map(|(m, _)| m.peak)
+                .fold(0.0_f64, f64::max)
+        } else {
+            self.measurements[self.scope_selected].peak
+        };
+        *self.scope_selected_vertical_mut() = Vertical {
             fs_per_div: (peak / 3.5).clamp(0.001, 0.5) as f32,
             offset: 0.0,
         };
@@ -5074,8 +5097,7 @@ impl ScopeApp {
                 if !self.scope_range.is_empty() && !self.running() && (self.core_scope.mode != self.acquisition_mode || self.scope_channels != self.scope_view_channels() || self.calibration.pending != self.calibration.captured) {
                     ui.label(RichText::new(i18n::text("oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next")).small().color(YELLOW));
                 }
-                ui.add(egui::Label::new(RichText::new(i18n::format("oscilloscope.ch", &[("scope_selected", &(self.scope_selected + 1).to_string()), ("scope_selected_2", &(self.scope_readout(self.scope_selected)).to_string())]).as_ref()).monospace().size(13.0).color(monitor_controls::scope_color(self.scope_selected))).wrap())
-                    .on_hover_text(self.scope_readout_details(self.scope_selected));
+                self.scope_quick_controls(ui);
                 // Reserve a single 40-point channel strip immediately below the plot.
                 let height = (ui.available_height() - 40.0 - ui.spacing().item_spacing.y).max(40.0);
                 ui.scope_builder(egui::UiBuilder::new().max_rect(egui::Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), height))), |ui| self.plot(ui));
@@ -5495,7 +5517,7 @@ impl ScopeApp {
             if scroll != 0.0 {
                 let factor = (-scroll * 0.008).exp();
                 if shift {
-                    let vertical = &mut self.scope_vertical[self.scope_selected];
+                    let vertical = self.scope_selected_vertical_mut();
                     vertical.fs_per_div = (vertical.fs_per_div * factor).clamp(0.001, 0.5);
                 } else {
                     self.ms_per_div = (self.ms_per_div * factor).clamp(0.05, 100.0);
@@ -5505,7 +5527,11 @@ impl ScopeApp {
         }
         if response.double_clicked() {
             self.ms_per_div = 1.0;
-            self.scope_vertical = [Vertical::default(); SCOPE_CHANNELS];
+            if let Some(vertical) = &mut self.scope_common_vertical {
+                *vertical = Vertical::default();
+            } else {
+                self.scope_vertical = [Vertical::default(); SCOPE_CHANNELS];
+            }
             self.scope_horizontal_position = 0.0;
             self.dirty = true;
         }
@@ -5562,8 +5588,8 @@ impl ScopeApp {
                     format!(
                         "{:.3}",
                         (4.0 - y as f32) as f64
-                            * self.scope_vertical[self.scope_selected].fs_per_div as f64
-                            + self.scope_vertical[self.scope_selected].offset
+                            * self.scope_display_vertical(self.scope_selected).fs_per_div as f64
+                            + self.scope_display_vertical(self.scope_selected).offset
                     ),
                     egui::FontId::monospace(10.0),
                     MUTED,
@@ -5585,7 +5611,7 @@ impl ScopeApp {
                     sample_offset: self.scope_sample_offset,
                 },
                 pixels,
-                self.scope_vertical,
+                std::array::from_fn(|index| self.scope_display_vertical(index)),
                 self.enabled,
                 self.scope_view_channels(),
                 &mut self.lines,
@@ -5639,7 +5665,7 @@ impl ScopeApp {
         self.scope_cursors(ui, &response, rect);
         self.scope_notice_ui(ui, rect.shrink(8.0));
         ui.horizontal(|ui| {
-            ui.label(RichText::new(i18n::text("common.amplitude_fs")).size(12.0))
+            ui.label(RichText::new(self.scope_axis_label().as_ref()).size(12.0))
                 .on_hover_text(
                     i18n::format(
                         "common.selected_ch_axis",

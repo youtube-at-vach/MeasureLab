@@ -2,6 +2,112 @@
 use super::*;
 
 impl ScopeApp {
+    pub(super) fn scope_axis_label(&self) -> Arc<str> {
+        i18n::format(
+            "oscilloscope.amplitude_axis_ch",
+            &[("channel", &(self.scope_selected + 1).to_string())],
+        )
+    }
+
+    pub(super) fn scope_display_vertical(&self, index: usize) -> Vertical {
+        self.scope_common_vertical
+            .unwrap_or(self.scope_vertical[index])
+    }
+
+    pub(super) fn scope_selected_vertical_mut(&mut self) -> &mut Vertical {
+        self.scope_common_vertical
+            .as_mut()
+            .unwrap_or(&mut self.scope_vertical[self.scope_selected])
+    }
+
+    pub(super) fn scope_autoset_button(&mut self, ui: &mut egui::Ui) {
+        if ui
+            .add_enabled(
+                self.autoset_pending.is_none() && self.core.is_some(),
+                egui::Button::new(i18n::text("oscilloscope.autoset")),
+            )
+            .on_hover_text(i18n::text(
+                "oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a",
+            ))
+            .clicked()
+        {
+            self.autoset_pending = Some(self.core.as_ref().unwrap().autoset(self.trigger.channel));
+        }
+    }
+
+    pub(super) fn scope_quick_controls(&mut self, ui: &mut egui::Ui) {
+        ui.horizontal_wrapped(|ui| {
+            let was_common = self.scope_common_vertical.is_some();
+            let mut common = was_common;
+            ui.selectable_value(
+                &mut common,
+                false,
+                i18n::text("oscilloscope.per_channel_scale"),
+            );
+            ui.selectable_value(&mut common, true, i18n::text("oscilloscope.common_scale"));
+            if common != was_common {
+                self.scope_common_vertical =
+                    common.then(|| self.scope_vertical[self.scope_selected]);
+                self.dirty = true;
+            }
+            ui.label(i18n::text("oscilloscope.time_scale"));
+            let timebase = ui.add(
+                egui::DragValue::new(&mut self.ms_per_div)
+                    .range(0.05..=100.0)
+                    .speed(0.01)
+                    .max_decimals(3)
+                    .suffix(" ms/div"),
+            );
+            self.dirty |= timebase.changed();
+            #[cfg(feature = "qa")]
+            ui.ctx().data_mut(|data| {
+                data.insert_temp(egui::Id::new("qa_scope_timebase"), timebase.rect)
+            });
+            ui.colored_label(
+                scope_color(self.scope_selected),
+                format!("CH{}", self.scope_selected + 1),
+            );
+            self.dirty |= ui
+                .add(
+                    egui::DragValue::new(&mut self.scope_selected_vertical_mut().fs_per_div)
+                        .range(0.001..=0.5)
+                        .speed(0.001)
+                        .max_decimals(4)
+                        .suffix(" FS/div"),
+                )
+                .changed();
+            self.scope_autoset_button(ui);
+        });
+        ui.horizontal_wrapped(|ui| {
+            for index in 0..SCOPE_CHANNELS {
+                if self.enabled[index] {
+                    ui.label(
+                        RichText::new(format!("CH{} · {}", index + 1, self.scope_readout(index)))
+                            .monospace()
+                            .size(12.0)
+                            .color(scope_color(index)),
+                    )
+                    .on_hover_text(self.scope_readout_details(index));
+                }
+            }
+        });
+        if let Some(status) = &self.autoset_status {
+            ui.label(RichText::new(status.render().as_ref()).small().color(MUTED));
+        }
+        if !self.running()
+            && !self.scope_range.is_empty()
+            && self.core_scope.mode != acquisition::Mode::Auto
+        {
+            ui.label(
+                RichText::new(i18n::text(
+                    "oscilloscope.time_trigger_edits_apply_on_next_start",
+                ))
+                .small()
+                .color(YELLOW),
+            );
+        }
+    }
+
     pub(super) fn scope_display_trigger(&self) -> Trigger {
         if self.core.is_some() && !self.running() {
             self.core_scope.trigger
@@ -127,8 +233,10 @@ impl ScopeApp {
                         "oscilloscope.fs_div",
                         &[(
                             "fs_per_div",
-                            &(display::number(Some(self.scope_vertical[index].fs_per_div as f64)))
-                                .to_string(),
+                            &(display::number(Some(
+                                self.scope_display_vertical(index).fs_per_div as f64,
+                            )))
+                            .to_string(),
                         )],
                     )
                     .to_string(),
@@ -339,7 +447,7 @@ impl ScopeApp {
                 .0
                 .iter()
                 .position(|ch| *ch == trigger.channel)
-                .map(|i| self.scope_vertical[i])
+                .map(|i| self.scope_display_vertical(i))
                 .unwrap_or_default();
             rect.top() + vertical.y(trigger.level) * rect.height()
         };
