@@ -422,7 +422,7 @@ impl ScopeApp {
         ] {
             driver.resize(self, vec2(width, height), zoom, native_scale);
             driver.check_header()?;
-            driver.visible_text_rect(i18n::text("common.amplitude_fs"))?;
+            driver.visible_text_rect(self.scope_axis_label().as_ref())?;
             driver.visible_text_rect(i18n::text("common.time_ms"))?;
             driver.position("CH1")?;
             driver.position("CH4")?;
@@ -448,7 +448,7 @@ impl ScopeApp {
         for compact in [true, false] {
             driver.click_at(self, driver.sidebar_toggle()?.center());
             assert_eq!(self.shell.sidebar_compact, compact);
-            driver.visible_text_rect(i18n::text("common.amplitude_fs"))?;
+            driver.visible_text_rect(self.scope_axis_label().as_ref())?;
             driver.visible_text_rect(i18n::text("common.time_ms"))?;
             driver.text_position(i18n::text("generator.stop_output_2"))?;
         }
@@ -491,14 +491,27 @@ impl ScopeApp {
         driver.frame(self, vec![]);
         driver.frame(self, vec![]);
         assert!(self.scope_notice().is_some());
+        self.autoset_status = Some(UiStatus::Autoset {
+            frequency_hz: 1000.0,
+            held: true,
+        });
+        let (_sender, reply) = std::sync::mpsc::channel();
+        self.autoset_pending = Some(reply);
+        driver.frame(self, vec![]);
         driver.click(self, i18n::text("common.open_input_settings"))?;
         driver.click(self, i18n::text("io.software_loopback"))?;
         assert!(self.source == Source::Software);
+        assert!(self.autoset_status.is_none() && self.autoset_pending.is_none());
         driver.click(self, i18n::text("shell.back_to_instruments"))?;
         self.core = Some(measurement::Worker::new(self.stft.take_feeder()));
         self.loopback_settings = loopback::Settings::default();
         let command = self.generator.command_marker();
+        self.autoset_status = Some(UiStatus::Autoset {
+            frequency_hz: 1000.0,
+            held: true,
+        });
         driver.click(self, i18n::text("io.start_input"))?;
+        assert!(self.autoset_status.is_none() && self.autoset_pending.is_none());
         self.wait_scope(|app| !app.scope_range.is_empty() && app.analyzer.is_ready())?;
         assert!(self.scope_notice().is_none());
         assert!(matches!(self.scope_readings[0], Reading::Valid(_)));

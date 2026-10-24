@@ -332,6 +332,7 @@ impl ScopeApp {
                     .clicked()
                 {
                     self.presentation.apply(Action::SetLayout(layout));
+                    ui.close();
                 }
             }
             ui.add(
@@ -662,7 +663,9 @@ impl ScopeApp {
                         true,
                         i18n::text("shell.details"),
                     );
-                    if let Some(i) = self.presentation.selected() {
+                    if self.shell.narrow_details
+                        && let Some(i) = self.presentation.selected()
+                    {
                         ui.label(i.display_name());
                     }
                 });
@@ -783,28 +786,32 @@ impl ScopeApp {
                     }
                 }
             });
-            if ui
-                .add_enabled(
-                    self.shell.previous_console.is_some(),
-                    egui::Button::new(i18n::text("shell.undo_replacement")),
-                )
-                .clicked()
-                && let Some(previous) = self.shell.previous_console.take()
-            {
-                self.presentation.console = previous;
-                self.unlink_spectrum_history();
-            }
-            for layout in Layout::ALL {
+            ui.menu_button(i18n::text("shell.arrange_view"), |ui| {
                 if ui
-                    .selectable_label(
-                        self.presentation.console.layout == layout,
-                        layout.display_name(),
+                    .add_enabled(
+                        self.shell.previous_console.is_some(),
+                        egui::Button::new(i18n::text("shell.undo_replacement")),
                     )
                     .clicked()
+                    && let Some(previous) = self.shell.previous_console.take()
                 {
-                    self.presentation.apply(Action::SetLayout(layout));
+                    self.presentation.console = previous;
+                    self.unlink_spectrum_history();
+                    ui.close();
                 }
-            }
+                for layout in Layout::ALL {
+                    if ui
+                        .selectable_label(
+                            self.presentation.console.layout == layout,
+                            layout.display_name(),
+                        )
+                        .clicked()
+                    {
+                        self.presentation.apply(Action::SetLayout(layout));
+                        ui.close();
+                    }
+                }
+            });
         });
         if self.presentation.console.instruments.is_empty() {
             ui.label(i18n::text(
@@ -812,26 +819,35 @@ impl ScopeApp {
             ));
             return;
         }
-        ui.horizontal_wrapped(|ui| {
-            for i in self.presentation.console.instruments.clone() {
-                if ui
-                    .selectable_label(
-                        self.presentation.console.selected == Some(i),
-                        pane_title(i, self.presentation.console.selected == Some(i)),
-                    )
-                    .clicked()
-                {
-                    self.presentation.apply(Action::FocusPane(i));
-                }
-            }
-        });
-        // The tab strip may wrap. Decide only after its actual height is known.
         let gap = ui.spacing().item_spacing.x;
-        let layout = self.presentation.console.effective_layout(
+        let mut layout = self.presentation.console.effective_layout(
             ui.available_width(),
             ui.available_height(),
             gap,
         );
+        // Pane headers select visible instruments; tabs are only needed to
+        // reach instruments that cannot be shown together.
+        if layout == Layout::Tabs || self.presentation.console.instruments.len() > layout.capacity()
+        {
+            ui.horizontal_wrapped(|ui| {
+                for i in self.presentation.console.instruments.clone() {
+                    if ui
+                        .selectable_label(
+                            self.presentation.console.selected == Some(i),
+                            pane_title(i, self.presentation.console.selected == Some(i)),
+                        )
+                        .clicked()
+                    {
+                        self.presentation.apply(Action::FocusPane(i));
+                    }
+                }
+            });
+            layout = self.presentation.console.effective_layout(
+                ui.available_width(),
+                ui.available_height(),
+                gap,
+            );
+        }
         if layout == Layout::Tabs
             && self.presentation.console.layout != Layout::Tabs
             && self.presentation.console.instruments.len() > 1
@@ -895,31 +911,35 @@ impl ScopeApp {
                                                 {
                                                     self.presentation.apply(Action::FocusPane(i));
                                                 }
-                                                if ui
-                                                    .small_button(i18n::text("shell.open_single"))
-                                                    .clicked()
-                                                {
-                                                    self.navigate(Action::OpenSingle(i));
-                                                }
-                                                if ui
-                                                    .small_button(i18n::text(
-                                                        "shell.remove_from_view",
-                                                    ))
-                                                    .on_hover_text(i18n::text(
-                                                        "shell.analysis_and_output_continue",
-                                                    ))
-                                                    .clicked()
-                                                {
-                                                    self.presentation
-                                                        .apply(Action::RemoveFromConsole(i));
-                                                    if matches!(
-                                                        i,
-                                                        Instrument::Spectrum
-                                                            | Instrument::Spectrogram
-                                                    ) {
-                                                        self.unlink_spectrum_history();
+                                                ui.menu_button("⋯", |ui| {
+                                                    if ui
+                                                        .button(i18n::text("shell.open_single"))
+                                                        .clicked()
+                                                    {
+                                                        self.navigate(Action::OpenSingle(i));
+                                                        ui.close();
                                                     }
-                                                }
+                                                    if ui
+                                                        .button(i18n::text(
+                                                            "shell.remove_from_view",
+                                                        ))
+                                                        .on_hover_text(i18n::text(
+                                                            "shell.analysis_and_output_continue",
+                                                        ))
+                                                        .clicked()
+                                                    {
+                                                        self.presentation
+                                                            .apply(Action::RemoveFromConsole(i));
+                                                        ui.close();
+                                                        if matches!(
+                                                            i,
+                                                            Instrument::Spectrum
+                                                                | Instrument::Spectrogram
+                                                        ) {
+                                                            self.unlink_spectrum_history();
+                                                        }
+                                                    }
+                                                });
                                             });
                                             // Expanded details and wrapped readouts must
                                             // stay inside their pane, including a held

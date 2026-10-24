@@ -1,4 +1,7 @@
 _version: 1
+generator.connection_summary: "Output: %{output} · %{input}"
+generator.loopback_not_selected: "To measure this internal output, select Generator loopback in input settings. Start input and output separately."
+generator.external_connection: "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately."
 generator.add_a_signal_in_the_generator_panel: "Add a signal in the Generator panel."
 generator.add_signal: "+ Add signal"
 generator.applied: "APPLIED"

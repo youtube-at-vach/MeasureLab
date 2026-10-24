@@ -191,6 +191,8 @@ pub struct Workspace {
     pub lockin_display: LockinDisplay,
     pub scope_enabled: [bool; SCOPE_CHANNELS],
     pub scope_vertical: [Vertical; SCOPE_CHANNELS],
+    #[serde(default)]
+    pub scope_common_vertical: Option<Vertical>,
     pub scope_selected: usize,
     pub scope_horizontal_position: f32,
     #[serde(default)]
@@ -392,7 +394,7 @@ impl Document {
         for scale in [w.xy_x_fs_per_div, w.xy_y_fs_per_div] {
             in_range(scale, 0.001, 0.5, "amplitude scale")?;
         }
-        for vertical in w.scope_vertical {
+        for vertical in w.scope_vertical.into_iter().chain(w.scope_common_vertical) {
             in_range(
                 vertical.fs_per_div as f64,
                 0.001_f32 as f64,
@@ -781,6 +783,7 @@ mod tests {
                 lockin_display: LockinDisplay::Polar,
                 scope_enabled: [true; SCOPE_CHANNELS],
                 scope_vertical: [Vertical::default(); SCOPE_CHANNELS],
+                scope_common_vertical: None,
                 scope_selected: 0,
                 scope_horizontal_position: 0.0,
                 scope_trigger_display: TriggerDisplay::default(),
@@ -1018,6 +1021,38 @@ mod tests {
                 _ => invalid.workspace.spectrum_display.average_weight = 0,
             }
             assert!(invalid.validate().is_err());
+        }
+    }
+
+    #[test]
+    fn common_scope_scale_is_optional_validated_and_round_trips() {
+        let mut value = serde_json::to_value(fixture()).unwrap();
+        value["workspace"]
+            .as_object_mut()
+            .unwrap()
+            .remove("scope_common_vertical");
+        let mut document = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+        assert_eq!(document.workspace.scope_common_vertical, None);
+        let independent = document.workspace.scope_vertical;
+        document.workspace.scope_common_vertical = Some(Vertical {
+            fs_per_div: 0.025,
+            offset: -0.1,
+        });
+        let decoded = Document::decode(&document.encode().unwrap()).unwrap();
+        assert_eq!(decoded, document);
+        assert_eq!(decoded.workspace.scope_vertical, independent);
+        for vertical in [
+            Vertical {
+                fs_per_div: 0.0,
+                offset: 0.0,
+            },
+            Vertical {
+                fs_per_div: 0.1,
+                offset: f64::NAN,
+            },
+        ] {
+            document.workspace.scope_common_vertical = Some(vertical);
+            assert!(document.validate().is_err());
         }
     }
 

@@ -44,19 +44,7 @@ impl ScopeApp {
                     self.acquisition_mode = acquisition::Mode::Single;
                     self.start();
                 }
-                if ui
-                    .add_enabled(
-                        self.autoset_pending.is_none() && self.core.is_some(),
-                        egui::Button::new(i18n::text("oscilloscope.autoset")),
-                    )
-                    .on_hover_text(i18n::text(
-                        "oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a",
-                    ))
-                    .clicked()
-                {
-                    self.autoset_pending =
-                        Some(self.core.as_ref().unwrap().autoset(self.trigger.channel));
-                }
+                self.scope_autoset_button(ui);
             });
             if let Some(status) = &self.autoset_status {
                 ui.label(RichText::new(status.render().as_ref()).small().color(MUTED));
@@ -137,6 +125,9 @@ impl ScopeApp {
             .as_ref(),
             color,
             |ui| {
+                if self.scope_common_vertical.is_some() {
+                    ui.label(i18n::text("oscilloscope.common_scale"));
+                }
                 ui.horizontal(|ui| {
                     ui.label(i18n::text("oscilloscope.input_source"));
                     let before = self.scope_channels;
@@ -169,18 +160,21 @@ impl ScopeApp {
                 self.dirty |= control_slider(
                     ui,
                     i18n::text("oscilloscope.vertical_range"),
-                    egui::Slider::new(&mut self.scope_vertical[index].fs_per_div, 0.001..=0.5)
-                        .logarithmic(true)
-                        .suffix(" FS/div")
-                        .max_decimals(3)
-                        .drag_value_speed(0.001),
+                    egui::Slider::new(
+                        &mut self.scope_selected_vertical_mut().fs_per_div,
+                        0.001..=0.5,
+                    )
+                    .logarithmic(true)
+                    .suffix(" FS/div")
+                    .max_decimals(3)
+                    .drag_value_speed(0.001),
                     None,
                 )
                 .0;
                 let (changed, zero) = control_slider(
                     ui,
                     i18n::text("oscilloscope.centre_offset"),
-                    egui::Slider::new(&mut self.scope_vertical[index].offset, -2.0..=2.0)
+                    egui::Slider::new(&mut self.scope_selected_vertical_mut().offset, -2.0..=2.0)
                         .suffix(" FS")
                         .max_decimals(3)
                         .drag_value_speed(0.001)
@@ -188,24 +182,20 @@ impl ScopeApp {
                     Some(i18n::text("oscilloscope.zero_offset")),
                 );
                 if zero {
-                    self.scope_vertical[index].offset = 0.0;
+                    self.scope_selected_vertical_mut().offset = 0.0;
                 }
                 self.dirty |= changed || zero;
                 if ui
                     .button(i18n::text("oscilloscope.fit_amplitude"))
-                    .on_hover_text(i18n::text(
-                        "oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre",
-                    ))
+                    .on_hover_text(if self.scope_common_vertical.is_some() {
+                        i18n::text("oscilloscope.fit_visible_channels")
+                    } else {
+                        i18n::text("oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre")
+                    })
                     .clicked()
                 {
                     self.fit_scope_amplitude();
                 }
-                ui.label(
-                    RichText::new(self.scope_readout(index))
-                        .small()
-                        .color(color),
-                )
-                .on_hover_text(self.scope_readout_details(index));
             },
         );
 

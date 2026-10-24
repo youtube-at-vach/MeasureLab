@@ -75,15 +75,17 @@ cargo run --release
 
 表示モードは自動保存し、次回起動時に復元します。測定設定ファイルとは独立した表示の設定で、起動時の入出力は停止のままです。狭幅ではサイドバーを一時的に隠し、**Menu → View → Compact sidebar** でもモードを変更できます。広げると選んだモードへ戻ります。
 
-単独表示の **Split view with…** は現在の計器と選んだ計器の2区画を作ります。既存コンソールを置き換える場合はメニューで案内し、コンソールの **Undo replacement** で直前の構成へ戻せます。**Multi-instrument view** は保持した構成を開き、**Add instrument…** で追加します。同じ計器は複製せず選択します。区画のクリック、名前付きタブ、Ctrl＋左右キーで対象を選び、**Open single** で単独表示へ戻ります。**Remove from view** は表示からだけ外し、解析やGenerator出力は続きます。最後の区画を外すと追加案内を表示します。
+単独表示の **Split view with…** は現在の計器と選んだ計器の2区画を作ります。既存コンソールを置き換える場合はメニューで案内し、コンソールの **Arrange view… → Undo replacement** で直前の構成へ戻せます。**Multi-instrument view** は保持した構成を開き、**Add instrument…** で追加します。同じ計器は複製せず選択します。区画のクリック、名前付きタブ、Ctrl＋左右キーで対象を選び、**Open single** で単独表示へ戻ります。**Remove from view** は表示からだけ外し、解析やGenerator出力は続きます。最後の区画を外すと追加案内を表示します。
 
-配置は **Side by side / Stacked / 2 × 2 / Tabs** を選びます。2区画／4区画を超えた計器は名前付きタブで選択します。寸法が不足するとタブ表示へ退避し、広げると希望配置へ戻ります。**View** の **First pane share** で分割比率、**Display scale** で表示倍率を調整できます。倍率は75／90／100／110／125／150／175%から選び、クリックで確定したときだけ画面へ反映してメニューを閉じます。候補へのホバーやEscで閉じる操作では倍率は変わりません。100%を選ぶと標準倍率へ戻ります。狭幅では **Menu → View → Display scale** から選びます。単独表示とコンソールの往復・リサイズで構成と比率は消えません。
+配置は **Arrange view…** の **Side by side / Stacked / 2 × 2 / Tabs** を選びます。同時表示できる区画は見出しのクリックで選択し、上段の選択行はタブ表示や区画数超過時だけ表示します。各区画の **⋯** に **Open single / Remove from view** をまとめます。2区画／4区画を超えた計器は名前付きタブで選択します。寸法が不足するとタブ表示へ退避し、広げると希望配置へ戻ります。**View** の **First pane share** で分割比率、**Display scale** で表示倍率を調整できます。倍率は75／90／100／110／125／150／175%から選び、クリックで確定したときだけ画面へ反映してメニューを閉じます。候補へのホバーやEscで閉じる操作では倍率は変わりません。100%を選ぶと標準倍率へ戻ります。狭幅では **Menu → View → Display scale** から選びます。単独表示とコンソールの往復・リサイズで構成と比率は消えません。
 
-右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。
+右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。取得・トリガー状態とカーソルを同じ行にまとめ、時間軸・選択CHの縦軸倍率・Autosetと倍率方式はその下の操作行で調整します。時間軸の重複ラベルを省き、狭幅では必要に応じて折り返します。停止したNormal／Singleでは保持波形の時間軸と次回Startに適用する設定を区別して表示します。
 
 Scopeの見出しは単独表示で一つにまとめ、複数計器表示では区画名を残します。詳細欄の **Scope settings** はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Start single capture・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
 
-波形の **Amplitude [FS]** は選択CHのraw FS、**Time [ms]** はトリガー基準からの時刻です。**FS** はデジタルのフルスケール、**Fs** は公称サンプルレート、**div** はグリッドの1目盛りを表します。RMS／P-Pは取得時のCH校正を適用した数値で、各値に単位を表示します。波形軸・トリガーレベルのraw FSと区別してください。時刻・周波数は取得時の公称Fsに基づき、実時計の校正済み値ではありません。
+波形の **Amplitude [FS] · CH… axis** は選択CHのraw FS、**Time [ms]** はトリガー基準からの時刻です。**FS** はデジタルのフルスケール、**Fs** は公称サンプルレート、**div** はグリッドの1目盛りを表します。RMS／P-Pは取得時のCH校正を適用した数値で、各値に単位を表示します。波形軸・トリガーレベルのraw FSと区別してください。時刻・周波数は取得時の公称Fsに基づき、実時計の校正済み値ではありません。
+
+**Per-channel scale** は各CHの独立した倍率とオフセットを使います。振幅が異なっても同じ高さに見える場合があります。**Common scale** は選択CHの縦軸設定を全CHへ適用し、その後のCH選択でも共通軸を保ちます。共通モードの倍率・オフセット・Fit amplitude・Shift＋ホイールは全CHへ作用し、Fit／Autosetは表示中CHの最大Peakに合わせます。独立モードへ戻すと元のCH別設定を復元します。倍率方式と共通軸は設定ファイルへ保存します。各CHのRMS／P-Pと単位は波形の近くに併記します。Autoset通知は **Last Autoset** として前回の結果を示し、入力元の切替・再開始時に解除します。周波数変更後の現在値を連続検出する表示ではありません。
 
 上端の **T** は時刻0 ms、右端の **T** はトリガーソースCHのraw FSレベルを示します。右端の位置はソースCHの縦軸設定に従い、選択CHの振幅軸と異なる場合があります。未取得やトリガー未成立では **T markers: settings only**、トリガー成立済みの区間では **T markers: captured** と表示します。マーカーへのホバー、Scope settings、Helpで意味を確認できます。
 
@@ -93,7 +95,7 @@ XYの詳細欄も枠で区切り、Observationで観察時間幅とスケール�
 
 **Place cursor: A / B** は次にクリック／ドラッグで配置する対象です。A／Bを選ぶだけでは配置せず、**Placed: none / A / B / A, B** が配置済みの対象を示します。Scope・Spectrogram・XYの **Clear cursors** は共通の時間・周波数・XY自由配置とSpectrogramフレーム選択を解除します。Spectrumの **Clear cursors** と履歴Spectrumの **Clear frequency** は周波数だけを解除し、時間・フレーム選択・XY自由配置を保ちます。取得済みのデータは消去しません。
 
-FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・波形・OUT・カード管理・ON／OFF・Start outputは本体、刻み幅・Noiseのseed・選択カードの適用値は詳細欄です。
+FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・波形・OUT・カード管理・ON／OFF・Start outputは本体、刻み幅・Noiseのseed・選択カードの適用値は詳細欄です。出力開始付近には出力先と現在選択中の入力元を併記し、**Open input settings** で接続設定を開けます。内部出力ではGenerator loopbackの選択状態とOUT→CH対応を示します。外部出力は物理・仮想経路の接続を別途行い、入力・出力はそれぞれ明示的に開始します。
 
 上部は左のメニューと右の入出力操作を1行にまとめ、**Start input / Stop input** を右端に置きます。狭幅ではメニューを **Menu** にまとめ、状態の接頭辞を **IN / OUT** に短縮します。**Audio I/O** の **Input / output** と **Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Stop output** は完全停止時だけ無効になり、開始待ち・設定適用待ち・停止処理中やエラー時には停止要求を送れます。**Analysis status…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
 
@@ -137,7 +139,7 @@ Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Bu
 | Horizontal / ホイール | 時間軸の変更（0.05〜100 ms/div） |
 | Vertical / Vertical range / Shift＋ホイール | 選択中CHの振幅の変更（0.001〜0.5 FS/div） |
 | Vertical / Fit amplitude | 選択中CHの生サンプルPeakに合わせ、オフセットを0へ戻す |
-| Scope下部 CH1〜CH4 / チェックボックス | CH選択と波形の表示ON/OFFを独立に操作。各CHのFS/div、入力なしを表示 |
+| Scope下部 CH1〜CH4 / チェックボックス | CH選択と波形の表示ON/OFFを独立に操作。CH名とFS/divを先頭行、RMS・P-Pと共通の単位を次の1行にまとめた固定枠に表示。範囲外などの状態も同じ行を使う。数値は等幅・右揃え、ラベルと単位は別の固定列とし、桁数や指数表記が変わっても他の項目と波形は動かない。狭幅では2列に配置。詳細な値と単位・状態は枠のホバーで確認 |
 | Vertical / Input source / Centre offset / Zero offset | 選択CHの入力を1〜16chから割当、波形中央のraw FS値を設定／0へ戻す |
 | Horizontal / Position / Reset time position | 波形を左右へ移動／位置を初期化。生サンプルと測定区間は変更しない |
 | Trigger / Edge / Source / Level / Zero level | フリーラン／立ち上がり／立ち下がり、ソースと閾値の設定／閾値を0へ戻す |

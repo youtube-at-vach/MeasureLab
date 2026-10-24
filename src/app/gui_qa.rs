@@ -4,6 +4,7 @@ use super::*;
 use crate::generator;
 
 mod language;
+mod measurement_ux;
 mod scope;
 mod sidebar;
 
@@ -135,6 +136,13 @@ impl Driver {
         }
         // Panels and menus settle on the following frame, as in the desktop UI.
         self.frame(app, vec![]);
+    }
+
+    fn finish_menu_animation(&mut self, app: &mut ScopeApp) {
+        // A closing popup can still be painted and cover controls while fading.
+        for _ in 0..12 {
+            self.frame(app, vec![egui::Event::PointerGone]);
+        }
     }
 
     fn key(&mut self, app: &mut ScopeApp, key: egui::Key, modifiers: egui::Modifiers) {
@@ -276,7 +284,7 @@ impl ScopeApp {
             assert_eq!(driver.text_positions(reason.title()).len(), 1);
             assert!(driver.text_positions("Oscilloscope").is_empty());
             driver
-                .visible_text_rect(i18n::text("common.amplitude_fs"))
+                .visible_text_rect(app.scope_axis_label().as_ref())
                 .unwrap();
             driver
                 .visible_text_rect(i18n::text("common.time_ms"))
@@ -446,7 +454,7 @@ impl ScopeApp {
             .apply(Action::FocusPane(Instrument::Scope));
         driver.frame(self, vec![]);
         driver.visible_text_rect("Scope · Selected")?;
-        driver.visible_text_rect(i18n::text("common.amplitude_fs"))?;
+        driver.visible_text_rect(self.scope_axis_label().as_ref())?;
         assert!(driver.text_positions("Oscilloscope").is_empty());
         assert_eq!(
             (
@@ -1133,7 +1141,9 @@ impl ScopeApp {
         );
         driver.click(self, i18n::text("spectrum.time_a_b_from_spectrogram"))?;
         assert!(self.spectrum_history.linked);
+        driver.click(self, i18n::text("shell.arrange_view"))?;
         driver.click(self, i18n::text("shell.undo_replacement"))?;
+        driver.finish_menu_animation(self);
         assert!(!self.spectrum_history.linked);
         assert_eq!(self.presentation.console, original_console);
         self.navigate(Action::OpenSingle(Instrument::Spectrogram));
@@ -1286,6 +1296,7 @@ impl ScopeApp {
         self.check_output_stop_interactions(&mut driver)?;
         self.check_cursor_placement_interactions(&mut driver)?;
         self.check_trigger_display_interactions(&mut driver)?;
+        self.check_measurement_ux_interactions(&mut driver)?;
 
         let shared_input_labels = driver
             .output
@@ -1309,7 +1320,10 @@ impl ScopeApp {
                 .ctx
                 .interactive_rects_last_pass()
                 .into_iter()
-                .find(|r| r.contains(pos) && (r.height() - 40.0).abs() < 1.0)
+                .find(|r| {
+                    r.contains(pos)
+                        && (r.height() - monitor_controls::SCOPE_CHANNEL_CARD_HEIGHT).abs() < 1.0
+                })
                 .ok_or("Scope channel selection area missing")?;
             driver.click_at(self, pos2(selection.right() + 10.0, selection.top() + 13.0));
             assert_ne!(self.enabled[index], scope_display.0[index]);
@@ -1611,17 +1625,28 @@ impl ScopeApp {
         driver.key(self, egui::Key::Num1, egui::Modifiers::CTRL);
         driver.click(self, i18n::text("shell.split_view_with"))?;
         driver.click(self, i18n::text("shell.instrument_names.spectrum"))?;
+        driver.click(self, i18n::text("shell.arrange_view"))?;
         driver.click(self, i18n::text("shell.undo_replacement"))?;
+        driver.finish_menu_animation(self);
         assert_eq!(self.presentation.console, pair);
         for instrument in Instrument::ALL {
+            assert!(
+                !driver.ctx.any_popup_open(),
+                "Arrange menu stayed open before adding {instrument:?}"
+            );
             driver.click(self, i18n::text("shell.add_instrument"))?;
             driver.click(self, instrument.display_name())?;
             assert_eq!(self.presentation.selected(), Some(instrument));
+            driver.finish_menu_animation(self);
         }
         assert_eq!(self.presentation.console.instruments.len(), 7);
+        driver.click(self, i18n::text("shell.arrange_view"))?;
         driver.click(self, i18n::text("shell.layout_names.tabs"))?;
+        driver.finish_menu_animation(self);
         for _ in 0..7 {
+            driver.click(self, "⋯")?;
             driver.click(self, i18n::text("shell.remove_from_view"))?;
+            driver.finish_menu_animation(self);
         }
         assert!(self.presentation.console.instruments.is_empty());
         assert_eq!(self.presentation.selected(), None);
