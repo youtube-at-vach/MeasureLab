@@ -36,6 +36,58 @@ impl ScopeApp {
             .unwrap_or(&mut self.scope_vertical[self.scope_selected])
     }
 
+    pub(super) fn scope_capture_status(&self, ui: &mut egui::Ui) {
+        let trigger = self.scope_display_trigger();
+        let (text, color) = if self.scope_notice().is_some() {
+            (i18n::text("oscilloscope.trigger_settings"), MUTED)
+        } else if trigger.edge != Edge::Free
+            && self
+                .scope_input_channels()
+                .is_some_and(|count| !channel::available(trigger.channel, count as usize))
+        {
+            (
+                i18n::text("oscilloscope.trigger_source_unavailable"),
+                TRIGGER,
+            )
+        } else if self.core_scope.mode != acquisition::Mode::Auto {
+            match self.acquisition_state {
+                acquisition::State::Waiting => {
+                    (i18n::text("oscilloscope.waiting_for_trigger"), YELLOW)
+                }
+                acquisition::State::Acquiring => {
+                    (i18n::text("oscilloscope.acquiring_post_trigger"), YELLOW)
+                }
+                acquisition::State::WaitingWithCapture => {
+                    (i18n::text("oscilloscope.waiting_previous_capture"), YELLOW)
+                }
+                acquisition::State::Complete => (i18n::text("oscilloscope.single_complete"), MUTED),
+            }
+        } else if self.triggered {
+            (i18n::text("oscilloscope.triggered"), MUTED)
+        } else {
+            (i18n::text("oscilloscope.auto_free"), MUTED)
+        };
+        ui.label(RichText::new(text).size(13.0).color(color));
+        if trigger.edge != Edge::Free {
+            ui.label(
+                RichText::new(self.scope_trigger_marker_status())
+                    .size(13.0)
+                    .color(TRIGGER),
+            )
+            .on_hover_text(self.scope_trigger_marker_help());
+        }
+        if self.scope_missing > 0 {
+            ui.colored_label(
+                YELLOW,
+                i18n::format(
+                    "oscilloscope.partial_missing_samples",
+                    &[("scope_missing", &self.scope_missing.to_string())],
+                )
+                .as_ref(),
+            );
+        }
+    }
+
     pub(super) fn scope_autoset_button(&mut self, ui: &mut egui::Ui) {
         if ui
             .add_enabled(
@@ -67,13 +119,24 @@ impl ScopeApp {
                 self.dirty = true;
             }
             ui.label(i18n::text("oscilloscope.time_scale"));
-            let timebase = ui.add(
-                egui::DragValue::new(&mut self.ms_per_div)
-                    .range(0.05..=100.0)
-                    .speed(0.01)
-                    .max_decimals(3)
-                    .suffix(" ms/div"),
-            );
+            let timebase = ui
+                .add(
+                    egui::DragValue::new(&mut self.ms_per_div)
+                        .range(0.05..=100.0)
+                        .speed(0.01)
+                        .max_decimals(3)
+                        .suffix(" ms/div"),
+                )
+                .on_hover_text(
+                    i18n::format(
+                        "oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double",
+                        &[
+                            ("display", display::div_help()),
+                            ("display_2", display::amplitude_help()),
+                        ],
+                    )
+                    .as_ref(),
+                );
             self.dirty |= timebase.changed();
             #[cfg(feature = "qa")]
             ui.ctx().data_mut(|data| {
@@ -102,9 +165,16 @@ impl ScopeApp {
             && self.core_scope.mode != acquisition::Mode::Auto
         {
             ui.label(
-                RichText::new(i18n::text(
-                    "oscilloscope.time_trigger_edits_apply_on_next_start",
-                ))
+                RichText::new(
+                    i18n::format(
+                        "oscilloscope.held_time_scale_next_start",
+                        &[(
+                            "scale",
+                            &display::number(Some(self.scope_display_ms_per_div() as f64)),
+                        )],
+                    )
+                    .as_ref(),
+                )
                 .small()
                 .color(YELLOW),
             );

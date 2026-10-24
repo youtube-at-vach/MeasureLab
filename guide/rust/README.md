@@ -79,7 +79,7 @@ cargo run --release
 
 配置は **Arrange view…** の **Side by side / Stacked / 2 × 2 / Tabs** を選びます。同時表示できる区画は見出しのクリックで選択し、上段の選択行はタブ表示や区画数超過時だけ表示します。各区画の **⋯** に **Open single / Remove from view** をまとめます。2区画／4区画を超えた計器は名前付きタブで選択します。寸法が不足するとタブ表示へ退避し、広げると希望配置へ戻ります。**View** の **First pane share** で分割比率、**Display scale** で表示倍率を調整できます。倍率は75／90／100／110／125／150／175%から選び、クリックで確定したときだけ画面へ反映してメニューを閉じます。候補へのホバーやEscで閉じる操作では倍率は変わりません。100%を選ぶと標準倍率へ戻ります。狭幅では **Menu → View → Display scale** から選びます。単独表示とコンソールの往復・リサイズで構成と比率は消えません。
 
-右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。時間軸・選択CHの縦軸倍率・Autosetと倍率方式は測定面にも残り、狭幅で波形を見ながら調整できます。
+右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。取得・トリガー状態とカーソルを同じ行にまとめ、時間軸・選択CHの縦軸倍率・Autosetと倍率方式はその下の操作行で調整します。時間軸の重複ラベルを省き、狭幅では必要に応じて折り返します。停止したNormal／Singleでは保持波形の時間軸と次回Startに適用する設定を区別して表示します。
 
 Scopeの見出しは単独表示で一つにまとめ、複数計器表示では区画名を残します。詳細欄の **Scope settings** はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Start single capture・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
 

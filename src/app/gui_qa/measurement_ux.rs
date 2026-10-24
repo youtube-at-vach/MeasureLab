@@ -12,9 +12,14 @@ impl ScopeApp {
             self.scope_selected,
             self.source,
             self.scope_channels,
-            self.core_scope.channels,
             self.held_input.take(),
             self.busy,
+            self.core_scope,
+            self.trigger,
+            self.triggered,
+            self.scope_missing,
+            self.autoset_status.take(),
+            self.ms_per_div,
         );
         self.presentation.screen = Screen::Single(Instrument::Scope);
         self.presentation.details_visible = false;
@@ -25,6 +30,12 @@ impl ScopeApp {
         self.scope_channels = ScopeChannels::default();
         self.core_scope.channels = self.scope_channels;
         self.enabled = [true; SCOPE_CHANNELS];
+        self.core_scope.mode = acquisition::Mode::Auto;
+        self.trigger.edge = Edge::Rising;
+        self.trigger.channel = 0;
+        self.core_scope.trigger = self.trigger;
+        self.triggered = true;
+        self.scope_missing = 0;
         let cards = |driver: &Driver| -> Vec<egui::Rect> {
             let plot = driver.scope_plot().unwrap();
             driver
@@ -80,8 +91,29 @@ impl ScopeApp {
                 });
                 self.scope_readings =
                     [reading, reading, Reading::Unavailable, Reading::Unavailable];
+                self.core_scope.mode = acquisition::Mode::Auto;
+                self.triggered = true;
                 driver.frame(self, vec![egui::Event::PointerGone]);
                 let plot = driver.scope_plot()?;
+                let time_scale = driver.visible_text_rect(i18n::text("oscilloscope.time_scale"))?;
+                let autoset = driver.visible_text_rect(i18n::text("oscilloscope.autoset"))?;
+                let trigger = driver.visible_text_rect(i18n::text("oscilloscope.triggered"))?;
+                let markers = driver.visible_text_rect(self.scope_trigger_marker_status())?;
+                let cursor = driver.visible_text_rect(i18n::text("common.place_cursor"))?;
+                assert!(trigger.bottom() < time_scale.top());
+                if size.x >= 1040.0 {
+                    assert!(
+                        trigger.top().max(markers.top()).max(cursor.top())
+                            < trigger.bottom().min(markers.bottom()).min(cursor.bottom()),
+                        "Acquisition status and cursors must share the first row: {size:?}, {trigger:?}, {markers:?}, {cursor:?}"
+                    );
+                    assert!(
+                        time_scale.top().max(autoset.top())
+                            < time_scale.bottom().min(autoset.bottom())
+                            && plot.top() - time_scale.bottom() < 14.0,
+                        "Time scale, channel level and Autoset must share the row directly above the plot: {size:?}, {time_scale:?}, {autoset:?}, {plot:?}"
+                    );
+                }
                 let card_rects = cards(driver);
                 assert_eq!(card_rects.len(), SCOPE_CHANNELS);
                 assert!(card_rects.iter().all(|r| r.top() > plot.bottom()));
@@ -166,6 +198,46 @@ impl ScopeApp {
             driver.visible_text_rect(i18n::text("oscilloscope.invalid_value"))?;
             driver.visible_text_rect(i18n::text("oscilloscope.no_samples_in_this_interval"))?;
         }
+        // The editable time scale can differ from a held Normal/Single capture.
+        // Keep the actual plot scale visible after removing the summary row.
+        if !self.running() {
+            self.ms_per_div = 0.15;
+            self.core_scope.samples = self.sample_rate as usize / 50;
+            for mode in [acquisition::Mode::Normal, acquisition::Mode::Single] {
+                driver.resize(self, vec2(1040.0, 780.0), 1.25, 2.0);
+                self.core_scope.mode = mode;
+                self.core_scope.samples = self.sample_rate as usize / 50;
+                self.scope_range = 0..32;
+                self.dirty = false;
+                driver.frame(self, vec![]);
+                assert!((self.scope_display_ms_per_div() - 2.0).abs() < 1e-6);
+                driver.visible_text_rect(
+                    i18n::format("oscilloscope.held_time_scale_next_start", &[("scale", "2")])
+                        .as_ref(),
+                )?;
+                let timebase = driver
+                    .ctx
+                    .data(|data| data.get_temp::<egui::Rect>(egui::Id::new("qa_scope_timebase")))
+                    .ok_or("Quick timebase is missing")?;
+                assert!(
+                    driver.output.shapes.iter().any(|shape| {
+                        if let egui::Shape::Text(text) = &shape.shape {
+                            timebase.contains(text.visual_bounding_rect().center())
+                                && shape.clip_rect.contains_rect(text.visual_bounding_rect())
+                                && text
+                                    .galley
+                                    .text()
+                                    .trim_end_matches(" ms/div")
+                                    .parse::<f32>()
+                                    .is_ok_and(|value| (value - 0.15).abs() < 1e-6)
+                        } else {
+                            false
+                        }
+                    }),
+                    "Pending time scale is missing beside the held scale"
+                );
+            }
+        }
         (
             self.scope_readings,
             self.scope_range,
@@ -175,14 +247,19 @@ impl ScopeApp {
             self.scope_selected,
             self.source,
             self.scope_channels,
-            self.core_scope.channels,
             self.held_input,
             self.busy,
+            self.core_scope,
+            self.trigger,
+            self.triggered,
+            self.scope_missing,
+            self.autoset_status,
+            self.ms_per_div,
         ) = saved;
         self.dirty = true;
         driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
         println!(
-            "Scope readout layout OK: digit/notation changes preserve labels, numeric right edges, units, channel cards and plot; range status appears once per unavailable channel"
+            "Scope readout layout OK: two header rows preserve status, cursors and quick controls; digit/notation changes preserve labels, numeric right edges, units, channel cards and plot; range status appears once per unavailable channel"
         );
         Ok(())
     }

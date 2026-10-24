@@ -5069,30 +5069,8 @@ impl ScopeApp {
                 compact_plot_style(ui);
                 ui.horizontal_wrapped(|ui| {
                     display::activity_label(ui, self.running(), self.pending_stop.is_some(), !self.scope_range.is_empty());
+                    self.scope_capture_status(ui);
                     self.cursor_controls(ui, Instrument::Scope);
-                });
-                let trigger = self.scope_display_trigger();
-                let (trigger_text, trigger_color) = if self.scope_notice().is_some() {
-                    (i18n::text("oscilloscope.trigger_settings"), MUTED)
-                } else if trigger.edge != Edge::Free && self.scope_input_channels().is_some_and(|count| !channel::available(trigger.channel, count as usize)) {
-                    (i18n::text("oscilloscope.trigger_source_unavailable"), TRIGGER)
-                } else if self.core_scope.mode != acquisition::Mode::Auto {
-                    match self.acquisition_state {
-                        acquisition::State::Waiting => (i18n::text("oscilloscope.waiting_for_trigger"), YELLOW),
-                        acquisition::State::Acquiring => (i18n::text("oscilloscope.acquiring_post_trigger"), YELLOW),
-                        acquisition::State::WaitingWithCapture => (i18n::text("oscilloscope.waiting_previous_capture"), YELLOW),
-                        acquisition::State::Complete => (i18n::text("oscilloscope.single_complete"), MUTED),
-                    }
-                } else if self.triggered { (i18n::text("oscilloscope.triggered"), MUTED) } else { (i18n::text("oscilloscope.auto_free"), MUTED) };
-                ui.horizontal_wrapped(|ui| {
-                    ui.label(RichText::new(i18n::format("oscilloscope.ms_div_waveform_raw_fs", &[("scope_display_ms_per_div", &(display::number(Some(self.scope_display_ms_per_div() as f64))).to_string())]).as_ref()).size(13.0))
-                        .on_hover_text(i18n::format("oscilloscope.wheel_time_scale_shift_wheel_selected_channel_scale_double", &[("display", (display::div_help())), ("display_2", (display::amplitude_help()))]).as_ref());
-                    ui.label(RichText::new(trigger_text).size(13.0).color(trigger_color));
-                    if trigger.edge != Edge::Free {
-                        ui.label(RichText::new(self.scope_trigger_marker_status()).size(13.0).color(TRIGGER))
-                            .on_hover_text(self.scope_trigger_marker_help());
-                    }
-                    if self.scope_missing > 0 { ui.colored_label(YELLOW, i18n::format("oscilloscope.partial_missing_samples", &[("scope_missing", &(self.scope_missing).to_string())]).to_string()); }
                 });
                 if !self.scope_range.is_empty() && !self.running() && (self.core_scope.mode != self.acquisition_mode || self.scope_channels != self.scope_view_channels() || self.calibration.pending != self.calibration.captured) {
                     ui.label(RichText::new(i18n::text("oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next")).small().color(YELLOW));
