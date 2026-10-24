@@ -26,6 +26,7 @@ impl ScopeApp {
         self.core_scope.channels = self.scope_channels;
         self.enabled = [true; SCOPE_CHANNELS];
         let cards = |driver: &Driver| -> Vec<egui::Rect> {
+            let plot = driver.scope_plot().unwrap();
             driver
                 .output
                 .shapes
@@ -35,6 +36,7 @@ impl ScopeApp {
                         && (shape.rect.height() - monitor_controls::SCOPE_CHANNEL_CARD_HEIGHT).abs()
                             < 0.1
                         && shape.stroke.color != Color32::TRANSPARENT
+                        && shape.rect.top() > plot.bottom()
                     {
                         assert!(
                             s.clip_rect.contains_rect(shape.rect),
@@ -49,6 +51,7 @@ impl ScopeApp {
         };
         for (size, zoom) in [
             (vec2(1440.0, 1000.0), 1.0),
+            (vec2(1040.0, 780.0), 1.25),
             (vec2(900.0, 660.0), 1.25),
             (vec2(720.0, 660.0), 1.25),
         ] {
@@ -58,7 +61,17 @@ impl ScopeApp {
             self.scope_range = 0..32;
             self.dirty = false;
             let mut geometry = None;
-            for value in [0.0, 0.1, 0.0625, 0.9999, 1.0, 999999.9999, 1e-12, 1e120] {
+            for value in [
+                0.0,
+                0.1,
+                0.0625,
+                0.9999,
+                1.0,
+                999999.9999,
+                1e-12,
+                1e-308,
+                1e120,
+            ] {
                 let reading = Reading::Valid(Measurement {
                     rms: value,
                     peak_to_peak: value * 2.0,
@@ -72,11 +85,17 @@ impl ScopeApp {
                 let card_rects = cards(driver);
                 assert_eq!(card_rects.len(), SCOPE_CHANNELS);
                 assert!(card_rects.iter().all(|r| r.top() > plot.bottom()));
+                if size.x >= 1040.0 {
+                    assert!(
+                        card_rects.iter().all(|r| r.top() == card_rects[0].top()),
+                        "Normal and compact windows should keep all four channels in one strip"
+                    );
+                }
                 let mut fields = Vec::new();
                 for shape in &driver.output.shapes {
                     if let egui::Shape::Text(text) = &shape.shape
                         && let Some(card) = card_rects.iter().find(|r| r.contains(text.pos))
-                        && text.pos.y >= card.top() + 38.0
+                        && text.pos.y >= card.top() + 22.0
                         && text.fallback_color != MUTED
                     {
                         assert!(
@@ -95,7 +114,22 @@ impl ScopeApp {
                         }
                     }
                 }
-                assert_eq!(fields.len(), 12, "Missing RMS/P-P labels, values or units");
+                assert_eq!(
+                    fields.len(),
+                    10,
+                    "Missing RMS/P-P labels, values or shared units"
+                );
+                for card in card_rects.iter().take(2) {
+                    let readout_y: Vec<_> = fields
+                        .iter()
+                        .filter_map(|(_, pos)| card.contains(*pos).then_some(pos.y))
+                        .collect();
+                    assert_eq!(readout_y.len(), 5);
+                    assert!(
+                        readout_y.iter().all(|y| *y == readout_y[0]),
+                        "RMS/P-P must occupy one row"
+                    );
+                }
                 let current = (plot, card_rects, fields);
                 if let Some(expected) = &geometry {
                     assert_eq!(

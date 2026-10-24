@@ -1,11 +1,11 @@
 //! Frequently used monitor controls stay beside the trace they affect.
 use super::*;
 
-pub(super) const SCOPE_CHANNEL_CARD_HEIGHT: f32 = 72.0;
+pub(super) const SCOPE_CHANNEL_CARD_HEIGHT: f32 = 40.0;
 const SCOPE_CHANNEL_GAP: f32 = 3.0;
 
 fn scope_channel_columns(width: f32) -> usize {
-    if width >= 4.0 * 140.0 + 3.0 * SCOPE_CHANNEL_GAP {
+    if width >= 4.0 * 190.0 + 3.0 * SCOPE_CHANNEL_GAP {
         SCOPE_CHANNELS
     } else {
         2
@@ -226,7 +226,7 @@ impl ScopeApp {
                             color,
                         );
                         ui.painter().text(
-                            rect.min + vec2(6.0, 23.0),
+                            rect.min + vec2(42.0, 5.0),
                             egui::Align2::LEFT_TOP,
                             i18n::format(
                                 "oscilloscope.fs_div",
@@ -291,21 +291,23 @@ impl ScopeApp {
         if let Reading::Valid(m) = self.scope_readings[index] {
             // Each label, number and unit has its own fixed column. Changing
             // digits never changes another field, card or the plot's geometry.
-            let unit_width = (rect.width() * 0.2).clamp(20.0, 72.0);
+            let unit_width = (rect.width() * 0.12).clamp(16.0, 48.0);
             let unit_x = rect.right() - 6.0 - unit_width;
-            let value_right = unit_x - 4.0;
-            let value_left = rect.left() + 30.0;
+            let field_width = (unit_x - rect.left() - 18.0) * 0.5;
+            let y = rect.top() + 23.0;
             let unit = self
                 .calibration
                 .captured
                 .unit(self.scope_view_channels().0[index]);
-            for (row, label, value) in [
+            for (column, label, value) in [
                 (0, i18n::text("oscilloscope.rms"), m.rms),
                 (1, i18n::text("oscilloscope.p_p"), m.peak_to_peak),
             ] {
-                let y = rect.top() + 39.0 + row as f32 * 15.0;
+                let label_x = rect.left() + 6.0 + column as f32 * (field_width + 6.0);
+                let value_left = label_x + 24.0;
+                let value_right = label_x + field_width;
                 painter.text(
-                    pos2(rect.left() + 6.0, y),
+                    pos2(label_x, y),
                     egui::Align2::LEFT_TOP,
                     label,
                     font.clone(),
@@ -313,8 +315,11 @@ impl ScopeApp {
                 );
                 let mut number = display::number(Some(value));
                 let mut galley = painter.layout_no_wrap(number.clone(), font.clone(), color);
-                if galley.size().x > value_right - value_left {
-                    number = format!("{value:.3e}");
+                for precision in (0..=3).rev() {
+                    if galley.size().x <= value_right - value_left {
+                        break;
+                    }
+                    number = format!("{value:.precision$e}");
                     galley = painter.layout_no_wrap(number, font.clone(), color);
                 }
                 let value_rect =
@@ -324,20 +329,22 @@ impl ScopeApp {
                     galley,
                     color,
                 );
-                let mut job =
-                    egui::text::LayoutJob::simple_singleline(unit.into(), font.clone(), color);
-                job.wrap.max_width = unit_width;
-                job.wrap.max_rows = 1;
-                let galley = painter.layout_job(job);
-                painter.galley(pos2(unit_x, y), galley, color);
             }
+            // Both statistics have the same captured calibration unit. Keep a
+            // single unit column fixed at the end of the shared readout row.
+            let mut job =
+                egui::text::LayoutJob::simple_singleline(unit.into(), font.clone(), color);
+            job.wrap.max_width = unit_width;
+            job.wrap.max_rows = 1;
+            let galley = painter.layout_job(job);
+            painter.galley(pos2(unit_x, y), galley, color);
         } else {
             let mut job =
                 egui::text::LayoutJob::simple_singleline(self.scope_readout(index), font, MUTED);
             job.wrap.max_width = (rect.width() - 12.0).max(1.0);
-            job.wrap.max_rows = 2;
+            job.wrap.max_rows = 1;
             let galley = painter.layout_job(job);
-            painter.galley(rect.min + vec2(6.0, 39.0), galley, MUTED);
+            painter.galley(rect.min + vec2(6.0, 23.0), galley, MUTED);
         }
     }
 
