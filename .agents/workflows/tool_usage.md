@@ -53,6 +53,8 @@ PR 前の検証:
 ./scripts/cargo.sh test --locked --doc --all-features
 ```
 
+`Cargo.toml`でunsafe操作・安全条件コメント、`Result::ok()`でのエラー破棄、ロックの寿命、未実装やデバッグ用マクロなどのlintを個別に有効にしている。CIの`-D warnings`で警告も失敗にする。`pedantic`／`nursery`全体の必須化や数値演算の一括置換は行わず、[コード品質の継続QA](../../guide/rust/PLAN.md#コード品質の継続qa)に従って追加監査する。
+
 通常のPRではローカルのreleaseビルドを行わず、配布ビルドはCIに任せる。性能評価、release固有の不具合調査、配布候補の実機受け入れなど、最適化済み実行ファイルが検証に必要な場合だけ、理由を示して次を実行する。同じソース・機能構成で検証済みの成果物があれば再利用する。
 
 ```bash

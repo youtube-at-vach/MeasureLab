@@ -91,7 +91,8 @@ impl Default for Worker {
                 let mut worked = false;
                 let mut pending = None;
                 loop {
-                    if let Some(config) = requested.lock().unwrap().take() {
+                    let requested_config = requested.lock().unwrap().take();
+                    if let Some(config) = requested_config {
                         pending = Some(config);
                     }
                     // Drain a backlog without an extra timer wait per batch;
@@ -109,7 +110,7 @@ impl Default for Worker {
                     match command {
                         Ok(Command::Inspect(config, end, reply)) => {
                             configure(&mut analyzer, &mut epoch, config.clone());
-                            drain(&mut source, source_capacity(), epoch, &mut analyzer);
+                            drain(&mut source, CAPACITY, epoch, &mut analyzer);
                             if config.epoch == epoch {
                                 analyzer.gap_to(end);
                                 let _ = reply.try_send(Arc::new(analyzer.result().clone()));
@@ -147,9 +148,6 @@ impl Default for Worker {
             handle: Some(handle),
         }
     }
-}
-fn source_capacity() -> usize {
-    CAPACITY
 }
 fn drain(
     source: &mut Consumer<Frame>,

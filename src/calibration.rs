@@ -2,7 +2,7 @@
 //! Raw history, Scope trace coordinates and triggers remain in FS.
 use crate::{
     channel::{self, ChannelId, Pair},
-    signal::{History, MAX_CHANNELS, Measurement},
+    signal::{History, MAX_CHANNELS, Measurement, ScaledSquares},
 };
 use std::{ops::Range, sync::Arc};
 
@@ -178,10 +178,7 @@ pub fn measure<const N: usize>(
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
         let mut count = 0;
-        // Scaled sum of squares avoids overflow for finite calibrated values
-        // whose squares exceed f64, and underflow for very small units.
-        let mut scale = 0.0_f64;
-        let mut squares = 0.0;
+        let mut squares = ScaledSquares::default();
         let range = range.start.max(history.range().start)..range.end.min(history.range().end);
         if range.end <= range.start {
             return Reading::Unavailable;
@@ -192,13 +189,7 @@ pub fn measure<const N: usize>(
             };
             min = min.min(value);
             max = max.max(value);
-            let magnitude = value.abs();
-            if magnitude > scale {
-                squares = 1.0 + squares * (scale / magnitude).powi(2);
-                scale = magnitude;
-            } else if magnitude != 0.0 {
-                squares += (magnitude / scale).powi(2);
-            }
+            squares.push(value);
             count += 1;
         }
         if count == 0 {
@@ -208,7 +199,7 @@ pub fn measure<const N: usize>(
         } else {
             Reading::Valid(Measurement {
                 peak: min.abs().max(max.abs()),
-                rms: scale * (squares / count as f64).sqrt(),
+                rms: squares.rms(count),
                 peak_to_peak: max - min,
                 samples: count,
             })
