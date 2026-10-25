@@ -150,7 +150,7 @@ class DesktopActionsTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 record = self.record()
                 self.assertEqual(record["args"], expected)
-                self.assertEqual(Path(record["cwd"]), self.project)
+                self.assertEqual(Path(record["cwd"]).resolve(), self.project.resolve())
                 self.assertEqual(record["backtrace"], "1")
 
     def test_help_does_not_build_and_existing_backtrace_is_preserved(self):
