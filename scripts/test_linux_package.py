@@ -131,6 +131,7 @@ class LinuxPackageTests(unittest.TestCase):
             require_clean=True,
             max_glibc="2.35",
             runtime=False,
+            appimage_only=False,
             gpu=False,
         )
         write_assets(info)

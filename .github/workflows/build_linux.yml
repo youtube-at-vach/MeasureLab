@@ -1,28 +1,16 @@
 name: Build Linux Packages
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited]
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'build.rs'
-      - '.cargo/**'
-      - 'packaging/linux/**'
-      - 'scripts/linux_package.py'
-      - 'scripts/test_linux_package.py'
-      - 'scripts/cargo.sh'
-      - '.github/workflows/build_linux.yml'
-      - '.github/workflows/release.yml'
-      - 'app_icon.png'
-      - 'LICENSE'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      release-assets:
+        description: Include the AppDir archive for the Release workflow
+        type: boolean
+        default: false
     outputs:
       artifact:
-        description: Linux AppImage, AppDir archive, build identity and checksums
+        description: Linux AppImage package artifact
         value: ${{ jobs.build.outputs.artifact }}
 
 permissions:
@@ -34,7 +22,7 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 40
     outputs:
-      artifact: linux-x86_64
+      artifact: ${{ inputs.release-assets && 'linux-x86_64' || 'MeasureLab-linux-x86_64-appimage' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -65,13 +53,27 @@ jobs:
           RELEASE_DIR: ${{ steps.package.outputs.release_dir }}
           SOURCE_SHA: ${{ github.sha }}
         run: python scripts/linux_package.py verify "$RELEASE_DIR" --source-sha "$SOURCE_SHA" --require-clean
+      - name: Stage AppImage and verify exact assets, checksums and source identity
+        if: ${{ !inputs.release-assets }}
+        id: artifact
+        env:
+          RELEASE_DIR: ${{ steps.package.outputs.release_dir }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: python scripts/ci_artifacts.py prepare "$RELEASE_DIR" --platform linux-x86_64 --source-sha "$SOURCE_SHA"
       - name: Upload Linux distribution
+        id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: linux-x86_64
-          path: ${{ steps.package.outputs.release_dir }}/*
+          name: ${{ inputs.release-assets && 'linux-x86_64' || 'MeasureLab-linux-x86_64-appimage' }}
+          path: ${{ inputs.release-assets && steps.package.outputs.release_dir || steps.artifact.outputs.artifact_dir }}/*
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
+      - name: Show test package download and startup instructions
+        if: ${{ !inputs.release-assets }}
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: python scripts/ci_artifacts.py summary --platform linux-x86_64 --url "$ARTIFACT_URL"
 
   verify:
     name: linux-package-runtime (${{ matrix.os }})
@@ -103,7 +105,12 @@ jobs:
           test -f "${icds[0]}"
           printf 'VK_ICD_FILENAMES=%s\n' "${icds[0]}" >> "$GITHUB_ENV"
         shell: bash
-      - name: Verify extracted AppImage, archive, normal options and GPU readback
+      - name: Verify downloaded package, normal options and GPU readback
         env:
           SOURCE_SHA: ${{ github.sha }}
-        run: python -u scripts/linux_package.py verify release-assets --source-sha "$SOURCE_SHA" --require-clean --runtime --gpu
+          RELEASE_ASSETS: ${{ inputs.release-assets }}
+        run: |
+          args=()
+          if [[ "$RELEASE_ASSETS" != true ]]; then args+=(--appimage-only); fi
+          python -u scripts/linux_package.py verify release-assets --source-sha "$SOURCE_SHA" --require-clean --runtime --gpu "${args[@]}"
+        shell: bash

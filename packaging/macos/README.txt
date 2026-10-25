@@ -1,5 +1,8 @@
 MeasureLab Rust prototype for macOS
 
+For a GitHub Actions test artifact, extract the downloaded ZIP once and open
+the DMG at its root. Choose macos-x86_64 for Intel or macos-arm64 for Apple Silicon.
+
 Choose the DMG matching your Mac: arm64 for Apple Silicon, x86_64 for Intel.
 The package deployment target is macOS 13.0. This is a build baseline;
 acceptance on every macOS version and device remains in progress.
