@@ -35,6 +35,8 @@ Rust 1.95 以降と OS のビルドツールを使う。`scripts/cargo.sh` は P
 
 `--demo`と`--ui-smoke`は`qa`機能を自動的に有効にする。通常ビルドにデモの生成機能や入力選択肢は含めない。詳細は`./scripts/debug.sh --help`を参照する。
 
+性能評価やrelease固有の挙動を確認する場合の起動:
+
 ```bash
 ./scripts/cargo.sh run --release --locked
 ./scripts/cargo.sh run --release --locked --features qa -- --demo
@@ -49,6 +51,11 @@ PR 前の検証:
 ./scripts/cargo.sh test --locked
 ./scripts/cargo.sh test --locked --all-targets --all-features
 ./scripts/cargo.sh test --locked --doc --all-features
+```
+
+通常のPRではローカルのreleaseビルドを行わず、配布ビルドはCIに任せる。性能評価、release固有の不具合調査、配布候補の実機受け入れなど、最適化済み実行ファイルが検証に必要な場合だけ、理由を示して次を実行する。同じソース・機能構成で検証済みの成果物があれば再利用する。
+
+```bash
 ./scripts/cargo.sh build --release --locked
 ```
 
