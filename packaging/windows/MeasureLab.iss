@@ -35,7 +35,6 @@ DisableProgramGroupPage=yes
 UninstallDisplayName=MeasureLab (Rust)
 UninstallDisplayIcon={app}\measurelab.exe
 SetupIconFile=app_icon.ico
-LicenseFile=..\..\LICENSE
 OutputDir={#OutputDir}
 OutputBaseFilename=MeasureLab-v{#AppVersion}-windows-x64-setup
 Compression=lzma2
@@ -62,6 +61,3 @@ Source: "{#SourceDir}\build-info.json"; DestDir: "{app}"; Flags: ignoreversion
 [Icons]
 Name: "{userprograms}\MeasureLab (Rust)"; Filename: "{app}\measurelab.exe"; WorkingDir: "{app}"
 Name: "{userdesktop}\MeasureLab (Rust)"; Filename: "{app}\measurelab.exe"; WorkingDir: "{app}"; Tasks: desktopicon
-
-[Run]
-Filename: "{app}\measurelab.exe"; WorkingDir: "{app}"; Description: "{cm:LaunchProgram,MeasureLab}"; Flags: nowait postinstall skipifsilent unchecked
