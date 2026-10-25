@@ -38,7 +38,8 @@ description: MeasureLab の Rust 開発と公開サイトの共通ルール
 
 * 物理デバイスの安全上の必須制約として、測定・出力中のUSB抜去試験は実施しない。接続変更は入出力の停止・ストリーム解放後に行う。抜去試験を計画・受け入れ条件へ再導入せず、エラー処理は模擬通知で確認する。
 * 検証は変更した挙動と回帰リスクに合わせる。コマンドは [Tool Usage Guide](.agents/workflows/tool_usage.md) を参照する。
-* Rust の変更時と PR 前には `cargo fmt`、全ターゲット・全機能の Clippy とテスト、デスクトップのビルドを行う。GUIなしと通常（qaなし）のテストも実行する。`cargo test`のbenchは各条件1回の動作確認とし、反復性能計測は`cargo bench`で明示的に実行する。CIの必須チェックはLinuxの静的・数値・回帰検証と関連変更のMSRV確認に集約し、3 OSのreleaseビルドは任意チェックとする。`scripts/cargo.sh` は PATH 上の Cargo またはローカル `.tools/` の Rust 環境を使う。
+* Rust の変更時と PR 前には `cargo fmt`、全ターゲット・全機能の Clippy とテストを行う。GUIなしと通常（qaなし）のテストも実行する。`cargo test`のbenchは各条件1回の動作確認とし、反復性能計測は`cargo bench`で明示的に実行する。CIの必須チェックはLinuxの静的・数値・回帰検証と関連変更のMSRV確認に集約し、3 OSのreleaseビルドは任意チェックとする。`scripts/cargo.sh` は PATH 上の Cargo またはローカル `.tools/` の Rust 環境を使う。
+* ローカルのreleaseビルドは、性能評価、release固有の不具合調査、配布候補の実機受け入れなど、最適化済み実行ファイルが検証に必要な場合だけ行い、その理由を示す。通常のPRや文書・CI・インストーラー画面の変更では行わず、配布ビルドはCIに任せる。日常の起動確認には`dev-fast`を使い、同じソース・機能構成で検証済みの成果物があれば再利用する。
 * 残る Python は文書・リリースノート・CI用のツールのみ。Python 3.12 以降と `.venv/bin/` の実行ファイルを使い、旧アプリの依存関係・Pytest・Mypy・GUI 検証環境は導入しない。
 * 作業終了時は `./.venv/bin/ruff check .` と `./.venv/bin/ruff format --check .` を実行する。環境がない場合はその結果を明記する。
 * Markdown は見出し・コードブロック前後に空行を置き、行末空白を除く。リストマーカーと番号順を統一し、裸の URL は山括弧で囲む。変更後は Markdown lint を実行する。
