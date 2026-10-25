@@ -326,6 +326,8 @@ OS別には次を追加する。
 
 ### Windowsネイティブでの開発環境と起動確認
 
+`a98a7d31`のRustソースを、Windows 10 Pro（10.0.19045 x64）／Apple iMac15,1・Core i5-4690・4論理CPU・32 GiB RAMで確認した。Rust 1.99.0のMSVC、Visual Studio Build Tools 2022 17.14.42／Windows SDK 10.0.26100.0、`dev-fast`・既定`desktop`・`qa`なしで`--help`、`--gpu-smoke`、通常GUI（`--compact`）のウィンドウ生成が成功した。GPU読み戻しは`Dx12 · AMD RADEON R9 M290X`（ドライバー15.200.1060.0）を使用した。この環境のハードウェア描画確認であり、測定性能の受け入れではない。ZOOM UAC-232と内蔵マイクの入力列挙も成功したが、入出力ストリームは開始していない。実画面のクリック操作、DPI切り替え、保存復元、長時間動作と配布パッケージは未確認。環境・バイナリSHA-256・起動／描画ログはGit管理外の`dist/windows10-native-setup/`に保存する。
+
 `80e8c54e`のRustソースを、Windows 11 Pro（10.0.26300 x64）のネイティブ起動／Apple iMac15,1・Core i5-4690・4論理CPU・32 GiB RAMで確認した。Rust 1.99.0の`x86_64-pc-windows-msvc`、Visual Studio Build Tools 2022 17.14.42、Windows SDK 10.0.26100.0を導入し、`dev-fast`・既定`desktop`・`qa`なしでビルドした。[MSVC手順](WINDOWS.md#msvcでのセットアップ)に従い、GNU／LLD用の追加指定なしで`--help`、`--gpu-smoke`と通常GUI（`--compact`）のウィンドウ生成を確認した。ZOOM UAC-232の入力デバイス列挙も成功したが、入出力ストリームは開始していない。
 
 同じRustソースの`dev`・`qa`ビルド（デバッグ情報・インクリメンタルなし）で`--ui-smoke`も成功し、7計器の移動・構成変更の自動検証と、停止・保持中の2ch QA波形のPNGを確認した。実デバイスの入力取得・信号出力は実施していない。

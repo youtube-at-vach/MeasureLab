@@ -6,6 +6,26 @@
 
 ## MSVCでのセットアップ
 
+### PowerShell 7
+
+Windows 10に同梱されるWindows PowerShell 5.1とPowerShell 7は別の実行環境。`$PSVersionTable.PSVersion`で確認する。PowerShell 7が未導入なら、[Microsoft公式のZIP配布](https://github.com/PowerShell/PowerShell/releases/tag/v7.6.8)も使える。以下を既存のPowerShellで実行し、ハッシュを照合してプロジェクト内へ展開する。既存の`.tools/powershell/`は上書きしない。
+
+```powershell
+New-Item -ItemType Directory -Force .tools/downloads | Out-Null
+Invoke-WebRequest -UseBasicParsing https://github.com/PowerShell/PowerShell/releases/download/v7.6.8/PowerShell-7.6.8-win-x64.zip `
+    -OutFile .tools/downloads/PowerShell-7.6.8-win-x64.zip
+$powershellHash = 'B9F074F923C499B51EC99D313DA8E9AE90D17A9F3ADF00C73D6189F34D908528'
+if ((Get-FileHash .tools/downloads/PowerShell-7.6.8-win-x64.zip -Algorithm SHA256).Hash -ne $powershellHash) {
+    throw 'PowerShell SHA-256 mismatch.'
+}
+Expand-Archive .tools/downloads/PowerShell-7.6.8-win-x64.zip .tools/powershell
+& ./.tools/powershell/pwsh.exe -NoLogo -NoProfile
+```
+
+以降はこのPowerShell 7で実行する。新しいシェルでは`& ./.tools/powershell/pwsh.exe -NoLogo -NoProfile`で開き、作成済みの`.tools/env.ps1`を読み込む。Windowsの既定シェルや実行ポリシーを変更する必要はない。
+
+最初のダウンロードには、Windows PowerShell 5.1の[応答解析を省くオプション](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.utility/invoke-webrequest?view=powershell-5.1#-usebasicparsing)`-UseBasicParsing`を付ける。5.1で日本語を含む`.ps1`を実行する場合はUTF-8 BOM付きで保存する。BOMなしUTF-8は既定のコードページとして読まれ、文字化けや構文エラーになる場合がある。
+
 ### GitとC++ビルドツール
 
 PowerShell 7を使い、まず`git --version`でGitを確認する。GitHub Desktopだけを導入した環境では、同梱GitがPATHにない場合がある。その場合は [Git for Windows](https://gitforwindows.org/) を導入するか、既存の同梱Gitを現在のPowerShellだけで使う。
@@ -25,6 +45,26 @@ winget install --id Microsoft.VisualStudio.2022.BuildTools --exact --source wing
     --silent --accept-package-agreements --accept-source-agreements `
     --override '--quiet --wait --norestart --add Microsoft.VisualStudio.Workload.VCTools --includeRecommended'
 if ($LASTEXITCODE -ne 0) { throw 'Build Toolsの導入結果を確認してください。' }
+
+& "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" `
+    -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+    -property installationPath
+```
+
+Windows 10では`winget`自体が未導入の場合がある。`Get-Command winget -ErrorAction SilentlyContinue`で見つからない場合は、Microsoft公式のブートストラッパーを使う。署名を確認してから起動し、管理者確認は利用者が許可する。`--wait`で導入完了を待ち、終了コード`3010`は再起動が必要な成功として扱う。再起動後は環境を読み直して検証する。
+
+```powershell
+New-Item -ItemType Directory -Force .tools/downloads | Out-Null
+Invoke-WebRequest https://aka.ms/vs/17/release/vs_buildtools.exe `
+    -OutFile .tools/downloads/vs_buildtools.exe
+$signature = Get-AuthenticodeSignature .tools/downloads/vs_buildtools.exe
+if ($signature.Status -ne 'Valid' -or $signature.SignerCertificate.Subject -notmatch 'Microsoft Corporation') {
+    throw 'Microsoftの有効な署名を確認できません。'
+}
+$installer = Start-Process .tools/downloads/vs_buildtools.exe -WindowStyle Hidden -Wait -PassThru `
+    -ArgumentList '--quiet','--wait','--norestart','--add','Microsoft.VisualStudio.Workload.VCTools','--includeRecommended'
+if ($installer.ExitCode -notin 0,3010) { throw "Build Toolsの導入に失敗しました: $($installer.ExitCode)" }
+if ($installer.ExitCode -eq 3010) { throw '導入は完了しました。Windowsを再起動してから検証してください。' }
 
 & "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe" `
     -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
@@ -52,9 +92,38 @@ rustc -Vv
 cargo --version
 ```
 
-新しいPowerShellでも`CARGO_HOME`・`RUSTUP_HOME`・PATHを設定する。毎回使う設定はGit管理外の`.tools/env.ps1`へ保存し、`. ./.tools/env.ps1`で読み込める。MSVC構成ではGNU用の`WINDRES`・`AR`・`RUSTFLAGS`・LLDの指定を追加しない。以前のGNU環境から切り替える場合は、新しいPowerShellで設定する。
+新しいPowerShellでも`CARGO_HOME`・`RUSTUP_HOME`・PATHを設定する。毎回使う設定はGit管理外の`.tools/env.ps1`へ保存し、`. ./.tools/env.ps1`で読み込める。GitHub Desktop同梱GitのPATHもシェルごとに必要になるため、同じファイルに含める。たとえば以下を`.tools/env.ps1`の内容として保存する。`$PSScriptRoot`からリポジトリを求めるため、読み込み時の作業ディレクトリには依存しない。
+
+```powershell
+$measurelabRoot = Split-Path $PSScriptRoot -Parent
+$env:CARGO_HOME = Join-Path $measurelabRoot '.tools/cargo'
+$env:RUSTUP_HOME = Join-Path $measurelabRoot '.tools/rustup'
+$env:UV_PYTHON_INSTALL_DIR = Join-Path $measurelabRoot '.tools/python'
+$env:UV_PYTHON_BIN_DIR = Join-Path $measurelabRoot '.tools/bin'
+$env:UV_CACHE_DIR = Join-Path $measurelabRoot '.tools/uv-cache'
+$env:PYTHONUTF8 = '1'
+$measurelabPaths = @(
+    (Join-Path $measurelabRoot '.tools/powershell'),
+    (Join-Path $env:CARGO_HOME 'bin'),
+    (Join-Path $measurelabRoot '.tools/node/node-v24.21.0-win-x64'),
+    (Join-Path $measurelabRoot '.tools/uv'),
+    (Join-Path $measurelabRoot '.tools/bin'),
+    (Join-Path $measurelabRoot '.venv/Scripts')
+)
+if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+    $desktopGit = Get-ChildItem "$env:LOCALAPPDATA/GitHubDesktop/app-*/resources/app/git/cmd/git.exe" `
+        -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+    if ($desktopGit) { $measurelabPaths += $desktopGit.DirectoryName }
+}
+$env:PATH = (($measurelabPaths + ($env:PATH -split ';')) | Select-Object -Unique) -join ';'
+if (-not $env:RUST_BACKTRACE) { $env:RUST_BACKTRACE = '1' }
+```
+
+MSVC構成ではGNU用の`WINDRES`・`AR`・`RUSTFLAGS`・LLDの指定を追加しない。以前のGNU環境から切り替える場合は、新しいPowerShellで設定する。ユーザー／システムのPATHやPowerShellプロファイルを書き換える必要はない。
 
 ### ビルド・起動・検証
+
+日常の起動には`./scripts/pwsh.cmd -File ./scripts/debug.ps1`を使える。`pwsh.cmd`はローカルまたはPATH上のPowerShell 7を選ぶ。Windows PowerShell 5.1で`.ps1`の実行が禁止される環境でも、実行ポリシーを変更せずPowerShell 7から呼び出す。`--compact`・`--full-debug`・`--release`はmacOSの`debug.sh`と共通で、アプリのヘルプだけを確認する場合は`./scripts/pwsh.cmd -File ./scripts/debug.ps1 -- --help`を使う。ChatGPTアプリの[保存済みアクション](SETUP.md#chatgptアプリからの起動と検証)からも同じ処理を実行できる。
 
 ```powershell
 cargo build --locked --profile dev-fast
@@ -94,9 +163,40 @@ cargo build --release --locked
 
 PowerShellは外部コマンドの非ゼロ終了だけでは後続処理を止めない。一括実行する場合は各コマンド直後の`$LASTEXITCODE`を確認し、失敗した検証を成功扱いしない。
 
+起動オプションの回帰テストは、実入出力やGUIを開始しないケースでも`$env:LOCALAPPDATA/MeasureLab/instance.lock`へ書き込む。`--new-instance`もこのパスの書き込み権限を不要にはしない。制限付きの実行環境で`PermissionDenied`になる場合は、許可された通常の開発用PowerShellで同じ検証を再実行し、アプリの検証失敗と実行環境の制限を区別する。
+
 ### サイト・文書用ツール
 
-Node.js／npmとPython 3.12以降も必要。[セットアップの使用版](SETUP.md#導入先とツール)に合わせたWindows x64版のNode.jsとuvを使える。公式アーカイブと配布元のSHA-256を照合してから`.tools/`へ展開し、Node.jsと`uv.exe`のディレクトリを現在のPATHへ追加する。Pythonはuvで導入できる。
+Node.js／npmとPython 3.12以降も必要。[セットアップの使用版](SETUP.md#導入先とツール)に合わせたWindows x64版のNode.jsとuvを使える。以下は公式アーカイブを配布元のSHA-256と照合し、上記`.tools/env.ps1`に対応するディレクトリへ展開する例。既存の展開先がある場合は、版と内容を確認して再利用し、上書きしない。
+
+```powershell
+Invoke-WebRequest https://nodejs.org/dist/v24.21.0/node-v24.21.0-win-x64.zip `
+    -OutFile .tools/downloads/node-v24.21.0-win-x64.zip
+Invoke-WebRequest https://nodejs.org/dist/v24.21.0/SHASUMS256.txt `
+    -OutFile .tools/downloads/node-SHASUMS256.txt
+$nodeHashLine = Get-Content .tools/downloads/node-SHASUMS256.txt |
+    Where-Object { $_ -match '\s+node-v24\.21\.0-win-x64\.zip$' }
+if (-not $nodeHashLine -or
+    (Get-FileHash .tools/downloads/node-v24.21.0-win-x64.zip -Algorithm SHA256).Hash -ne ($nodeHashLine -split '\s+')[0]) {
+    throw 'Node.jsのSHA-256が一致しません。'
+}
+Expand-Archive .tools/downloads/node-v24.21.0-win-x64.zip .tools/node
+
+Invoke-WebRequest https://github.com/astral-sh/uv/releases/download/0.12.23/uv-x86_64-pc-windows-msvc.zip `
+    -OutFile .tools/downloads/uv-x86_64-pc-windows-msvc.zip
+Invoke-WebRequest https://github.com/astral-sh/uv/releases/download/0.12.23/uv-x86_64-pc-windows-msvc.zip.sha256 `
+    -OutFile .tools/downloads/uv-x86_64-pc-windows-msvc.zip.sha256
+$uvHash = ((Get-Content .tools/downloads/uv-x86_64-pc-windows-msvc.zip.sha256 -Raw).Trim() -split '\s+')[0]
+if ((Get-FileHash .tools/downloads/uv-x86_64-pc-windows-msvc.zip -Algorithm SHA256).Hash -ne $uvHash) {
+    throw 'uvのSHA-256が一致しません。'
+}
+Expand-Archive .tools/downloads/uv-x86_64-pc-windows-msvc.zip .tools/uv
+. ./.tools/env.ps1
+node --version
+uv --version
+```
+
+Pythonはuvで導入できる。
 
 ```powershell
 $env:UV_PYTHON_INSTALL_DIR = Join-Path $PWD '.tools/python'
