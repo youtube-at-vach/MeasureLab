@@ -1,0 +1,78 @@
+# Project actions for Codex in the ChatGPT desktop app.
+version = 1
+name = "MeasureLab"
+
+[setup]
+script = ""
+
+[[actions]]
+name = "GUI 起動"
+icon = "run"
+command = "./scripts/debug.sh --compact"
+platform = "darwin"
+
+[[actions]]
+name = "GUI 起動"
+icon = "run"
+command = "./scripts/pwsh.cmd -File ./scripts/debug.ps1 --compact"
+platform = "win32"
+
+[[actions]]
+name = "CLI 起動確認"
+icon = "test"
+command = "./scripts/debug.sh -- --help"
+platform = "darwin"
+
+[[actions]]
+name = "CLI 起動確認"
+icon = "test"
+command = "./scripts/pwsh.cmd -File ./scripts/debug.ps1 -- --help"
+platform = "win32"
+
+[[actions]]
+name = "GPU 描画確認"
+icon = "test"
+command = "./scripts/debug.sh --gpu-smoke"
+platform = "darwin"
+
+[[actions]]
+name = "GPU 描画確認"
+icon = "test"
+command = "./scripts/pwsh.cmd -File ./scripts/debug.ps1 --gpu-smoke"
+platform = "win32"
+
+[[actions]]
+name = "コアテスト"
+icon = "test"
+command = "./scripts/cargo.sh test --locked --no-default-features"
+platform = "darwin"
+
+[[actions]]
+name = "コアテスト"
+icon = "test"
+command = "./scripts/pwsh.cmd -File ./scripts/cargo.ps1 test --locked --no-default-features"
+platform = "win32"
+
+[[actions]]
+name = "全 Rust テスト"
+icon = "test"
+command = "./scripts/cargo.sh test --locked --all-targets --all-features"
+platform = "darwin"
+
+[[actions]]
+name = "全 Rust テスト"
+icon = "test"
+command = "./scripts/pwsh.cmd -File ./scripts/cargo.ps1 test --locked --all-targets --all-features"
+platform = "win32"
+
+[[actions]]
+name = "Rust 静的検査"
+icon = "check"
+command = "./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings"
+platform = "darwin"
+
+[[actions]]
+name = "Rust 静的検査"
+icon = "check"
+command = "./scripts/pwsh.cmd -File ./scripts/cargo.ps1 clippy --locked --all-targets --all-features -- -D warnings"
+platform = "win32"

@@ -1,2 +1,5 @@
 # Generated translation bookkeeping; catalog YAML remains visible in GitHub diffs.
 i18n/source-hashes.json linguist-generated=true
+
+# Native Windows launcher; keep CMD line endings on every checkout platform.
+/scripts/pwsh.cmd text eol=crlf

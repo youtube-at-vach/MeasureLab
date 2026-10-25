@@ -105,3 +105,22 @@ GPU／UI確認は画面と対応GPUを使うため、`--verify`とは別に実�
 日常のGUI確認は`dev-fast`、完全なデバッガー情報は`--full-debug`、測定・描画の性能評価は`--release`で選びます。各プロファイルの初回は依存関係をコンパイルするため、差分ビルドと分けて考えてください。設定と計測手順は [Tool Usage Guide](../../.agents/workflows/tool_usage.md#開発ビルドと時間計測) を参照してください。
 
 コミット前にGitの名前・メールを、GitHubへの送信前に認証を確認してください。日常の検証コマンドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、操作は [Rust README](README.md) を参照してください。
+
+## ChatGPTアプリからの起動と検証
+
+[ローカル環境のアクション](https://learn.chatgpt.com/docs/environments/local-environment)を[`.codex/environments/environment.toml`](../../.codex/environments/environment.toml)に保存しています。ChatGPTデスクトップアプリのCodexで、このリポジトリのルートをプロジェクトとして開くと、アクション欄から起動・検証を選べます。macOSとWindowsには同名の操作をOS別に登録しています。
+
+| アクション | 実行する内容 |
+| --- | --- |
+| GUI 起動 | `dev-fast`・通常版を更新して`--compact`で起動。入出力は停止から開始 |
+| CLI 起動確認 | 通常版を更新し、アプリの`--help`を確認して終了 |
+| GPU 描画確認 | 通常版で`--gpu-smoke`を実行。対応GPUとデスクトップが必要 |
+| コアテスト | GUIなしのRustテスト |
+| 全 Rust テスト | 全ターゲット・全機能のRustテスト。benchは各条件1回 |
+| Rust 静的検査 | 全ターゲット・全機能のClippy |
+
+macOSは既存の`debug.sh`／`cargo.sh`、Windowsは`pwsh.cmd`から`debug.ps1`／`cargo.ps1`を呼びます。Windowsではプロジェクト内の`.tools/powershell/pwsh.exe`を優先し、なければPATH上のPowerShell 7を使います。CargoもPATH上またはプロジェクト内の`.tools/cargo/`を利用します。個人の絶対パスやシェルの起動設定は共有ファイルへ保存しません。
+
+依存関係の導入はOSごとの手順で先に行ってください。自動セットアップ欄は空にしているため、新しいworktreeでツールの導入やGUI起動は自動実行しません。画面のクリック・撮影を行うComputer Useのアクセス許可は、このアクション設定とは別にアプリ側で管理されます。
+
+起動処理の回帰検証は`python -m unittest discover -s scripts -p 'test_dev_actions.py'`です。記録用の偽Cargoへ置き換え、日本語・空白入りパス、引数、プロファイル、`qa`の明示指定、終了コードを確認します。実GUI・音声・GPUは起動しません。CIではLinuxの必須チェックと、macOS／Windowsの互換性ジョブで実行します。
