@@ -173,7 +173,8 @@ impl Document {
                 .iter()
                 .sum::<f64>()
                 * s.bin_width_hz;
-            if (expected - b.power).abs() > expected.abs() * 1e-12 + 1e-300
+            if !expected.is_finite()
+                || (expected - b.power).abs() > expected.abs() * 1e-12 + 1e-300
                 || (b.rms * b.rms - b.power).abs() > b.power.abs() * 1e-12 + 1e-300
             {
                 return Err("PSD band disagrees with bins".into());
@@ -916,6 +917,33 @@ mod tests {
         let mut r = SpectrumResult::empty(s, 48000);
         a.copy_result(&mut r);
         crate::export::tests::document(&h, &r, &Set::default(), Pair([0, 1]))
+    }
+
+    #[test]
+    fn psd_band_rejects_overflow_in_recomputed_power() {
+        let mut doc = fixture();
+        doc.spectrum.settings.quantity = crate::spectrum::Quantity::Psd;
+        doc.spectrum.unit = doc.spectrum.settings.quantity.calibrated_linear_unit(None);
+        doc.spectrum.values.as_mut().unwrap().fill(0.0);
+        doc.spectrum.band = Some(Band {
+            requested_hz: [0.0, doc.spectrum.bin_width_hz],
+            inclusive_bins: [0, 1],
+            bin_centres_hz: [0.0, doc.spectrum.bin_width_hz],
+            power: 0.0,
+            power_unit: "FS²".into(),
+            rms: 0.0,
+            rms_unit: "FS rms".into(),
+        });
+        doc.validate().unwrap();
+        // Every serialized value remains finite. Overflow can occur either
+        // while adding bins or while converting their sum into band power.
+        for bins in [[f64::MAX, f64::MAX], [f64::MAX / 2.0, 0.0]] {
+            doc.spectrum.values.as_mut().unwrap()[..2].copy_from_slice(&bins);
+            assert!(
+                doc.validate().is_err(),
+                "accepted overflowing bins {bins:?}"
+            );
+        }
     }
 
     #[test]

@@ -30,6 +30,19 @@ dirs = "6"
 [build-dependencies]
 winresource = { version = "0.1.34", default-features = false }
 
+[lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+undocumented_unsafe_blocks = "deny"
+multiple_unsafe_ops_per_block = "deny"
+dbg_macro = "warn"
+mem_forget = "warn"
+significant_drop_in_scrutinee = "warn"
+todo = "warn"
+unimplemented = "warn"
+unused_result_ok = "warn"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 objc2 = "0.6.4"
 objc2-foundation = { version = "0.3.2", default-features = false, features = ["std", "NSString", "NSProcessInfo"] }

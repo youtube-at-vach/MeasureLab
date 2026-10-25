@@ -28,14 +28,17 @@ static PEAK: AtomicUsize = AtomicUsize::new(0);
 struct CountingAllocator;
 
 fn allocated(bytes: usize) {
-    let live = LIVE.fetch_add(bytes, Ordering::SeqCst) + bytes;
+    // Match the atomic counter's wrapping arithmetic; hooks must not unwind.
+    let live = LIVE.fetch_add(bytes, Ordering::SeqCst).wrapping_add(bytes);
     PEAK.fetch_max(live, Ordering::SeqCst);
 }
 
-// Forward the unchanged layouts/pointers to System. Atomics neither allocate
-// nor lock, so these hooks also cover FFT/collector/viewport worker threads.
+// SAFETY: every allocation and deallocation delegates to System with unchanged
+// arguments and returns its pointer unchanged. Accounting uses only atomics,
+// which neither allocate nor unwind and cover all worker threads.
 unsafe impl GlobalAlloc for CountingAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: the caller supplies a valid, nonzero allocation layout.
         let pointer = unsafe { System.alloc(layout) };
         if !pointer.is_null() {
             allocated(layout.size());
@@ -43,6 +46,7 @@ unsafe impl GlobalAlloc for CountingAllocator {
         pointer
     }
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
+        // SAFETY: the caller supplies a valid, nonzero allocation layout.
         let pointer = unsafe { System.alloc_zeroed(layout) };
         if !pointer.is_null() {
             allocated(layout.size());
@@ -50,10 +54,14 @@ unsafe impl GlobalAlloc for CountingAllocator {
         pointer
     }
     unsafe fn dealloc(&self, pointer: *mut u8, layout: Layout) {
+        // SAFETY: the caller supplies a live pointer from this allocator and
+        // its original layout; all allocations above delegate to System.
         unsafe { System.dealloc(pointer, layout) };
         LIVE.fetch_sub(layout.size(), Ordering::SeqCst);
     }
     unsafe fn realloc(&self, pointer: *mut u8, layout: Layout, size: usize) -> *mut u8 {
+        // SAFETY: the caller supplies a live System allocation, its original
+        // layout, and a nonzero size satisfying GlobalAlloc::realloc's bounds.
         let replacement = unsafe { System.realloc(pointer, layout, size) };
         if !replacement.is_null() {
             // Conservatively include old + new at the replacement boundary.

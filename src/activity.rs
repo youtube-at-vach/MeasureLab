@@ -29,7 +29,8 @@ impl Activity {
 #[cfg(target_os = "macos")]
 impl Drop for Activity {
     fn drop(&mut self) {
-        // SAFETY: this is the activity token returned by this process above.
+        // SAFETY: process and its returned token stay retained until Drop.
+        // Activity cannot be cloned, so this token is ended exactly once.
         unsafe { self.process.endActivity(&self.token) };
     }
 }

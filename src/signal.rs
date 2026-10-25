@@ -266,6 +266,31 @@ pub struct Measurement {
     pub samples: u64,
 }
 
+/// Scaled sum of squares for finite samples. Squaring raw values directly can
+/// overflow or underflow even when their RMS is representable.
+#[derive(Default)]
+pub(crate) struct ScaledSquares {
+    scale: f64,
+    squares: f64,
+}
+
+impl ScaledSquares {
+    pub(crate) fn push(&mut self, value: f64) {
+        let magnitude = value.abs();
+        if magnitude > self.scale {
+            self.squares = 1.0 + self.squares * (self.scale / magnitude).powi(2);
+            self.scale = magnitude;
+        } else if magnitude != 0.0 {
+            self.squares += (magnitude / self.scale).powi(2);
+        }
+    }
+
+    /// `count` includes every supplied sample, including zeros, and is nonzero.
+    pub(crate) fn rms(&self, count: u64) -> f64 {
+        self.scale * (self.squares / count as f64).sqrt()
+    }
+}
+
 /// Display-only raw FS transform. Offset is the value at the vertical centre.
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -307,19 +332,19 @@ pub fn measure<const N: usize>(
         }
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
-        let mut square_sum = 0.0;
+        let mut squares = ScaledSquares::default();
         let mut count = 0;
         for frame in history.samples(range.clone()).flatten() {
             let value = frame[channel];
             min = min.min(value);
             max = max.max(value);
-            square_sum += value * value;
+            squares.push(value);
             count += 1;
         }
         if count > 0 {
             *result = Measurement {
                 peak: min.abs().max(max.abs()),
-                rms: (square_sum / count as f64).sqrt(),
+                rms: squares.rms(count),
                 peak_to_peak: max - min,
                 samples: count,
             };
@@ -403,7 +428,7 @@ pub fn build_scaled_sweep_lines<const N: usize>(
         let y = |value: f64| vertical[trace].y(value);
         let mut min = f64::INFINITY;
         let mut max = f64::NEG_INFINITY;
-        let mut square_sum = 0.0_f64;
+        let mut squares = ScaledSquares::default();
         let mut valid_count = 0;
         if count <= pixels * 2 {
             let mut previous = None;
@@ -415,7 +440,7 @@ pub fn build_scaled_sweep_lines<const N: usize>(
                 let value = frame[channel];
                 min = min.min(value);
                 max = max.max(value);
-                square_sum += value * value;
+                squares.push(value);
                 valid_count += 1;
                 let point = [x(offset as f64), y(value)];
                 if let Some(a) = previous {
@@ -450,7 +475,7 @@ pub fn build_scaled_sweep_lines<const N: usize>(
                     last = value;
                     lo = lo.min(value);
                     hi = hi.max(value);
-                    square_sum += value * value;
+                    squares.push(value);
                     valid_count += 1;
                 }
                 min = min.min(lo);
@@ -480,7 +505,7 @@ pub fn build_scaled_sweep_lines<const N: usize>(
         if valid_count > 0 {
             result[trace] = Measurement {
                 peak: min.abs().max(max.abs()),
-                rms: (square_sum / valid_count as f64).sqrt(),
+                rms: squares.rms(valid_count),
                 peak_to_peak: max - min,
                 samples: valid_count,
             };
@@ -492,6 +517,43 @@ pub fn build_scaled_sweep_lines<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rms_preserves_finite_extremes_and_agrees_with_uncalibrated_readings() {
+        for magnitude in [1e-300, 1e-200, 0.25, 1e200, 1e300] {
+            let mut history = History::with_channels(4, 1);
+            history.push_at(100, [magnitude]);
+            history.push_at(101, [0.0]);
+            history.push_at(103, [-magnitude]);
+            let [raw] = measure(&history, history.range(), Pair([0]));
+            let expected = magnitude * (2.0_f64 / 3.0).sqrt();
+            assert!(raw.rms.is_finite() && raw.rms > 0.0, "{magnitude}");
+            assert!((raw.rms / expected - 1.0).abs() < 1e-15, "{magnitude}");
+            assert_eq!(raw.samples, 3);
+            let [reading] = crate::calibration::measure(
+                &history,
+                history.range(),
+                Pair([0]),
+                &crate::calibration::Set::default(),
+            );
+            assert_eq!(reading, crate::calibration::Reading::Valid(raw));
+            for pixels in [1, 8] {
+                let projected = build_scaled_sweep_lines(
+                    &history,
+                    &Sweep {
+                        range: history.range(),
+                        ..Default::default()
+                    },
+                    pixels,
+                    [Vertical::default()],
+                    [true],
+                    Pair([0]),
+                    &mut Vec::new(),
+                );
+                assert_eq!(projected, [raw]);
+            }
+        }
+    }
 
     #[test]
     fn four_scope_channels_keep_raw_statistics_with_independent_display_transforms() {
