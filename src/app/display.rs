@@ -160,6 +160,28 @@ impl ScopeApp {
         let Some(notice) = self.scope_notice() else {
             return;
         };
+        if matches!(
+            notice,
+            ScopeNotice::Stopped
+                | ScopeNotice::Opening
+                | ScopeNotice::Finishing
+                | ScopeNotice::WaitingForSamples
+                | ScopeNotice::WaitingForTrigger
+                | ScopeNotice::PostTrigger
+        ) {
+            // Ordinary acquisition states need no panel or duplicate controls.
+            // Paint within the plot without allocating space or intercepting input.
+            ui.painter()
+                .with_clip_rect(ui.clip_rect().intersect(rect))
+                .text(
+                    rect.center(),
+                    egui::Align2::CENTER_CENTER,
+                    notice.title(),
+                    egui::FontId::proportional(14.0),
+                    MUTED,
+                );
+            return;
+        }
         // A real child UI gives the button keyboard/pointer semantics and wraps
         // long source/error names. Its opaque frame masks the grid underneath.
         let size_id = ui.id().with("scope_notice_size");
