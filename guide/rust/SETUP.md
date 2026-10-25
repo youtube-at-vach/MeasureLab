@@ -55,7 +55,7 @@ sudo apt-get install -y build-essential pkg-config \
 
 ### Windows
 
-このBashスクリプトによるネイティブWindowsのセットアップには対応していません。標準構成はRustのMSVCツールチェーンとVisual Studio C++ Build Toolsです。Visual Studioを導入していないVMで起動を確認したGNUツールチェーン・LLDの構成とPowerShellのコマンドは [Windowsでのビルドと起動確認](WINDOWS.md) を参照してください。
+このBashスクリプトによるネイティブWindowsのセットアップには対応していません。[Windowsでのビルドと起動確認](WINDOWS.md#msvcでのセットアップ)のPowerShell手順で、標準のMSVCツールチェーンとVisual Studio C++ Build Tools／Windows SDK、サイト・文書用ツールを準備してください。Windowsの仮想環境は`.venv/Scripts/`を使います。Visual Studioを導入しない環境向けのGNU／LLD手順は同文書の別節に分けています。
 
 ### その他の環境
 

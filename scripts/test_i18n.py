@@ -800,7 +800,13 @@ class RepositoryTests(unittest.TestCase):
                 )
             self.write(original)
 
-    def test_git_batch_snapshot_matches_worktree_with_unicode_and_newline_paths(self):
+    def test_git_batch_snapshot_matches_worktree_with_unicode_and_space_paths(self):
+        self.write({"src/日本語 name.rs": "// UTF-8\n", "src/ignored.txt": "not a Rust input"})
+        self.commit()
+        self.assertEqual(snapshot(self.root, "HEAD"), snapshot(self.root))
+
+    @unittest.skipIf(sys.platform == "win32", "Windows filenames cannot contain newline characters")
+    def test_git_batch_snapshot_matches_worktree_with_newline_paths(self):
         self.write({"src/日本語 name\nline.rs": "// UTF-8\n", "src/ignored.txt": "not a Rust input"})
         self.commit()
         self.assertEqual(snapshot(self.root, "HEAD"), snapshot(self.root))
