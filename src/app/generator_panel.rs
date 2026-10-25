@@ -960,8 +960,9 @@ impl ScopeApp {
     }
 
     pub(super) fn generator_controls(&mut self, ui: &mut egui::Ui) {
-        let restoring =
-            self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
+        let restoring = self.preferences.loading
+            || self.workspace_restoring
+            || self.settings_task == Some(SettingsTask::Restore);
         let g = &mut self.generator;
         setting_label(ui, i18n::text("generator.edit_step"));
         egui::ComboBox::from_id_salt("generator_step")
@@ -1158,6 +1159,7 @@ impl ScopeApp {
     pub(super) fn generator_reset(&mut self, ui: &mut egui::Ui) {
         let enabled = !self.running()
             && self.pending_stop.is_none()
+            && !self.preferences.loading
             && !self.workspace_restoring
             && self.settings_task != Some(SettingsTask::Restore);
         let g = &mut self.generator;
@@ -1183,8 +1185,9 @@ impl ScopeApp {
     }
 
     pub(super) fn generator_panel(&mut self, ui: &mut egui::Ui) {
-        let restoring =
-            self.workspace_restoring || self.settings_task == Some(SettingsTask::Restore);
+        let restoring = self.preferences.loading
+            || self.workspace_restoring
+            || self.settings_task == Some(SettingsTask::Restore);
         egui::Frame::new()
             .fill(Color32::from_rgb(15, 22, 29))
             .stroke(Stroke::new(1.0, BORDER))

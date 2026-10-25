@@ -48,6 +48,7 @@ mod io_panel;
 mod lockin_panel;
 mod monitor_controls;
 mod plot_labels;
+mod preferences;
 mod scope_controls;
 mod shell;
 mod spectrogram_controls;
@@ -331,6 +332,7 @@ pub struct ScopeApp {
     measurements: [Measurement; SCOPE_CHANNELS],
     scope_readings: [Reading; SCOPE_CHANNELS],
     calibration: CalibrationEditor,
+    preferences: preferences::State,
     settings_worker: settings::Worker,
     settings_path: String,
     settings_task: Option<SettingsTask>,
@@ -617,6 +619,9 @@ impl ScopeApp {
             measurements: [Measurement::default(); SCOPE_CHANNELS],
             scope_readings: [Reading::Unavailable; SCOPE_CHANNELS],
             calibration: CalibrationEditor::default(),
+            preferences: preferences::State::new(
+                !smoke && !demo && std::env::var_os("MEASURELAB_PROFILE_SECONDS").is_none(),
+            ),
             settings_worker: settings::Worker::default(),
             settings_path: settings::default_path()
                 .map(|path| path.to_string_lossy().into_owned())
@@ -1079,6 +1084,10 @@ impl ScopeApp {
             #[cfg(feature = "qa")]
             if std::env::var_os("MEASURELAB_UI_SMOKE_SETTINGS_RESTORE").is_some() {
                 app.check_settings_restore()?;
+            }
+            #[cfg(feature = "qa")]
+            if std::env::var_os("MEASURELAB_UI_SMOKE_STARTUP_PREFERENCES").is_some() {
+                app.check_startup_preferences(&cc.egui_ctx)?;
             }
             #[cfg(feature = "qa")]
             if std::env::var_os("MEASURELAB_UI_SMOKE_EXPORT").is_some() {
@@ -2701,7 +2710,10 @@ impl ScopeApp {
     }
 
     fn start(&mut self) {
-        if self.settings_task == Some(SettingsTask::Restore) || self.workspace_restoring {
+        if self.preferences.loading
+            || self.settings_task == Some(SettingsTask::Restore)
+            || self.workspace_restoring
+        {
             return;
         }
         if self.pending_stop.is_some() {
@@ -2839,7 +2851,7 @@ impl ScopeApp {
             );
             return;
         }
-        if self.devices.is_empty() || self.busy {
+        if self.devices.get(self.selected).is_none() || self.busy {
             return;
         }
         if let Some(input) = &self.restored_input {
@@ -2902,18 +2914,44 @@ impl ScopeApp {
         }
     }
 
+    fn accept_devices(&mut self, devices: Vec<DeviceInfo>) {
+        let remembered = self.restored_input.clone().or_else(|| {
+            (self.source == Source::Live)
+                .then(|| self.devices.get(self.selected))
+                .flatten()
+                .and_then(|device| {
+                    settings::Input::from_device(device, self.requested_sample_rate).ok()
+                })
+        });
+        self.selected = devices.iter().position(|d| d.is_default).unwrap_or(0);
+        self.devices = devices;
+        if self.source == Source::Live {
+            if let Some(input) = remembered {
+                match input.resolve(&self.devices) {
+                    Ok(index) => {
+                        self.selected = index;
+                        self.input_error = None;
+                    }
+                    Err(error) => {
+                        self.selected = usize::MAX;
+                        self.input_error = Some(error);
+                    }
+                }
+                self.requested_sample_rate = input.sample_rate;
+                self.restored_input = Some(input);
+            } else {
+                self.calibration.clear_input();
+                self.requested_sample_rate = None;
+            }
+        }
+    }
+
     fn poll_audio(&mut self) {
         while let Ok(event) = self.audio.events.try_recv() {
             self.busy = false;
             match event {
                 Event::Devices(devices) => {
-                    self.restored_input = None;
-                    if self.source == Source::Live {
-                        self.calibration.clear_input();
-                        self.requested_sample_rate = None;
-                    }
-                    self.selected = devices.iter().position(|d| d.is_default).unwrap_or(0);
-                    self.devices = devices;
+                    self.accept_devices(devices);
                     #[cfg(feature = "qa")]
                     if let Some(name) = self.profile.as_ref().and_then(|p| p.device.as_ref()) {
                         if let Some(index) = self.devices.iter().position(|d| &d.name == name) {
@@ -3006,13 +3044,14 @@ impl ScopeApp {
     }
 
     fn input_transport_enabled(&self) -> bool {
-        !self.busy
+        !self.preferences.loading
+            && !self.busy
             && self.settings_task != Some(SettingsTask::Restore)
             && !self.workspace_restoring
             && self.pending_stop.is_none()
             && (self.source.is_demo()
                 || matches!(self.source, Source::Software | Source::Generator)
-                || !self.devices.is_empty())
+                || self.devices.get(self.selected).is_some())
     }
 
     fn transport(&mut self, ui: &mut egui::Ui) {
@@ -4562,6 +4601,8 @@ impl ScopeApp {
             );
         }
         ui.separator();
+        self.preferences_controls(ui);
+        ui.separator();
         setting_label(ui, i18n::text("common.measurement_settings"));
         ui.label(
             RichText::new(i18n::text(
@@ -4607,9 +4648,10 @@ impl ScopeApp {
     }
 
     fn can_restore_settings(&self) -> bool {
-        (self.source == Source::Live
-            || self.source == Source::Software
-            || self.source == Source::Generator)
+        !self.preferences.loading
+            && (self.source == Source::Live
+                || self.source == Source::Software
+                || self.source == Source::Generator)
             && self.generator.stopped()
             && !self.running()
             && !self.busy
@@ -4777,7 +4819,15 @@ impl ScopeApp {
     }
 
     fn capture_settings(&self) -> Result<settings::Document, String> {
-        let input = if self.source == Source::Generator {
+        self.capture_settings_with_policy(false)
+    }
+
+    fn capture_settings_with_policy(&self, startup: bool) -> Result<settings::Document, String> {
+        let input = if self.source == Source::Live && startup && self.restored_input.is_some() {
+            let mut input = self.restored_input.clone().unwrap();
+            input.sample_rate = self.requested_sample_rate;
+            input
+        } else if self.source == Source::Generator {
             settings::Input {
                 device_id: "measurelab:generator".into(),
                 device_name: "Generator internal loopback".into(),
@@ -4838,37 +4888,10 @@ impl ScopeApp {
                 },
                 calibrations: settings::ChannelCalibration::capture(&self.calibration.pending),
             },
-            workspace: settings::Workspace {
-                spectrum_display: self.spectrum_display,
-                presentation: self.presentation.clone(),
-                lockin_display: self.lockin_display,
-                scope_enabled: self.enabled,
-                scope_vertical: self.scope_vertical,
-                scope_common_vertical: self.scope_common_vertical,
-                scope_selected: self.scope_selected,
-                scope_horizontal_position: self.scope_horizontal_position,
-                scope_trigger_display: self.scope_trigger_display,
-                spectrum_scale: self.frequency_scale,
-                spectrum_min_hz: self.spectrum_min_hz,
-                spectrum_max_hz: self.span_hz,
-                spectrum_floor_db: self.floor_db,
-                spectrum_ceiling_db: self.spectrum_ceiling_db,
-                spectrum_show_hold: self.show_hold,
-                spectrogram_scale: self.spectrogram_scale,
-                spectrogram_min_hz: self.spectrogram_min_hz,
-                spectrogram_max_hz: self.spectrogram_max_hz,
-                spectrogram_floor_db: self.spectrogram_floor,
-                spectrogram_ceiling_db: self.spectrogram_ceiling,
-                spectrogram_seconds: self.spectrogram_seconds,
-                spectrogram_color_map: self.spectrogram_color_map,
-                spectrogram_auto_color: self.spectrogram_auto_color,
-                xy_x_fs_per_div: self.xy_settings.x_fs_per_div,
-                xy_y_fs_per_div: self.xy_settings.y_fs_per_div,
-                xy_cursor_mode: self.xy_cursor_mode,
-            },
+            workspace: self.capture_workspace(),
         };
         document.validate()?;
-        if self.source == Source::Live {
+        if self.source == Source::Live && !startup {
             document.measurement.input.resolve(&self.devices)?;
         }
         if self.capture.is_some()
@@ -4882,85 +4905,38 @@ impl ScopeApp {
         Ok(document)
     }
 
-    /// Transactional restoration: all checks precede mutation, and only queued
-    /// conditions/display preferences change. Captured data keeps its metadata.
-    fn restore_settings(&mut self, document: settings::Document) -> Result<(), String> {
-        if !self.can_restore_settings() {
-            return Err(
-                i18n::text("common.stop_input_and_output_and_wait_for_pending_operations").into(),
-            );
+    fn capture_workspace(&self) -> settings::Workspace {
+        settings::Workspace {
+            spectrum_display: self.spectrum_display,
+            presentation: self.presentation.clone(),
+            lockin_display: self.lockin_display,
+            scope_enabled: self.enabled,
+            scope_vertical: self.scope_vertical,
+            scope_common_vertical: self.scope_common_vertical,
+            scope_selected: self.scope_selected,
+            scope_horizontal_position: self.scope_horizontal_position,
+            scope_trigger_display: self.scope_trigger_display,
+            spectrum_scale: self.frequency_scale,
+            spectrum_min_hz: self.spectrum_min_hz,
+            spectrum_max_hz: self.span_hz,
+            spectrum_floor_db: self.floor_db,
+            spectrum_ceiling_db: self.spectrum_ceiling_db,
+            spectrum_show_hold: self.show_hold,
+            spectrogram_scale: self.spectrogram_scale,
+            spectrogram_min_hz: self.spectrogram_min_hz,
+            spectrogram_max_hz: self.spectrogram_max_hz,
+            spectrogram_floor_db: self.spectrogram_floor,
+            spectrogram_ceiling_db: self.spectrogram_ceiling,
+            spectrogram_seconds: self.spectrogram_seconds,
+            spectrogram_color_map: self.spectrogram_color_map,
+            spectrogram_auto_color: self.spectrogram_auto_color,
+            xy_x_fs_per_div: self.xy_settings.x_fs_per_div,
+            xy_y_fs_per_div: self.xy_settings.y_fs_per_div,
+            xy_cursor_mode: self.xy_cursor_mode,
         }
-        let calibrations = document.validate()?;
-        let selected = if document.measurement.software_loopback.is_some()
-            || document
-                .measurement
-                .generator
-                .as_ref()
-                .is_some_and(|g| g.use_as_input)
-        {
-            self.selected
-        } else {
-            document.measurement.input.resolve(&self.devices)?
-        };
-        for channel in 0..crate::signal::MAX_CHANNELS {
-            if let Some(new) = calibrations.get(channel) {
-                for known in [&self.calibration.pending, &self.calibration.captured] {
-                    for old_channel in 0..crate::signal::MAX_CHANNELS {
-                        if let Some(old) = known.get(old_channel)
-                            && old.id() == new.id()
-                            && old.revision() == new.revision()
-                            && old != new
-                        {
-                            return Err(i18n::text(
-                                "common.saved_calibration_conflicts_with_an_existing_id_revision",
-                            )
-                            .into());
-                        }
-                    }
-                }
-            }
-        }
-        let m = document.measurement;
-        let w = document.workspace;
-        let generator_input = m.generator.as_ref().is_some_and(|g| g.use_as_input);
-        self.generator
-            .restore(m.generator.unwrap_or(output::Saved {
-                target: output::Target::Internal,
-                nominal_sample_rate: 48_000,
-                signals: crate::generator::Settings::default(),
-                use_as_input: false,
-            }))?;
-        self.selected = selected;
-        self.requested_sample_rate = m.input.sample_rate;
-        self.source = if generator_input {
-            Source::Generator
-        } else if m.software_loopback.is_some() {
-            Source::Software
-        } else {
-            Source::Live
-        };
-        if let Some(software) = m.software_loopback {
-            self.loopback_settings = software;
-        }
-        self.lockin_settings = m.lockin;
-        self.comparison_settings = m.comparison;
-        self.restored_input = (self.source == Source::Live).then_some(m.input);
-        self.acquisition_mode = m.scope.mode;
-        self.scope_channels = m.scope.channels;
-        self.ms_per_div = m.scope.ms_per_div;
-        self.trigger = m.scope.trigger;
-        self.spectrum_channel = m.spectrum.channel;
-        self.spectrum_settings = m.spectrum.analysis;
-        self.spectrum_mode = m.spectrum.mode;
-        self.band_min_hz = m.spectrum.band_min_hz;
-        self.band_max_hz = m.spectrum.band_max_hz;
-        self.spectrogram_channel = m.spectrogram.channel;
-        self.spectrogram_settings = m.spectrogram.analysis;
-        self.spectrogram_overlap = m.spectrogram.overlap;
-        self.xy_settings.channels = m.xy.channels;
-        self.xy_settings.milliseconds = m.xy.milliseconds;
-        self.calibration.pending = calibrations;
-        self.calibration.select();
+    }
+
+    fn apply_workspace(&mut self, w: settings::Workspace) {
         self.presentation = w.presentation.clone();
         self.presentation.repair();
         self.shell.previous_console = None;
@@ -4997,6 +4973,111 @@ impl ScopeApp {
         self.dirty = true;
         self.xy_dirty = true;
         self.spectrum_dirty = true;
+    }
+
+    /// Transactional restoration: all checks precede mutation, and only queued
+    /// conditions/display preferences change. Captured data keeps its metadata.
+    fn restore_settings(&mut self, document: settings::Document) -> Result<(), String> {
+        self.restore_settings_with_policy(document, false)
+    }
+
+    fn restore_settings_with_policy(
+        &mut self,
+        document: settings::Document,
+        startup: bool,
+    ) -> Result<(), String> {
+        if !self.can_restore_settings() {
+            return Err(
+                i18n::text("common.stop_input_and_output_and_wait_for_pending_operations").into(),
+            );
+        }
+        let calibrations = document.validate()?;
+        let selected = if document.measurement.software_loopback.is_some()
+            || document
+                .measurement
+                .generator
+                .as_ref()
+                .is_some_and(|g| g.use_as_input)
+        {
+            self.selected
+        } else {
+            match document.measurement.input.resolve(&self.devices) {
+                Ok(index) => index,
+                Err(error) if startup => {
+                    self.input_error = Some(error);
+                    usize::MAX
+                }
+                Err(error) => return Err(error),
+            }
+        };
+        for channel in 0..crate::signal::MAX_CHANNELS {
+            if let Some(new) = calibrations.get(channel) {
+                for known in [&self.calibration.pending, &self.calibration.captured] {
+                    for old_channel in 0..crate::signal::MAX_CHANNELS {
+                        if let Some(old) = known.get(old_channel)
+                            && old.id() == new.id()
+                            && old.revision() == new.revision()
+                            && old != new
+                        {
+                            return Err(i18n::text(
+                                "common.saved_calibration_conflicts_with_an_existing_id_revision",
+                            )
+                            .into());
+                        }
+                    }
+                }
+            }
+        }
+        let m = document.measurement;
+        let w = document.workspace;
+        let generator_input = m.generator.as_ref().is_some_and(|g| g.use_as_input);
+        let generator = m.generator.unwrap_or(output::Saved {
+            target: output::Target::Internal,
+            nominal_sample_rate: 48_000,
+            signals: crate::generator::Settings::default(),
+            use_as_input: false,
+        });
+        if startup {
+            self.generator.select(
+                generator.target,
+                generator.nominal_sample_rate,
+                generator.signals,
+            )?;
+        } else {
+            self.generator.restore(generator)?;
+        }
+        self.selected = selected;
+        self.requested_sample_rate = m.input.sample_rate;
+        self.source = if generator_input {
+            Source::Generator
+        } else if m.software_loopback.is_some() {
+            Source::Software
+        } else {
+            Source::Live
+        };
+        if let Some(software) = m.software_loopback {
+            self.loopback_settings = software;
+        }
+        self.lockin_settings = m.lockin;
+        self.comparison_settings = m.comparison;
+        self.restored_input = (self.source == Source::Live).then_some(m.input);
+        self.acquisition_mode = m.scope.mode;
+        self.scope_channels = m.scope.channels;
+        self.ms_per_div = m.scope.ms_per_div;
+        self.trigger = m.scope.trigger;
+        self.spectrum_channel = m.spectrum.channel;
+        self.spectrum_settings = m.spectrum.analysis;
+        self.spectrum_mode = m.spectrum.mode;
+        self.band_min_hz = m.spectrum.band_min_hz;
+        self.band_max_hz = m.spectrum.band_max_hz;
+        self.spectrogram_channel = m.spectrogram.channel;
+        self.spectrogram_settings = m.spectrogram.analysis;
+        self.spectrogram_overlap = m.spectrogram.overlap;
+        self.xy_settings.channels = m.xy.channels;
+        self.xy_settings.milliseconds = m.xy.milliseconds;
+        self.calibration.pending = calibrations;
+        self.calibration.select();
+        self.apply_workspace(w);
         Ok(())
     }
 
@@ -5670,6 +5751,7 @@ impl ScopeApp {
 
 impl Drop for ScopeApp {
     fn drop(&mut self) {
+        self.save_preferences();
         self.generator.stop();
         self.core.take();
     }
@@ -5680,6 +5762,7 @@ impl eframe::App for ScopeApp {
         if !self.smoke {
             self.shell.save_sidebar(storage);
             i18n::save(storage);
+            self.save_preferences();
         }
     }
 
@@ -5744,6 +5827,7 @@ impl eframe::App for ScopeApp {
         let input_started = Instant::now();
         self.poll_audio();
         self.generator.poll();
+        self.poll_preferences(&ctx);
         #[cfg(feature = "qa")]
         self.start_generator_profile_input();
         self.poll_measurement();
@@ -6294,6 +6378,7 @@ impl eframe::App for ScopeApp {
                     .color(if self.dropped > 0 { YELLOW } else { MUTED }),
                 );
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    self.preferences_status(ui);
                     if let Some(status) = &self.settings_status
                         && ui
                             .small_button(if self.settings_error {

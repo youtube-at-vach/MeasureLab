@@ -17,6 +17,7 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 
 
 def cases(devices=()):
+    yield "startup-preferences", False, {"STARTUP_PREFERENCES": "1", "IDLE": "1"}
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
     yield "language-demo-controls", False, {"LANGUAGE": "1", "VIEW": "scope"}
     yield "language-ja-wide", False, {"VIEW": "scope", "IDLE": "1", "LOCALE": "ja"}

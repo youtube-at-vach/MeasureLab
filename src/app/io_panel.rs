@@ -92,9 +92,13 @@ impl ScopeApp {
             Source::Live => self
                 .devices
                 .get(self.selected)
-                .map_or(i18n::text("io.audio_input_no_device_selected"), |d| {
-                    d.name.as_str()
-                }),
+                .map(|d| d.name.as_str())
+                .or_else(|| {
+                    self.restored_input
+                        .as_ref()
+                        .map(|input| input.device_name.as_str())
+                })
+                .unwrap_or(i18n::text("io.audio_input_no_device_selected")),
             Source::Software => i18n::text("io.software_loopback"),
             Source::Generator => i18n::text("io.generator_loopback_out"),
             #[cfg(feature = "qa")]
@@ -124,7 +128,8 @@ impl ScopeApp {
     }
 
     fn io_input_editable(&self) -> bool {
-        self.pending_stop.is_none()
+        !self.preferences.loading
+            && self.pending_stop.is_none()
             && !self.busy
             && !self.workspace_restoring
             && self.settings_task != Some(SettingsTask::Restore)
@@ -375,6 +380,11 @@ impl ScopeApp {
                 .devices
                 .get(self.selected)
                 .map(|d| d.name.as_str())
+                .or_else(|| {
+                    self.restored_input
+                        .as_ref()
+                        .map(|input| input.device_name.as_str())
+                })
                 .unwrap_or(i18n::text("io.no_input_device"));
             let previous = self.selected;
             ui.add_enabled_ui(!self.busy, |ui| {

@@ -20,6 +20,8 @@ use std::{
     thread::{self, JoinHandle},
 };
 
+pub mod preferences;
+
 pub const VERSION: u32 = 9;
 pub const MAX_BYTES: usize = 64 * 1024;
 
@@ -218,6 +220,55 @@ pub struct Workspace {
     pub xy_cursor_mode: CursorMode,
 }
 
+impl Workspace {
+    pub fn validate(&self) -> Result<(), String> {
+        let w = self;
+        if w.spectrum_display.selected >= 4
+            || w.spectrum_display
+                .overlay_channels
+                .iter()
+                .any(|ch| *ch >= MAX_CHANNELS)
+            || ![4, 16, 64].contains(&w.spectrum_display.average_weight)
+        {
+            return Err("Invalid Spectrum display settings".into());
+        }
+        for scale in [w.xy_x_fs_per_div, w.xy_y_fs_per_div] {
+            in_range(scale, 0.001, 0.5, "amplitude scale")?;
+        }
+        for vertical in w.scope_vertical.into_iter().chain(w.scope_common_vertical) {
+            in_range(
+                vertical.fs_per_div as f64,
+                0.001_f32 as f64,
+                0.5,
+                "Scope amplitude scale",
+            )?;
+            in_range(vertical.offset, -2.0, 2.0, "Scope centre offset")?;
+        }
+        if w.scope_selected >= SCOPE_CHANNELS {
+            return Err("Invalid selected Scope channel".into());
+        }
+        in_range(
+            w.scope_horizontal_position as f64,
+            -5.0,
+            5.0,
+            "Scope horizontal position",
+        )?;
+        frequency_range(w.spectrum_min_hz as f64, w.spectrum_max_hz as f64)?;
+        frequency_range(w.spectrogram_min_hz as f64, w.spectrogram_max_hz as f64)?;
+        in_range(w.spectrum_floor_db as f64, -180.0, 3194.0, "Spectrum floor")?;
+        in_range(
+            w.spectrum_ceiling_db as f64,
+            w.spectrum_floor_db as f64 + 6.0,
+            3200.0,
+            "Spectrum ceiling",
+        )?;
+        ColorRange::new(w.spectrogram_floor_db, w.spectrogram_ceiling_db)
+            .ok_or("Spectrogram color range requires finite Min < Max")?;
+        in_range(w.spectrogram_seconds, 0.5, 60.0, "Spectrogram time span")?;
+        Ok(())
+    }
+}
+
 // Settings predating the saved color map used Blue. Keep that appearance even
 // when the initial color map for a new workspace changes.
 fn legacy_spectrogram_color_map() -> ColorMap {
@@ -381,49 +432,7 @@ impl Document {
                 .with(definition.channel, Some(definition.definition()?))
                 .map_err(str::to_owned)?;
         }
-        let w = &self.workspace;
-        if w.spectrum_display.selected >= 4
-            || w.spectrum_display
-                .overlay_channels
-                .iter()
-                .any(|ch| *ch >= MAX_CHANNELS)
-            || ![4, 16, 64].contains(&w.spectrum_display.average_weight)
-        {
-            return Err("Invalid Spectrum display settings".into());
-        }
-        for scale in [w.xy_x_fs_per_div, w.xy_y_fs_per_div] {
-            in_range(scale, 0.001, 0.5, "amplitude scale")?;
-        }
-        for vertical in w.scope_vertical.into_iter().chain(w.scope_common_vertical) {
-            in_range(
-                vertical.fs_per_div as f64,
-                0.001_f32 as f64,
-                0.5,
-                "Scope amplitude scale",
-            )?;
-            in_range(vertical.offset, -2.0, 2.0, "Scope centre offset")?;
-        }
-        if w.scope_selected >= SCOPE_CHANNELS {
-            return Err("Invalid selected Scope channel".into());
-        }
-        in_range(
-            w.scope_horizontal_position as f64,
-            -5.0,
-            5.0,
-            "Scope horizontal position",
-        )?;
-        frequency_range(w.spectrum_min_hz as f64, w.spectrum_max_hz as f64)?;
-        frequency_range(w.spectrogram_min_hz as f64, w.spectrogram_max_hz as f64)?;
-        in_range(w.spectrum_floor_db as f64, -180.0, 3194.0, "Spectrum floor")?;
-        in_range(
-            w.spectrum_ceiling_db as f64,
-            w.spectrum_floor_db as f64 + 6.0,
-            3200.0,
-            "Spectrum ceiling",
-        )?;
-        ColorRange::new(w.spectrogram_floor_db, w.spectrogram_ceiling_db)
-            .ok_or("Spectrogram color range requires finite Min < Max")?;
-        in_range(w.spectrogram_seconds, 0.5, 60.0, "Spectrogram time span")?;
+        self.workspace.validate()?;
         Ok(set)
     }
 
@@ -608,21 +617,9 @@ fn frequency_range(min: f64, max: f64) -> Result<(), String> {
 }
 
 pub fn default_path() -> Result<PathBuf, String> {
-    #[cfg(target_os = "windows")]
-    let base = std::env::var_os("APPDATA").map(PathBuf::from);
-    #[cfg(not(target_os = "windows"))]
-    let base = std::env::var_os("HOME").map(|home| {
-        let home = PathBuf::from(home);
-        #[cfg(target_os = "macos")]
-        {
-            home.join("Library/Application Support")
-        }
-        #[cfg(not(target_os = "macos"))]
-        {
-            std::env::var_os("XDG_CONFIG_HOME").map_or_else(|| home.join(".config"), PathBuf::from)
-        }
-    });
-    base.map(|base| base.join("MeasureLab/measurement-settings.json"))
+    dirs::config_dir()
+        .filter(|base| base.is_absolute())
+        .map(|base| base.join("MeasureLab/measurement-settings.json"))
         .ok_or_else(|| "User settings directory is unavailable; enter a file path".into())
 }
 
@@ -716,7 +713,7 @@ mod tests {
         spectrum::{Analyzer, Precision, Window},
     };
 
-    fn fixture() -> Document {
+    pub(super) fn fixture() -> Document {
         Document {
             version: VERSION,
             measurement: Measurement {

@@ -593,7 +593,10 @@ impl ScopeApp {
             instrument.display_name()
         });
         ui.separator();
-        if self.settings_task == Some(SettingsTask::Restore) || self.workspace_restoring {
+        if self.preferences.loading
+            || self.settings_task == Some(SettingsTask::Restore)
+            || self.workspace_restoring
+        {
             ui.label(i18n::text("shell.restoring_settings"));
             return;
         }
