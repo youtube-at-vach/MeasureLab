@@ -1,25 +1,16 @@
 name: Build Windows Packages
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited]
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'build.rs'
-      - 'packaging/windows/**'
-      - 'scripts/*windows*.ps1'
-      - 'scripts/install_inno_setup.ps1'
-      - '.github/workflows/build_windows.yml'
-      - '.github/workflows/release.yml'
-      - 'LICENSE'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      release-assets:
+        description: Include alternate archives for the Release workflow
+        type: boolean
+        default: false
     outputs:
       artifact:
-        description: Tested Windows release assets
+        description: Tested Windows package artifact
         value: ${{ jobs.build.outputs.artifact }}
 
 permissions:
@@ -30,7 +21,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 45
     outputs:
-      artifact: windows-x64
+      artifact: ${{ inputs.release-assets && 'windows-x64' || 'MeasureLab-windows-x64-installer' }}
     defaults:
       run:
         shell: pwsh
@@ -38,6 +29,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v6
+        with:
+          python-version: '3.13'
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
         with:
           toolchain: '1.99.0'
@@ -61,13 +55,28 @@ jobs:
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: windows-installer-test-logs
+          name: logs-windows-installer-tests
           path: dist/windows-installer-test/**/*.log
           if-no-files-found: ignore
+          retention-days: 7
+      - name: Stage installer and verify exact assets, checksums and source identity
+        if: ${{ !inputs.release-assets }}
+        id: artifact
+        env:
+          RELEASE_DIR: ${{ steps.package.outputs.release_dir }}
+          SOURCE_SHA: ${{ github.sha }}
+        run: python scripts/ci_artifacts.py prepare "$env:RELEASE_DIR" --platform windows-x64 --source-sha "$env:SOURCE_SHA"
       - name: Upload tested distribution
+        id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: windows-x64
-          path: ${{ steps.package.outputs.release_dir }}/*
+          name: ${{ inputs.release-assets && 'windows-x64' || 'MeasureLab-windows-x64-installer' }}
+          path: ${{ inputs.release-assets && steps.package.outputs.release_dir || steps.artifact.outputs.artifact_dir }}/*
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
+      - name: Show test package download and startup instructions
+        if: ${{ !inputs.release-assets }}
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+        run: python scripts/ci_artifacts.py summary --platform windows-x64 --url "$env:ARTIFACT_URL"

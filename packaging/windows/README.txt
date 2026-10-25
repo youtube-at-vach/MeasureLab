@@ -1,6 +1,9 @@
 MeasureLab - Rust edition for Windows x64
 
-Run measurelab.exe, or install with the accompanying setup executable.
+For a GitHub Actions test artifact, extract the downloaded ZIP once and run
+MeasureLab-v<VERSION>-windows-x64-setup.exe to install, then open MeasureLab (Rust).
+The artifact includes the installer directly; there is no portable ZIP inside.
+If using the separate portable distribution, extract it and run measurelab.exe.
 Python and a Rust development environment are not required to run the app.
 The official MSVC package statically links the Visual C++ runtime.
 Windows 10/11 x64 and a working wgpu graphics backend are required.

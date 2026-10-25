@@ -265,7 +265,12 @@ def verify(args):
     assets = args.assets.resolve()
     version = tomllib.loads((ROOT / "Cargo.toml").read_text())["package"]["version"]
     base = f"MeasureLab-v{version}-linux-x86_64"
-    verify_checksums(assets, {f"{base}.AppImage", f"{base}.tar.gz", f"{base}-build-info.json"})
+    appimage_only = args.appimage_only
+    expected = {f"{base}.AppImage", f"{base}-build-info.json"}
+    expected.add("README.txt" if appimage_only else f"{base}.tar.gz")
+    verify_checksums(assets, expected)
+    if appimage_only and digest(assets / "README.txt") != digest(ROOT / "packaging/linux/README.txt"):
+        raise ValueError("Artifact README mismatch")
     info = json.loads((assets / f"{base}-build-info.json").read_text(encoding="utf-8"))
     source_sha = args.source_sha or run(["git", "rev-parse", "HEAD"]).stdout.strip()
     if (
@@ -280,7 +285,8 @@ def verify(args):
     ):
         raise ValueError("Unexpected build identity or glibc requirement")
     archive_path = assets / f"{base}.tar.gz"
-    verify_tar(archive_path, info)
+    if not appimage_only:
+        verify_tar(archive_path, info)
     if args.runtime:
         image = assets / f"{base}.AppImage"
         image.chmod(0o755)  # upload/download-artifact does not preserve Unix executable bits.
@@ -290,13 +296,16 @@ def verify(args):
             run([image, "--appimage-extract"], cwd=work)
             extracted = work / "squashfs-root"
             if inventory(extracted) != info["payload_sha256"]:
-                raise ValueError("AppImage payload differs from the archive")
+                raise ValueError("AppImage payload differs from the build manifest")
             if json.loads((extracted / "build-info.json").read_text(encoding="utf-8")) != info:
                 raise ValueError("AppImage build identity mismatch")
-            # The tar was inspected before extraction; forbid links and traversal there.
-            with tarfile.open(archive_path) as archive:
-                archive.extractall(work, filter="data")
-            for command in ([image, "--appimage-extract-and-run"], [work / "MeasureLab/AppRun"]):
+            commands = [[image, "--appimage-extract-and-run"]]
+            if not appimage_only:
+                # The tar was inspected before extraction; forbid links and traversal there.
+                with tarfile.open(archive_path) as archive:
+                    archive.extractall(work, filter="data")
+                commands.append([work / "MeasureLab/AppRun"])
+            for command in commands:
                 check_normal_options(command, env)
             if audit_binary(extracted / "usr/bin/measurelab", args.max_glibc) != {
                 key: info[key] for key in ("glibc_required", "needed_libraries")
@@ -319,6 +328,9 @@ def main():
     checker.add_argument("--max-glibc", default="2.35")
     checker.add_argument("--require-clean", action="store_true")
     checker.add_argument("--runtime", action="store_true")
+    checker.add_argument(
+        "--appimage-only", action="store_true", help="Verify the native CI artifact without an AppDir tar"
+    )
     checker.add_argument("--gpu", action="store_true")
     args = parser.parse_args()
     if args.command == "build":

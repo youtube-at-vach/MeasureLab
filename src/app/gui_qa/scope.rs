@@ -498,7 +498,8 @@ impl ScopeApp {
         let (_sender, reply) = std::sync::mpsc::channel();
         self.autoset_pending = Some(reply);
         driver.frame(self, vec![]);
-        driver.click(self, i18n::text("common.open_input_settings"))?;
+        driver.click(self, i18n::text("shell.audio_i_o"))?;
+        driver.click(self, i18n::text("shell.input_output"))?;
         driver.click(self, i18n::text("io.software_loopback"))?;
         assert!(self.source == Source::Software);
         assert!(self.autoset_status.is_none() && self.autoset_pending.is_none());

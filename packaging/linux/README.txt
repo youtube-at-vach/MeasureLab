@@ -1,5 +1,9 @@
 MeasureLab Rust prototype for Linux x86_64
 
+For a GitHub Actions test artifact, extract the downloaded ZIP once.
+The AppImage is at the ZIP root. GitHub ZIPs do not preserve executable
+permissions, so apply chmod below before starting it.
+
 AppImage:
   chmod +x MeasureLab-*.AppImage
   ./MeasureLab-v<VERSION>-linux-x86_64.AppImage
@@ -7,7 +11,7 @@ AppImage:
 If FUSE mounting is unavailable, use the same AppImage with:
   ./MeasureLab-v<VERSION>-linux-x86_64.AppImage --appimage-extract-and-run
 
-Alternatively, extract the tar.gz archive and run MeasureLab/AppRun.
+If using the separate tar.gz distribution, extract it and run MeasureLab/AppRun.
 The AppImage and tar.gz contain the same application and launcher.
 No Python or Rust installation is needed to run them.
 

@@ -48,13 +48,30 @@ Rust版は`main`へ統合済みで、開発PRのbaseも`main`とする。ここ�
 
 各項目に候補SHA・実行ファイルSHA-256・環境／機器／Fs・pass／fail／not-run／対象外・証拠の場所を残す。内部／仮想／物理、QA自動検証／通常GUI手動、OS／CPU・配布形式ごとに結果を分け、一部成功で項目全体をpassにしない。成果物は [配布パッケージの受け入れ](VALIDATION.md#配布パッケージの受け入れ) のGit管理外ディレクトリへ保存する。最終資産・Draftがまだない場合、最終一致とPrerelease／Latestの実物確認はnot-runとし、workflow設定の照合とは区別する。
 
+## PRの実機検証用Artifacts
+
+main宛PRとCIの手動実行では、[CI](../../.github/workflows/ci.yml) から既存のOS別パッケージworkflowを呼び出す。PRの変更ファイルにかかわらず4種類を同じrunのArtifactsへ集める。PRのChecksからCIの実行詳細を開き、各ジョブのSummaryのリンク、またはArtifacts一覧から対象をダウンロードする。OS別workflowの手動実行も同じ検証用構成を使う。保持期間は14日。
+
+| Artifact名 | ZIP展開後のパッケージ | 起動手順 |
+| --- | --- | --- |
+| `MeasureLab-windows-x64-installer` | `MeasureLab-v<version>-windows-x64-setup.exe` | インストーラーを直接起動し、インストール後にMeasureLab (Rust)を開く |
+| `MeasureLab-macos-x86_64-dmg` | `MeasureLab-v<version>-macos-x86_64.dmg` | Intel MacでDMGを開き、Applicationsへコピーして取り出した後に起動 |
+| `MeasureLab-macos-arm64-dmg` | `MeasureLab-v<version>-macos-arm64.dmg` | Apple Silicon MacでDMGを開き、同様にコピー・取り出し後に起動 |
+| `MeasureLab-linux-x86_64-appimage` | `MeasureLab-v<version>-linux-x86_64.AppImage` | `chmod +x`で実行権限を付け、AppImageを起動。FUSEが使えなければ`--appimage-extract-and-run`を付ける |
+
+GitHubが作るZIPは一度だけ展開する。各ZIP直下は上記パッケージ1個、`README.txt`、同名の`-build-info.json`、`SHA256SUMS-<OS>-<CPU>.txt`の4ファイルで統一する。portable ZIP・AppDir tar.gzやビルド中間ファイルは入れない。Linuxの実行権限はGitHubのZIPで保持されないため、起動説明にも権限付与を記載する。Python・Rustの導入は不要で、ホスト側のOS・GPU・音声ランタイムと権限条件は各OSの説明に従う。
+
+既存のWindowsインストール・修復・削除、macOS DMG・署名・コピー後起動の検証を再利用する。LinuxはアップロードしたAppImageをUbuntu 22.04／24.04／26.04へダウンロードし、全payload・通常オプション・GPU読み戻しを検証する。検証用の選択処理は[ci_artifacts.py](../../scripts/ci_artifacts.py)に集約し、成果物の完全な集合、非空の通常ファイル、SHA-256、cleanなソースSHA、版・CPU・release／desktopを確認する。不足・破損・別ソース・QA版はCIを失敗させる。
+
+Windowsのインストールログは`logs-windows-installer-tests`へ分離し、7日保持する。元の配布用ステージングとportable形式の検証は継続し、Release workflowには従来の全資産を渡す。PRとブランチの実行は検証用で、Release・タグ・サイト公開を行わない。build-infoのSHAはPRではheadとbaseを統合したテスト対象のコミットである。各パッケージジョブとLinuxの実行検証が成功したrunを使用し、通常GUI・実音声・権限ダイアログの実機受け入れは別途行う。
+
 ## Windows配布
 
-[Windows Packages](../../.github/workflows/build_windows.yml) は関連変更のmain宛PR、手動実行、Release workflowから呼び出す。Rust 1.99.0の`x86_64-pc-windows-msvc`を使い、`--release --locked --no-default-features --features desktop`でビルドする。CRTを静的リンクし、利用者へのPython・Rust・Visual C++再頒布可能パッケージの別途導入を不要にする。Windows 10／11 x64を対象とし、ARM64上のx64エミュレーションは受け入れ対象に含めない。
+[Windows Packages](../../.github/workflows/build_windows.yml) はPRのCI、手動実行、Release workflowから呼び出す。Rust 1.99.0の`x86_64-pc-windows-msvc`を使い、`--release --locked --no-default-features --features desktop`でビルドする。CRTを静的リンクし、利用者へのPython・Rust・Visual C++再頒布可能パッケージの別途導入を不要にする。Windows 10／11 x64を対象とし、ARM64上のx64エミュレーションは受け入れ対象に含めない。
 
 Inno Setup 6.7.3は公式配布のSHA-256を固定して取得する。Rust版のAppId、新規インストール先`%LOCALAPPDATA%\Programs\MeasureLabRust`、ショートカット`MeasureLab (Rust)`はPython最終版と分ける。既定のフォルダー名は空白を含まない。更新はRust版の同じ場所・タスクを引き継ぎ、旧既定の`MeasureLab Rust`や利用者が選んだ場所も自動では移動しない。アンインストールはパッケージ所有ファイルを削除し、設定・測定結果は残す。ASIO切り替え・PyInstaller・旧Pythonランタイムは含めない。
 
-`windows-x64` artifactは以下の4ファイルを含む。版番号はCargoから取得し、タグ実行では完全一致を要求する。実行ごとに新しいステージングディレクトリを使い、過去の成果物を混ぜない。
+Release workflow用の`windows-x64` artifactは以下の4ファイルを含む。版番号はCargoから取得し、タグ実行では完全一致を要求する。実行ごとに新しいステージングディレクトリを使い、過去の成果物を混ぜない。
 
 * `MeasureLab-v<version>-windows-x64-setup.exe`
 * `MeasureLab-v<version>-windows-x64.zip`
@@ -67,9 +84,9 @@ build-infoはソースSHA・ローカル変更の有無・対象・機能・Rust
 
 ## Linux配布
 
-[Linux Packages](../../.github/workflows/build_linux.yml) は関連変更のmain宛PR、手動実行、Release workflowから呼び出す。Rust 1.99.0の`x86_64-unknown-linux-gnu`をUbuntu 22.04で使い、`--release --locked --no-default-features --features desktop`でビルドする。日常開発のUbuntu 24.04／26.04環境に22.04を導入する必要はない。公式の基準環境はクラウドrunnerで用意する。
+[Linux Packages](../../.github/workflows/build_linux.yml) はPRのCI、手動実行、Release workflowから呼び出す。Rust 1.99.0の`x86_64-unknown-linux-gnu`をUbuntu 22.04で使い、`--release --locked --no-default-features --features desktop`でビルドする。日常開発のUbuntu 24.04／26.04環境に22.04を導入する必要はない。公式の基準環境はクラウドrunnerで用意する。
 
-`linux-x86_64` artifactは以下の4ファイルを含む。実行ごとの空のステージング先を使い、AppImageとtar.gzに同じ通常実行ファイル・AppRun・アイコン・版情報・ライセンス・起動説明を入れる。
+Release workflow用の`linux-x86_64` artifactは以下の4ファイルを含む。実行ごとの空のステージング先を使い、AppImageとtar.gzに同じ通常実行ファイル・AppRun・アイコン・版情報・ライセンス・起動説明を入れる。
 
 * `MeasureLab-v<version>-linux-x86_64.AppImage`
 * `MeasureLab-v<version>-linux-x86_64.tar.gz`
@@ -93,7 +110,7 @@ Ubuntu 22.04以外で作る場合もglibc条件を満たす必要がある。ロ
 
 ## macOS配布
 
-[macOS Packages](../../.github/workflows/build_macos.yml) は関連変更のmain宛PR、手動実行、Release workflowから呼び出す。Rust 1.99.0でIntelの`x86_64-apple-darwin`とApple Siliconの`aarch64-apple-darwin`を各ネイティブrunnerでビルドする。通常desktopだけを`--release --locked --no-default-features --features desktop`で指定し、QA版と分けた`target/distribution-macos/`を使う。`MACOSX_DEPLOYMENT_TARGET=13.0`とInfo.plistの最低版を一致させ、Mach-OのCPU・最低OS版・システム外への動的リンクを検査する。13.0はビルド下限であり、全OS版・機器の動作確認を意味しない。
+[macOS Packages](../../.github/workflows/build_macos.yml) はPRのCI、手動実行、Release workflowから呼び出す。Rust 1.99.0でIntelの`x86_64-apple-darwin`とApple Siliconの`aarch64-apple-darwin`を各ネイティブrunnerでビルドする。通常desktopだけを`--release --locked --no-default-features --features desktop`で指定し、QA版と分けた`target/distribution-macos/`を使う。`MACOSX_DEPLOYMENT_TARGET=13.0`とInfo.plistの最低版を一致させ、Mach-OのCPU・最低OS版・システム外への動的リンクを検査する。13.0はビルド下限であり、全OS版・機器の動作確認を意味しない。
 
 配布物は`MeasureLab-v<版>-macos-<CPU>.dmg`、同名の`-build-info.json`、`SHA256SUMS-macos-<CPU>.txt`。CPUは`x86_64`／`arm64`で、Universal Binaryではない。DMGはmacOS標準の`hdiutil`で作り、`MeasureLab.app`、`/Applications`へのリンク、起動・権限の説明、The Unlicenseを含める。利用者は`.app`をApplicationsへコピーし、DMGを取り出してから起動する。Python・Rustの導入は不要。旧Python版も`MeasureLab.app`のため、併用時は先に別名・別フォルダーへ退避する。Rust版のbundle identifierは既存の`dev.measurelab.app`を保持し、旧Python版の`com.github_vach.measurelab`とは分ける。
 
@@ -153,7 +170,8 @@ Developer ID署名・Appleの公証は未整備で、初回はこの状態を明
 | `lint-and-test`（必須） | Linuxのfmt・全ターゲット全機能Clippy・GUIなし／通常／QAテスト・doctest。関連変更ではRust 1.95の全ターゲット確認も実行 |
 | `docs-lint`（必須、job IDは`build`） | Ruff・Markdown lintは常時。関連変更で新旧MkDocs strict、サイトテスト／ビルド、URL・内部リンク検証、preview |
 | `actionlint`（必須） | workflow構文・式・シェルを確認 |
-| `compatibility`（任意） | 3 OSの通常desktop release、macOS／WindowsのQAテスト。OS固有変更・配布前に結果を確認 |
+| `compatibility`（任意） | macOS／WindowsのQAテスト。通常desktop releaseはmain Pushで3 OSをビルドし、PR／手動ではパッケージジョブと重複させない |
+| OS別パッケージ（任意） | PR／手動CIの4種類の実機検証用Artifacts。同じrunに完成済みパッケージを集め、各OSのパッケージ・実行検証を行う |
 | 性能・実機評価 | 手動の反復benchとローカルQA。共有runnerの数値テストとは別に判定 |
 
 必須名は保護ルールとの互換性のため維持する。workflow全体のpathsフィルターで必須ステータスを消さない。関連変更がない場合の省略は変更分類の成功を前提とし、判定失敗・履歴不足・未知入力は全検証へ戻す。任意ビルドの失敗を隠さない。

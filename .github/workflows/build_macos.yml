@@ -1,33 +1,20 @@
 name: Build macOS Packages
 
 on:
-  pull_request:
-    types: [opened, synchronize, reopened, edited]
-    branches: [main]
-    paths:
-      - 'src/**'
-      - 'Cargo.toml'
-      - 'Cargo.lock'
-      - 'build.rs'
-      - '.cargo/**'
-      - 'packaging/macos/**'
-      - 'scripts/macos_package.py'
-      - 'scripts/test_macos_package.py'
-      - 'scripts/bundle-macos.sh'
-      - 'scripts/cargo.sh'
-      - '.github/workflows/build_macos.yml'
-      - '.github/workflows/release.yml'
-      - 'app_icon.png'
-      - 'LICENSE'
   workflow_dispatch:
   workflow_call:
+    inputs:
+      release-assets:
+        description: Keep the Release workflow asset layout
+        type: boolean
+        default: false
     outputs:
       intel_artifact:
         description: Verified Intel macOS DMG, build identity and checksums
-        value: macos-x86_64
+        value: ${{ inputs.release-assets && 'macos-x86_64' || 'MeasureLab-macos-x86_64-dmg' }}
       arm64_artifact:
         description: Verified Apple Silicon macOS DMG, build identity and checksums
-        value: macos-arm64
+        value: ${{ inputs.release-assets && 'macos-arm64' || 'MeasureLab-macos-arm64-dmg' }}
 
 permissions:
   contents: read
@@ -76,10 +63,26 @@ jobs:
           SOURCE_SHA: ${{ github.sha }}
           PACKAGE_TARGET: ${{ matrix.target }}
         run: python scripts/macos_package.py verify "$RELEASE_DIR" --target "$PACKAGE_TARGET" --source-sha "$SOURCE_SHA" --require-clean --runtime
+      - name: Stage DMG and verify exact assets, checksums and source identity
+        if: ${{ !inputs.release-assets }}
+        id: artifact
+        env:
+          RELEASE_DIR: ${{ steps.package.outputs.release_dir }}
+          SOURCE_SHA: ${{ github.sha }}
+          PACKAGE_PLATFORM: macos-${{ matrix.arch }}
+        run: python scripts/ci_artifacts.py prepare "$RELEASE_DIR" --platform "$PACKAGE_PLATFORM" --source-sha "$SOURCE_SHA"
       - name: Upload verified macOS distribution
+        id: upload
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: macos-${{ matrix.arch }}
-          path: ${{ steps.package.outputs.release_dir }}/*
+          name: ${{ inputs.release-assets && format('macos-{0}', matrix.arch) || format('MeasureLab-macos-{0}-dmg', matrix.arch) }}
+          path: ${{ inputs.release-assets && steps.package.outputs.release_dir || steps.artifact.outputs.artifact_dir }}/*
           if-no-files-found: error
           retention-days: 14
+          compression-level: 0
+      - name: Show test package download and startup instructions
+        if: ${{ !inputs.release-assets }}
+        env:
+          ARTIFACT_URL: ${{ steps.upload.outputs.artifact-url }}
+          PACKAGE_PLATFORM: macos-${{ matrix.arch }}
+        run: python scripts/ci_artifacts.py summary --platform "$PACKAGE_PLATFORM" --url "$ARTIFACT_URL"

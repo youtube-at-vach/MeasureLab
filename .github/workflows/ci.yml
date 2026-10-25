@@ -143,6 +143,19 @@ jobs:
           esac
         shell: bash
 
+  # Reuse the package lifecycle checks and collect all four downloads in this run.
+  windows-package:
+    if: github.event_name != 'push'
+    uses: ./.github/workflows/build_windows.yml
+
+  macos-package:
+    if: github.event_name != 'push'
+    uses: ./.github/workflows/build_macos.yml
+
+  linux-package:
+    if: github.event_name != 'push'
+    uses: ./.github/workflows/build_linux.yml
+
   compatibility:
     needs: changes
     if: needs.changes.outputs.rust == 'true'
@@ -174,6 +187,8 @@ jobs:
         if: runner.os != 'Linux'
         run: cargo test --locked --all-features
       - name: Build normal desktop release without QA features
+        # PR/manual runs already build normal releases in the packaging jobs.
+        if: github.event_name == 'push'
         run: cargo build --release --locked
       - name: Full performance benchmarks (manual opt-in)
         if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && inputs.benchmarks
@@ -199,6 +214,8 @@ jobs:
           tar -xzf "$archive" actionlint
         shell: bash
       - run: ./actionlint -color
+      - name: Test native artifact selection and integrity failures
+        run: python3 -m unittest discover -s scripts -p 'test_ci_artifacts.py'
 
   build:
     # Preserve the existing required status and Pages dependency.

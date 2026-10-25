@@ -277,12 +277,14 @@ impl ScopeApp {
         self.scope_readings = [Reading::Unavailable; SCOPE_CHANNELS];
         self.dirty = true;
         let mut driver = Driver::new();
-        let check = |app: &mut ScopeApp, driver: &mut Driver, reason: ScopeNotice| {
+        let check = |app: &mut ScopeApp, driver: &mut Driver, reason: ScopeNotice, help: bool| {
             driver.frame(app, vec![]);
             driver.frame(app, vec![]);
             assert_eq!(app.scope_notice(), Some(reason));
             assert_eq!(driver.text_positions(reason.title()).len(), 1);
-            assert!(driver.text_positions("Oscilloscope").is_empty());
+            if i18n::locale() == i18n::Locale::English {
+                assert!(driver.text_positions("Oscilloscope").is_empty());
+            }
             driver
                 .visible_text_rect(app.scope_axis_label().as_ref())
                 .unwrap();
@@ -301,9 +303,6 @@ impl ScopeApp {
                     .is_empty()
             );
             let title = driver.text_positions(reason.title())[0];
-            let button = driver
-                .position(i18n::text("common.open_input_settings"))
-                .unwrap();
             let plot = driver
                 .output
                 .shapes
@@ -316,27 +315,58 @@ impl ScopeApp {
                     }
                 })
                 .unwrap();
-            let card = driver
-                .output
-                .shapes
-                .iter()
-                .find_map(|s| {
-                    if let egui::Shape::Rect(shape) = &s.shape
-                        && shape.fill == Color32::from_rgb(20, 32, 42)
-                        && shape.rect.contains(title)
-                    {
-                        Some(shape.rect)
-                    } else {
-                        None
-                    }
-                })
+            let card = driver.output.shapes.iter().find_map(|s| {
+                if let egui::Shape::Rect(shape) = &s.shape
+                    && shape.fill == Color32::from_rgb(20, 32, 42)
+                    && shape.rect.contains(title)
+                {
+                    Some(shape.rect)
+                } else {
+                    None
+                }
+            });
+            if !help {
+                assert!(card.is_none(), "Ordinary input status still has a panel");
+                assert!(
+                    (driver.visible_text_rect(reason.title()).unwrap().center() - plot.center())
+                        .length()
+                        < 2.0
+                );
+                assert!(driver.text_positions(&app.input_source_label()).is_empty());
+                assert!(
+                    driver
+                        .text_positions(i18n::text("common.open_input_settings"))
+                        .is_empty()
+                );
+                assert!(
+                    driver
+                        .text_positions(i18n::text(
+                            "common.open_input_settings_to_choose_the_source_then_press"
+                        ))
+                        .is_empty()
+                );
+                driver
+                    .visible_text_rect(i18n::text("io.start_input"))
+                    .or_else(|_| driver.visible_text_rect(i18n::text("io.stop_input")))
+                    .unwrap();
+                return;
+            }
+            let card = card.unwrap();
+            let button = driver
+                .position(i18n::text("common.open_input_settings"))
                 .unwrap();
             assert!((card.center() - plot.center()).length() < 2.0);
             assert!(plot.contains_rect(card) && card.contains(button));
             assert!(card.contains_rect(driver.visible_text_rect(reason.title()).unwrap()));
-            assert!(card.contains_rect(driver.visible_text_rect("Open input settings").unwrap()));
+            assert!(
+                card.contains_rect(
+                    driver
+                        .visible_text_rect(i18n::text("common.open_input_settings"))
+                        .unwrap()
+                )
+            );
         };
-        check(self, &mut driver, ScopeNotice::NoDevice);
+        check(self, &mut driver, ScopeNotice::NoDevice, true);
         driver.visible_text_rect(i18n::text("shell.scope_settings"))?;
         for instrument in Instrument::ALL {
             assert!(
@@ -359,36 +389,61 @@ impl ScopeApp {
             is_default: true,
         });
         self.selected = 0;
-        check(self, &mut driver, ScopeNotice::Stopped);
+        let locale = i18n::locale();
+        for locale in i18n::Locale::ALL {
+            i18n::set_locale(&driver.ctx, locale.id());
+            for (width, height, zoom) in [
+                (1440.0, 860.0, 1.0),
+                (720.0, 640.0, 1.25),
+                (514.0, 528.0, 1.25),
+            ] {
+                driver.resize(self, vec2(width, height), zoom, 1.0);
+                check(self, &mut driver, ScopeNotice::Stopped, false);
+            }
+        }
+        i18n::set_locale(&driver.ctx, locale.id());
+        driver.resize(self, vec2(1440.0, 1000.0), 1.0, 1.0);
         assert_eq!(self.scope_input_channels(), None);
         self.devices[0].channels = 16;
         self.busy = true;
-        check(self, &mut driver, ScopeNotice::Opening);
+        driver.frame(self, vec![]);
+        assert!(
+            driver
+                .text_positions(ScopeNotice::Stopped.title())
+                .is_empty()
+        );
+        check(self, &mut driver, ScopeNotice::Opening, false);
         assert_eq!(self.scope_input_channels(), None);
         assert_eq!(self.input_status_text(), "Input conditions: —");
         self.busy = false;
         self.source = Source::Software;
         self.software_running = true;
-        check(self, &mut driver, ScopeNotice::WaitingForSamples);
+        driver.frame(self, vec![]);
+        assert!(
+            driver
+                .text_positions(ScopeNotice::Stopped.title())
+                .is_empty()
+        );
+        check(self, &mut driver, ScopeNotice::WaitingForSamples, false);
         assert_eq!(self.scope_input_channels(), Some(2));
         self.scope_channels.0 = [15; SCOPE_CHANNELS];
-        check(self, &mut driver, ScopeNotice::ChannelRange);
+        check(self, &mut driver, ScopeNotice::ChannelRange, true);
         self.scope_channels = ScopeChannels::default();
         self.trigger.channel = 15;
         self.trigger.edge = Edge::Rising;
         self.dirty = true;
-        check(self, &mut driver, ScopeNotice::TriggerRange);
+        check(self, &mut driver, ScopeNotice::TriggerRange, true);
         driver.visible_text_rect(i18n::text("oscilloscope.t_markers_settings_only"))?;
         self.trigger.channel = 0;
         self.acquisition_mode = acquisition::Mode::Single;
         self.acquisition_state = acquisition::State::Waiting;
         self.history.push([0.25, -0.25]);
         self.dirty = true;
-        check(self, &mut driver, ScopeNotice::WaitingForTrigger);
+        check(self, &mut driver, ScopeNotice::WaitingForTrigger, false);
         self.acquisition_state = acquisition::State::Acquiring;
-        check(self, &mut driver, ScopeNotice::PostTrigger);
+        check(self, &mut driver, ScopeNotice::PostTrigger, false);
         self.stop();
-        check(self, &mut driver, ScopeNotice::Incomplete);
+        check(self, &mut driver, ScopeNotice::Incomplete, true);
         self.history.clear_at(0);
         self.fail_input("Simulated input error · no device was opened".into());
         for (width, height, zoom) in [
@@ -397,7 +452,7 @@ impl ScopeApp {
             (514.0, 528.0, 1.25),
         ] {
             driver.resize(self, vec2(width, height), zoom, 1.0);
-            check(self, &mut driver, ScopeNotice::Failed);
+            check(self, &mut driver, ScopeNotice::Failed, true);
             assert_eq!(
                 driver
                     .text_positions(self.input_error.as_ref().unwrap())
@@ -496,7 +551,7 @@ impl ScopeApp {
         self.xy_dirty = true;
         self.rebuild_xy();
         println!(
-            "Input guidance UI OK: startup/unknown channels, opening, no samples, trigger wait, channel range, simulated failure, held data/loss, settings button; readable notices/axes, tooltip-only purposes, single/console headings and trigger settings/capture distinction; generation/output unchanged"
+            "Input guidance UI OK: quiet centered status without panel/source/help/actions in all locales and narrow/zoomed views; stopped label removed on opening/active input; missing device/configuration errors and simulated failure keep recovery; held data/loss, axes and toolbar actions preserved; generation/output unchanged"
         );
         Ok(())
     }

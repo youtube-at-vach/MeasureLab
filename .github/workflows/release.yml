@@ -73,14 +73,20 @@ jobs:
   windows:
     needs: prepare
     uses: ./.github/workflows/build_windows.yml
+    with:
+      release-assets: true
 
   linux:
     needs: prepare
     uses: ./.github/workflows/build_linux.yml
+    with:
+      release-assets: true
 
   macos:
     needs: prepare
     uses: ./.github/workflows/build_macos.yml
+    with:
+      release-assets: true
 
   draft-release:
     if: github.ref_type == 'tag'
