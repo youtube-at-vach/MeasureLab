@@ -53,7 +53,7 @@ cargo run --release
 
 入力を設定済みの起動直後は、Scope中央に控えめな **Input stopped** だけを表示します。**Audio I/O → Input / output** から入力を選び、上部の **Start input** を押してください。開始すると停止表示は消え、開始待ち・サンプル待ち・トリガー待ちは状態文字だけで示します。入力デバイス未設定や取得・設定エラーでは必要な説明と **Open input settings** を表示します。CH数の確定前は範囲外と表示しません。取得済みの波形には案内を重ねず、エラー・欠落情報を残します。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存は行いません。Generatorでは内部ループバックまたは音声デバイスへ正弦波を出力できます。
 
-**Audio I/O → Input / output** の **SAMPLE RATE · INPUT + OUTPUT** は、入力と現在の出力CH数・PCMの両方が対応する公称Fsを一か所で選びます。入力・出力を停止して適用し、保持結果のFsは変えません。**Separate sample rates** をONにすると、Input欄で **Device default** または対応する公称レート、Output欄で個別のFs／CH数／PCMを選べます。選択肢の上限は768 kHzで、44.1／48／88.2／96／176.4／192／352.8／384／705.6／768 kHzなどから対応する値と、デバイス固有のレートを表示します。入力CH数を維持できる設定を使います。デバイス変更・再取得ではDevice defaultへ戻ります。個別設定での入力取得中の変更は新しい入力世代で再開始し、履歴・平均・保持・カーソルをリセットします。停止中の変更は次回Startに適用し、保持結果のFsと時間・周波数軸は変えません。開始時に対応設定を再確認し、失敗時はエラーを表示します。
+**Audio I/O → Input / output** の **SAMPLE RATE · INPUT + OUTPUT** は、入力と現在の出力CH数・PCMの両方が対応する公称Fsを一か所で選びます。入力・出力を停止して適用し、保持結果のFsは変えません。**Separate sample rates** をONにすると、Input欄で **Device default** または対応する公称レート、Output欄で個別のFs／CH数／PCMを選べます。選択肢の上限は768 kHzで、44.1／48／88.2／96／176.4／192／352.8／384／705.6／768 kHzなどから対応する値と、デバイス固有のレートを表示します。入力CH数を維持できる設定を使います。入力デバイスを明示的に変更するとDevice defaultへ戻ります。Refresh devicesは保存したID・CH数・Fsを再照合し、同じ入力の設定と校正を保持します。個別設定での入力取得中の変更は新しい入力世代で再開始し、履歴・平均・保持・カーソルをリセットします。停止中の変更は次回Startに適用し、保持結果のFsと時間・周波数軸は変えません。開始時に対応設定を再確認し、失敗時はエラーを表示します。
 
 **Audio I/O → Input / output** は共通の入出力設定です。広幅ではInput／Outputを左右に、狭幅では上下に表示します。Inputで入力元・入力デバイス、Outputで出力デバイス・CH数・PCMを設定し、Fsと **Refresh devices** は共通欄にまとめます。レートが異なる既存設定を開くだけでは変更せず、共通の値を明示選択するまで両方の値を表示します。**Separate sample rates** で個別設定に切り替えられます。GENカードの追加・信号条件・ON／OFF・OUT割当はGeneratorで操作し、Output欄には表示しません。内部接続はInputの **Generator loopback** を選び、OUT 1／2を入力CH 1／2へ対応させます。Calibrationは同じAudio I/Oメニューの別画面です。
 
@@ -192,11 +192,27 @@ ScopeではRMS・Peak・P-Pと時間カーソルの数値に校正を適用し�
 
 校正のID・版・係数・単位・参照条件は取得世代のスナップショットへ固定します。Scope統計の説明、**Captured readout condition**、Spectrumの校正表示・カーソルの説明で確認できます。取得中や停止後に新しい定義を設定しても、保持中のScope／Spectrum値と校正版は変わりません。Startで適用するまで **Queued for next Start** と区別します。入力ソース・デバイスを選び直したときと **Refresh devices** の再列挙では次回用の校正を解除し、別入力へ持ち越しません。校正は下記の測定設定ファイルへ保存・復元でき、保持したScope／Spectrum結果の書き出しにも含めます。ユーザーが与えた係数による換算であり、ADCや物理基準の校正精度を検証済みとは扱いません。
 
+### 起動設定の自動保存・復元
+
+入力・出力デバイス、個別／共通Fs、各計器の測定条件・CH校正・表示範囲・画面配置、サイドバー表示と言語を自動保存し、次回起動時に復元します。変更を約2秒ごとに確認し、変更があるときだけ専用I/Oワーカーで原子的に保存します。通常終了時は最後の変更を書き終えます。入力・出力は停止状態で復元し、Startはそれぞれ明示操作です。取得データ・保持結果・カーソル・一時ウィンドウは自動保存しません。入力未選択など測定条件が未確定の間は直前の有効な測定条件を保持し、まだ一度も確定していなければ表示設定だけを保存します。
+
+| OS | 自動保存先 |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\MeasureLab\startup-preferences.json` |
+| macOS | `~/Library/Application Support/MeasureLab/startup-preferences.json` |
+| Linux | `$XDG_CONFIG_HOME/MeasureLab/startup-preferences.json`（未指定・空・相対パスなら`~/.config/MeasureLab/startup-preferences.json`） |
+
+OS標準のディレクトリAPI（[dirs](https://docs.rs/dirs/6.0.0/dirs/fn.config_local_dir.html)）で保存先を解決します。Windowsでは機器IDを他PCへローミングさせないローカル領域を使います。実行ファイルの場所や作業フォルダーから設定を探さず、Python版の`config.json`や手動保存した測定設定を自動取り込み・上書きしません。言語とサイドバーは既存の起動設定を初期値として引き継ぎます。QAのデモ・UI smoke・プロファイル実行は通常の起動設定を読み書きしません。
+
+入力を名前や列挙順で代用しません。保存した機器の不在・ID重複・CH数や対応Fsの変化ではその入力を未選択にし、条件と校正を残して理由を表示します。停止・ストリーム解放後に接続を戻して **Refresh devices** を押すと同じ条件を再照合します。別機器や変更後の条件を使う場合はデバイスを明示選択してください。出力先が不在でも選択と信号条件を保持し、Start output時に対応を再確認します。
+
+**File / File paths & status… / STARTUP PREFERENCES** で実際の保存先を確認できます。保存失敗や破損・未対応版は下部の **Startup preferences error** から確認します。読み込めないファイルは自動上書きせず、初期値で利用できます。設定を作り直す場合はアプリを閉じ、表示されたファイルを別名へ退避して再起動してください。設定フォルダーを解決できない場合も作業フォルダーへ暗黙に保存しません。
+
 ### 測定設定の保存・復元
 
 上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版9のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜8の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。SpectrumのCH別表示・入力割当・選択、Autoレベル・マーカーも保存し、版5以前は従来の1本表示を維持します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。Spectrogramの色・Manualレンジ・Auto・時間幅も保存し、新フィールドがない旧設定はBlue・Manual・Overlap 75%で復元します。Hold履歴・時間選択・一時的なSpectrum履歴データ源は保存しません。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
 
-既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。自動保存・起動時の自動読み込みは行いません。
+既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。この手動保存ファイルは自動保存・起動時読み込みの対象外です。
 
 再起動後、入力と出力を停止した状態で同じパスを指定し、**Restore settings** を押します。Stopの解析完了・デバイス操作・Scopeの保留操作も完了するまで待ちます。復元だけでは取得・出力・記録を開始しません。校正と解析条件は次回Start用に適用し、保持結果のCH・公称Fs・入力世代・校正版は維持します。軸や観察幅などの表示操作は保持した生サンプルから再表示します。復元中はStartを受け付けません。
 
@@ -374,7 +390,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 - `src/audio.rs`: CPALデバイス管理、入力コールバック、SPSC転送。
 - `src/channel.rs`: 全測定器で使う0始まりの入力CH ID、表示名、Scopeの4ch／XYの2ch割当と利用可能性。
-- `src/settings.rs`: 版付き測定設定・校正と表示設定のJSON、全体検証、デバイスID照合、容量制限付き読み込み・原子的保存、専用I/Oワーカー。
+- `src/settings.rs` / `src/settings/preferences.rs`: 版付き測定設定・校正と表示設定のJSON、デバイスID照合、容量制限付き読み込み・原子的保存。起動設定はOS標準パスと専用I/Oワーカーを使い、`src/app/preferences.rs`で自動保存・停止中復元を扱う。
 - `src/results.rs` / `src/result_image.rs` / `src/workspace_io.rs`: 容量制限と整合検証付き参照読み込み、f64 CSV、PNG、ネイティブファイル選択とI/O。
 - `src/acquisition.rs`: サンプル時計のNormal／Single捕捉とAutoset。
 - `src/comparison.rs` / `src/comparison_worker.rs` / `src/app/comparison_panel.rs`: 同期2chの自己／クロスPSD、H1、位相・遅延、専用ワーカーと表示。

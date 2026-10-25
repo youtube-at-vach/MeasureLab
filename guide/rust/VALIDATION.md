@@ -35,6 +35,7 @@
 | 出力PCM・デバイス・通知・解放・外部履歴 | [output/device.rs](../../src/output/device.rs)、[output/runtime.rs](../../src/output/runtime.rs)、[output/history.rs](../../src/output/history.rs)、[callback_profile.rs](../../src/callback_profile.rs) |
 | 同期比較の独立DFT・既知遅延・雑音・有限平均・無効化 | [comparison.rs](../../src/comparison.rs)、[comparison/tests.rs](../../src/comparison/tests.rs)、[comparison_worker.rs](../../src/comparison_worker.rs) |
 | 設定／結果の互換性・f64往復・不正参照・条件差抑止・原子的保存 | [settings.rs](../../src/settings.rs)、[export.rs](../../src/export.rs)、[results.rs](../../src/results.rs)、[file_io.rs](../../src/file_io.rs) |
+| 起動設定の保存・終了時flush・破損保護・機器不在／列挙順変更 | [settings/preferences.rs](../../src/settings/preferences.rs)、[app/preferences.rs](../../src/app/preferences.rs) の`startup-preferences` GUI QA |
 | GUI・内部／外部の統合、画像の読み戻し | [app.rs](../../src/app.rs) のQA分岐、[generator_panel.rs](../../src/app/generator_panel.rs)、[comparison_panel.rs](../../src/app/comparison_panel.rs)、[gpu.rs](../../src/gpu.rs)、[qa.rs](../../src/qa.rs) |
 | 実入力の独立適合／DFT、固定周期のQA出力 | [qa/physical_lockin.rs](../../src/qa/physical_lockin.rs)、[qa/comparison.rs](../../src/qa/comparison.rs)、[qa/output.rs](../../src/qa/output.rs) |
 | 反復CPU性能 | [benches/](../../benches)、[共通harness](../../benches/common/mod.rs) |
@@ -87,6 +88,8 @@ GUI再設計の内部受け入れをまとめて再実行する。実際のshell
 `./scripts/cargo.sh build --profile dev-fast --locked --features qa`でQAの開発ビルドを用意し、`--binary target/dev-fast/measurelab`で画面・操作を確認できる。実時間・性能の受け入れはreleaseを使う。`--case scope-compact`等で一部だけ再実行できるが、`held-replay`は先に`held-save`を完了する。外部の`held-…-replay`も対応する`held-…-save`を先に実行する。`--device`を明示すると通常Generatorの実出力と外部保持結果の保存・別プロセス復元・再測定を追加する。`--device "ZOOM UAC-232"`にはL出力→L入力／R出力→R入力の接続が必要で、最大0.1 FS peak・DCなしを出力する。両CH TRSとL-L TRS／R-R XLR（−20 dB）のような異なる経路を区別して成果物に記録する。照合は同じ生入力窓に対して行い、減衰器の公称値から物理校正済みのゲインを仮定しない。
 
 外部保持QAの固定信号出力も通常の入出力と同じ`audio::measurement_stream_config()`を使う。CoreAudioのバッファ設定は同一デバイスの入出力で共有されるため、一方だけ既定バッファへ戻さない。設定はログの`QA output configuration`で確認し、起動エラーや通知監査の失敗を除外して合格にしない。
+
+`startup-preferences`は一時ファイルと模擬デバイスを使い、再起動相当の保存復元、非同期列挙待ち、順番・同名機器の変化、不在入力・出力の条件保持、停止中の再取得、破損ファイルの保護を確認します。入出力ストリームを開始せず、通常のユーザー設定を読み書きしません。`--case startup-preferences --binary target/dev-fast/measurelab`で対象だけ再実行できます。ファイル名・Unicodeパス・最新変更の終了時flushはRustテストで確認します。各OSの配布物での実機再起動受け入れとは区別します。
 
 `widget-interactions`は [gui_qa.rs](../../src/app/gui_qa.rs) で実際の共通枠・メニュー・詳細欄をeguiイベントから操作する。構成置換の取消、7計器の追加・除去、キーボード選択、前面メニュー／Help／File paths & status操作中の背後選択の抑止、Escによる前面ウィンドウから入出力画面への段階的な復帰、狭幅・倍率・模擬native scaleへの往復で、入力世代・測定条件・保持結果・出力コマンドが変わらないことを検証する。操作名、カーソルの配置対象と配置済み状態、Clear cursorsの解除範囲も実ウィジェットで照合する。出力停止は模擬状態と停止コマンドだけを使い、完全停止時の無効化と、開始・設定適用待ち／停止処理中／エラー・復元中の停止要求を確認する。この試験では出力を開始しない。クリックの背後への伝播、数値編集のEscと詳細画面からの復帰の分離、ショートカットの修飾キー・長押し・一押し一回の条件は`app/shell.rs`のイベントテストで確認する。
 

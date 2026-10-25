@@ -55,6 +55,16 @@ The host supplies glibc, ALSA configuration/plugins, X11/Wayland, xkbcommon and 
 
 Input and output start stopped. Without a device, try acquisition, stop and save through [Software Loopback](quickstart.md). If a real device is missing, check OS permissions, connections and supported sample rates/channels. Starting Generator output and starting input are independent actions.
 
+Input/output devices and sample rates, valid measurement conditions and calibration, layout, display preferences and language are saved automatically and restored on launch. Changes are checked about every two seconds and flushed on normal exit. Input and output stay stopped until explicitly started. Unavailable devices keep their saved conditions; another device is never selected as a substitute. Stop and release input/output before changing connections, then use **Refresh devices** to check the saved selection again.
+
+| OS | Automatic preferences path |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\MeasureLab\startup-preferences.json` |
+| macOS | `~/Library/Application Support/MeasureLab/startup-preferences.json` |
+| Linux | `$XDG_CONFIG_HOME/MeasureLab/startup-preferences.json` (unset, empty or relative: `~/.config/MeasureLab/startup-preferences.json`) |
+
+View the path and errors under **File / File paths & status… / STARTUP PREFERENCES**. Damaged or unsupported files are preserved while the app starts with defaults. To reset preferences, close the app, move this file aside, then relaunch. Python's `config.json` and files in the working directory are not imported automatically. Captured data, held results and cursors are excluded. Incomplete input settings retain the last valid measurement conditions; before the first valid selection, only display preferences are saved.
+
 Settings use version 9 (reading versions 1–8); result JSON uses version 6 (reading versions 1–5). Restore settings while stopped; restoration alone never starts input or output. Choose file destinations under File and keep Python files separate. The default Windows settings path is `%APPDATA%\MeasureLab\measurement-settings.json`.
 
 Scope/Spectrum support held JSON/CSV results and view PNGs; Lock-in/comparison support conditional JSON/CSV. Spectrogram/XY, cursors and long-duration recordings of all channels are outside result export. Updating or deleting the application preserves files saved outside its package. Save needed settings/results before updating, then restore them while stopped after relaunch.

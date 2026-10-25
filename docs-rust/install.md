@@ -55,6 +55,16 @@ FUSEを利用できない場合は`--appimage-extract-and-run`を付けるか、
 
 入力・出力は停止状態で起動します。デバイスがない場合は [Software Loopback](quickstart.md) で機器なしの取得・停止・保存を試せます。実入力でデバイスが表示されない場合は、OSの権限・接続・デバイスの対応FsとCHを確認します。Generatorの出力開始と入力開始は独立しています。
 
+入出力デバイス・Fs、確定済みの測定条件・校正、画面配置・表示・言語は自動保存して次回起動時に復元します。変更を約2秒ごとに確認し、終了時も最後の変更を書き込みます。復元だけでは入出力を開始しません。機器が不在でも保存した条件を残し、他の機器へ自動で置き換えません。接続変更は入出力停止・ストリーム解放後に行い、**Refresh devices** で再照合してください。
+
+| OS | 自動保存先 |
+| --- | --- |
+| Windows | `%LOCALAPPDATA%\MeasureLab\startup-preferences.json` |
+| macOS | `~/Library/Application Support/MeasureLab/startup-preferences.json` |
+| Linux | `$XDG_CONFIG_HOME/MeasureLab/startup-preferences.json`（未指定・空・相対パスは`~/.config/MeasureLab/startup-preferences.json`） |
+
+**File / File paths & status… / STARTUP PREFERENCES** で保存先とエラーを確認できます。破損・未対応版の設定は上書きせず、初期値で起動します。初期化したい場合はアプリを閉じ、このファイルを別名に退避して再起動します。Python版の`config.json`や作業フォルダーのファイルは自動取り込みしません。取得データ・保持結果・カーソルは保存対象外です。入力が未確定の間は直前の有効な測定条件を保持し、初回は表示設定だけを保存します。
+
 設定は版9（旧版1〜8を読み込み）、結果JSONは版6（旧版1〜5を読み込み）です。設定は停止中に復元し、復元だけでは入出力を開始しません。Fileで保存先を選び、Python版とは別のファイルに保存してください。Windowsの既定設定先は`%APPDATA%\MeasureLab\measurement-settings.json`です。
 
 Scope／Spectrumは保持結果のJSON・CSVと表示PNG、Lock-in／同期比較は条件付きJSON・CSVを扱います。Spectrogram／XY・カーソル・全CHの長時間記録は結果保存の対象外です。アプリを更新・削除しても外部へ保存したファイルは保持します。更新前に必要な設定と結果を保存し、再起動後に停止状態で復元してください。
