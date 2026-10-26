@@ -9,11 +9,11 @@ impl Driver {
     }
 
     pub(super) fn sidebar_toggle(&self) -> Result<egui::Rect, String> {
-        self.sidebar_control(egui::Id::new("qa_sidebar_toggle"))
+        self.sidebar_control(egui::Id::unique("qa_sidebar_toggle"))
     }
 
     fn navigation_rect(&self, instrument: Option<Instrument>) -> Result<egui::Rect, String> {
-        self.sidebar_control(egui::Id::new(("qa_navigation", instrument)))
+        self.sidebar_control(egui::Id::unique(("qa_navigation", instrument)))
     }
 }
 

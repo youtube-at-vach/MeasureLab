@@ -18,13 +18,13 @@ rustfft = "6.4.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["float_roundtrip"] }
 log = { version = "0.4", optional = true }
-eframe = { version = "0.36.2", default-features = false, features = ["default_fonts", "persistence", "wgpu", "x11", "wayland"], optional = true }
+eframe = { version = "0.37.0", default-features = false, features = ["default_fonts", "persistence", "wgpu", "x11", "wayland"], optional = true }
 bytemuck = { version = "1", features = ["derive"], optional = true }
 pollster = { version = "1.0.1", optional = true }
 rfd = { version = "0.17.2", optional = true }
 png = { version = "0.18", optional = true }
-rust-i18n = { version = "=4.2.2", default-features = false, optional = true }
-sha2 = { version = "0.10", optional = true }
+rust-i18n = { version = "=4.2.4", default-features = false, optional = true }
+sha2 = { version = "0.11", optional = true }
 dirs = "6"
 
 [build-dependencies]

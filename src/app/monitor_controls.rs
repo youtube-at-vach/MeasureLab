@@ -140,7 +140,7 @@ impl ScopeApp {
             self.dirty |= timebase.changed();
             #[cfg(feature = "qa")]
             ui.ctx().data_mut(|data| {
-                data.insert_temp(egui::Id::new("qa_scope_timebase"), timebase.rect)
+                data.insert_temp(egui::Id::unique("qa_scope_timebase"), timebase.rect)
             });
             ui.colored_label(
                 scope_color(self.scope_selected),
@@ -277,7 +277,7 @@ impl ScopeApp {
                             egui::Rect::from_min_max(rect.min, rect.max - vec2(24.0, 0.0));
                         let response = ui.interact(
                             selection,
-                            ui.id().with(("scope_select", index)),
+                            ui.scope_id().with(("scope_select", index)),
                             egui::Sense::click(),
                         );
                         if response.clicked() {
@@ -613,7 +613,7 @@ impl ScopeApp {
                         pos2(tx - 12.0, rect.top()),
                         pos2(tx + 12.0, rect.top() + 32.0),
                     ),
-                    ui.id().with("trigger_time_marker"),
+                    ui.scope_id().with("trigger_time_marker"),
                     egui::Sense::hover(),
                 )
                 .on_hover_text(self.scope_trigger_marker_help());
@@ -642,7 +642,7 @@ impl ScopeApp {
                         pos2(rect.right(), ty - 8.0),
                         pos2(rect.right() + 26.0, ty + 8.0),
                     ),
-                    ui.id().with("trigger_level_marker"),
+                    ui.scope_id().with("trigger_level_marker"),
                     egui::Sense::hover(),
                 )
                 .on_hover_text(self.scope_trigger_marker_help());

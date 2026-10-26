@@ -217,7 +217,7 @@ impl ScopeApp {
                 )?;
                 let timebase = driver
                     .ctx
-                    .data(|data| data.get_temp::<egui::Rect>(egui::Id::new("qa_scope_timebase")))
+                    .data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("qa_scope_timebase")))
                     .ok_or("Quick timebase is missing")?;
                 assert!(
                     driver.output.shapes.iter().any(|shape| {
@@ -355,7 +355,7 @@ impl ScopeApp {
         // Edit the quick timebase through its real DragValue, with the plot visible.
         let pos = driver
             .ctx
-            .data(|data| data.get_temp::<egui::Rect>(egui::Id::new("qa_scope_timebase")))
+            .data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("qa_scope_timebase")))
             .ok_or("Quick timebase is missing")?
             .center();
         driver.click_at(self, pos);

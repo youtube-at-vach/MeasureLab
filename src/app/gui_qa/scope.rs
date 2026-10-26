@@ -154,7 +154,7 @@ impl ScopeApp {
             driver.frame(self, vec![]);
             let rail = driver
                 .ctx
-                .data(|data| data.get_temp::<egui::Rect>(egui::Id::new("qa_trigger_level")))
+                .data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("qa_trigger_level")))
                 .ok_or("Trigger level control missing")?;
             let start = rail.left_center() + vec2(20.0, 0.0);
             let end = start + vec2(50.0, 0.0);

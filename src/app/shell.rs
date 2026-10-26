@@ -72,8 +72,8 @@ impl Shell {
         }
         if self.auxiliary_window_open() {
             if fresh_key(ctx, egui::Key::Escape, egui::Modifiers::NONE) {
-                let help = egui::Id::new(HELP_WINDOW);
-                let paths = egui::Id::new(FILE_PATHS_WINDOW);
+                let help = egui::Id::unique(HELP_WINDOW);
+                let paths = egui::Id::unique(FILE_PATHS_WINDOW);
                 let top = ctx.memory(|memory| {
                     memory
                         .layer_ids()
@@ -719,7 +719,7 @@ impl ScopeApp {
         let ctx = ui.ctx().clone();
         let mut help = self.shell.help;
         egui::Window::new(i18n::text("shell.help"))
-            .id(egui::Id::new(HELP_WINDOW))
+            .id(egui::Id::unique(HELP_WINDOW))
             .open(&mut help)
             .resizable(true)
             .show(&ctx, |ui| {
@@ -768,7 +768,7 @@ impl ScopeApp {
         self.shell.help = help;
         let mut paths = self.shell.file_paths;
         egui::Window::new(i18n::text("shell.file_paths_status"))
-            .id(egui::Id::new(FILE_PATHS_WINDOW))
+            .id(egui::Id::unique(FILE_PATHS_WINDOW))
             .open(&mut paths)
             .default_width(440.0)
             .show(&ctx, |ui| {
@@ -1255,7 +1255,7 @@ mod tests {
     fn an_open_menu_blocks_input_and_navigation_before_it_is_drawn() {
         for key in [egui::Key::Space, egui::Key::Num2, egui::Key::Escape] {
             let ctx = egui::Context::default();
-            let popup = egui::Id::new("menu");
+            let popup = egui::Id::unique("menu");
             egui::Popup::open_id(&ctx, popup);
             let mut shell = Shell {
                 io: Some(IoTab::Connections),
