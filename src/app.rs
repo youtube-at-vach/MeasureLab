@@ -3388,8 +3388,7 @@ impl ScopeApp {
                 }
                 let view = self.spectrogram_display_view(ui);
                 let time_axis = {
-                    let history = self.spectrogram_history.lock().unwrap();
-                    let latest = history.latest();
+                    let latest = self.spectrogram_history.lock().unwrap().latest();
                     spectrogram::TimeAxis::new(
                         if self.spectrogram_snapshot.latest().is_some() {
                             self.spectrogram_anchor
@@ -6546,19 +6545,19 @@ impl eframe::App for ScopeApp {
                                 )
                                 .as_ref(),
                             );
-                            let history = self.spectrogram_history.lock().unwrap();
+                            let (history_rows, history_bytes) = {
+                                let history = self.spectrogram_history.lock().unwrap();
+                                (history.len(), history.storage_bytes())
+                            };
                             ui.label(
                                 i18n::format(
                                     "common.spectrogram_rows_mib_cpu_storage",
                                     &[
-                                        ("len", &(history.len()).to_string()),
+                                        ("len", &history_rows.to_string()),
                                         ("spectrogram", &(spectrogram::ROWS).to_string()),
                                         (
                                             "storage_bytes",
-                                            &format!(
-                                                "{:.1}",
-                                                history.storage_bytes() as f64 / 1048576.0
-                                            ),
+                                            &format!("{:.1}", history_bytes as f64 / 1048576.0),
                                         ),
                                     ],
                                 )

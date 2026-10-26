@@ -1,5 +1,6 @@
 //! Bounded STFT history and sample-clock coordinates, independent of GUI/GPU.
 //! dBFS is display data; raw samples and FFT calculations remain elsewhere.
+#![warn(clippy::redundant_clone)]
 use crate::stft::{Config, RowInfo};
 
 mod colormaps;

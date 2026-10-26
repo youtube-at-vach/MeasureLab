@@ -1,4 +1,5 @@
 //! Fixed-capacity two-channel transport; frequency fitting cannot stall acquisition.
+#![warn(clippy::redundant_clone)]
 use crate::{calibration, lockin};
 use rtrb::{Consumer, Producer, RingBuffer};
 use std::{
@@ -96,9 +97,10 @@ impl Default for Worker {
                     };
                     match command {
                         Ok(Command::Inspect(config, end, reply)) => {
-                            configure(&mut analyzer, &mut epoch, config.clone());
+                            let requested_epoch = config.epoch;
+                            configure(&mut analyzer, &mut epoch, config);
                             drain(&mut source, CAPACITY, epoch, &mut analyzer);
-                            if config.epoch == epoch {
+                            if requested_epoch == epoch {
                                 analyzer.gap_to(end);
                                 let _ = reply.try_send(analyzer.result().clone());
                             }
