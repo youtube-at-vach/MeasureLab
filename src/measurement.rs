@@ -1,5 +1,6 @@
 //! UI-independent acquisition, shared f64 history and measurement scheduling.
 //! The callback transfers fixed frames; this worker never waits for a display.
+#![warn(clippy::redundant_clone)]
 #[cfg(any(test, feature = "qa"))]
 use crate::demo::Demo;
 use crate::{
@@ -553,8 +554,8 @@ impl Core {
 
     fn snapshot(&mut self) -> Snapshot {
         let mut snapshot = Snapshot {
-            generator_output: self.generator_output.clone(),
-            external_output: self.external_output.clone(),
+            generator_output: None,
+            external_output: None,
             comparison: self.comparison.latest(),
             lockin: self.lockin.latest(),
             scope_capture: None,
@@ -2283,7 +2284,7 @@ mod tests {
                 sample_rate: 48000,
                 channels: channels as u16,
                 format: "test f64".into(),
-                metrics: capture_metrics.clone(),
+                metrics: capture_metrics,
             },
             config.clone(),
         );
@@ -2415,7 +2416,7 @@ mod tests {
                 format: "test".into(),
                 metrics: capture_metrics,
             },
-            config.clone(),
+            config,
         );
         wait_for_frames(&worker, 8);
         for sequence in 16..2064 {

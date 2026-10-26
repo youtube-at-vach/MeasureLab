@@ -158,7 +158,9 @@ pub fn autoset(history: &History, rate: u32, channel: usize) -> Result<Autoset, 
             armed = true;
         }
         if armed && a < level && b >= level {
-            crossings.push(n as f64 - (b - level) / (b - a));
+            // Subtract integer source coordinates before conversion so a large
+            // absolute sample origin cannot round away a period or crossing.
+            crossings.push((n - start) as f64 - (b - level) / (b - a));
             armed = false;
         }
     }
@@ -297,5 +299,23 @@ mod tests {
             h.push([(random as f64 / u64::MAX as f64 - 0.5) * 0.2, 0.0]);
         }
         assert!(autoset(&h, 48000, 0).is_err());
+    }
+
+    #[test]
+    fn autoset_is_independent_of_absolute_sample_origin() {
+        for origin in [0, (1u64 << 54) + 7, (1u64 << 60) + 3] {
+            let mut history = History::with_channels(9600, 1);
+            for n in 0..9600 {
+                let value = 0.2 + 0.1 * (std::f64::consts::TAU * n as f64 / 48.0).sin();
+                history.push_at(origin + n, [value]);
+            }
+            let result = autoset(&history, 48000, 0).unwrap();
+            assert!(
+                (result.frequency_hz - 1000.0).abs() < 1e-9,
+                "{origin}: {result:?}"
+            );
+            assert_eq!(result.samples, 144);
+            assert!((result.trigger.level - 0.2).abs() < 1e-12);
+        }
     }
 }
