@@ -270,11 +270,12 @@ impl Analyzer {
         }
         // Fundamental phase rotation cancels the LOCAL oscillator origin exactly.
         // Unlike filtering CH phasors first, it also rejects common REF frequency drift.
-        let rotated = [
-            (sx * rx + sy * ry) / reference,
-            (sy * rx - sx * ry) / reference,
-        ];
-        if rotated.iter().any(|x| !x.is_finite()) {
+        // Normalize REF first: the unnormalized products can overflow or
+        // underflow even when the rotated response is representable.
+        let [ux, uy] = [rx / reference, ry / reference];
+        let rotated = [sx * ux + sy * uy, sy * ux - sx * uy];
+        let transfer = rotated.map(|value| value / reference);
+        if rotated.iter().chain(&transfer).any(|x| !x.is_finite()) {
             self.invalidate(State::NonFinite);
             return;
         }
@@ -290,12 +291,21 @@ impl Analyzer {
             self.poles[1][q] += alpha * (self.poles[0][q] - self.poles[1][q]);
             // Average the complex transfer before taking magnitude, so an
             // asynchronous response is rejected in gain as well as in X/Y.
-            self.gain_poles[0][q] += alpha * (value / reference - self.gain_poles[0][q]);
+            self.gain_poles[0][q] += alpha * (transfer[q] - self.gain_poles[0][q]);
             self.gain_poles[1][q] += alpha * (self.gain_poles[0][q] - self.gain_poles[1][q]);
+        }
+        let [x, y] = self.poles[1];
+        let amplitude = x.hypot(y);
+        let gain = self.gain_poles[1][0].hypot(self.gain_poles[1][1]);
+        if [x, y, amplitude, gain]
+            .iter()
+            .any(|value| !value.is_finite())
+        {
+            self.invalidate(State::NonFinite);
+            return;
         }
         self.elapsed += size as u64;
         self.result.processed_windows += 1;
-        let [x, y] = self.poles[1];
         self.result.state = if self.elapsed as f64
             >= 10.0 * self.settings.time_constant_seconds * self.rate as f64
         {
@@ -309,9 +319,9 @@ impl Analyzer {
         self.result.reference_peak = Some(reference);
         self.result.x = Some(x);
         self.result.y = Some(y);
-        self.result.amplitude_peak = Some(x.hypot(y));
+        self.result.amplitude_peak = Some(amplitude);
         self.result.phase_degrees = Some(y.atan2(x).to_degrees());
-        self.result.gain = Some(self.gain_poles[1][0].hypot(self.gain_poles[1][1]));
+        self.result.gain = Some(gain);
     }
 }
 
@@ -443,6 +453,87 @@ mod tests {
             ..Default::default()
         }
     }
+
+    fn calibration_gains(reference: f64, response: f64) -> crate::calibration::Set {
+        [reference, response].into_iter().enumerate().fold(
+            crate::calibration::Set::default(),
+            |set, (channel, gain)| {
+                let calibration = crate::calibration::Calibration::new(
+                    format!("channel-{channel}"),
+                    1,
+                    gain,
+                    0.0,
+                    "V".into(),
+                    "virtual reference".into(),
+                )
+                .unwrap();
+                set.with(channel, Some(calibration)).unwrap()
+            },
+        )
+    }
+
+    #[test]
+    fn calibrated_rotation_preserves_representable_extreme_amplitudes() {
+        for scale in [1e-200_f64, -1e-200, 1e200, -1e200] {
+            let cfg = Settings {
+                time_constant_seconds: 0.001,
+                track_reference: false,
+                ..settings()
+            };
+            let mut analyzer = Analyzer::new(cfg, 48000);
+            analyzer.set_calibrations(calibration_gains(scale, scale));
+            let phase = 0.7_f64;
+            for n in 0..4096 {
+                let angle = TAU * 1000.0 * n as f64 / 48000.0;
+                analyzer.push(n, &[0.125 * angle.sin(), 0.0625 * (angle + phase).sin()]);
+            }
+            let result = analyzer.result();
+            assert_eq!(result.state, State::Valid, "{scale}: {result:?}");
+            let amplitude = 0.0625 * scale.abs();
+            assert!(
+                (result.x.unwrap() / amplitude - phase.cos()).abs() < 1e-10,
+                "{scale}: {result:?}"
+            );
+            assert!((result.y.unwrap() / amplitude - phase.sin()).abs() < 1e-10);
+            assert!((result.amplitude_peak.unwrap() / amplitude - 1.0).abs() < 1e-10);
+            assert!((result.gain.unwrap() - 0.5).abs() < 1e-10);
+        }
+    }
+
+    #[test]
+    fn unrepresentable_calibrated_gain_invalidates_and_recovers() {
+        let cfg = Settings {
+            time_constant_seconds: 0.001,
+            track_reference: false,
+            ..settings()
+        };
+        // The first case overflows transfer components; the second has finite
+        // components whose combined magnitude is outside the f64 range.
+        for reference_gain in [1e-310, 1e-308] {
+            let mut analyzer = Analyzer::new(cfg, 48000);
+            analyzer.set_calibrations(calibration_gains(reference_gain, 1.0));
+            for n in 0..4096 {
+                let angle = TAU * 1000.0 * n as f64 / 48000.0;
+                analyzer.push(n, &[0.125 * angle.sin(), 0.25 * (angle + TAU / 8.0).sin()]);
+            }
+            let result = analyzer.result();
+            assert_eq!(result.state, State::NonFinite, "{result:?}");
+            assert!(result.gain.is_none());
+            assert!(result.amplitude_peak.is_none());
+            assert!(result.x.is_none() && result.y.is_none());
+            assert_eq!(result.processed_windows, 0);
+
+            analyzer.set_calibrations(crate::calibration::Set::default());
+            for n in 4096..8192 {
+                let x = (TAU * 1000.0 * n as f64 / 48000.0).sin();
+                analyzer.push(n, &[0.125 * x, 0.0625 * x]);
+            }
+            assert_eq!(analyzer.result().state, State::Valid);
+            assert_eq!(analyzer.result().sample_range, 4096..8192);
+            assert!((analyzer.result().gain.unwrap() - 0.5).abs() < 1e-10);
+        }
+    }
+
     #[test]
     fn physical_ref_rotation_precedes_filter_and_uses_sample_time() {
         for (rate, f, phase, gain, origin) in [

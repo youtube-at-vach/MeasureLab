@@ -1,5 +1,8 @@
 //! Audio acquisition, signal generation and measurement, independent of the desktop UI.
+#![deny(unsafe_code)]
 pub mod acquisition;
+// The macOS activity token release is the library's reviewed OS bridge.
+#[allow(unsafe_code)]
 mod activity;
 pub mod audio;
 pub mod calibration;

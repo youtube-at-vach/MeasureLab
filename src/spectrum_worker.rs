@@ -1,5 +1,6 @@
 //! Bounded selected-channel Spectrum transport. Acquisition never executes FFTs
 //! or waits for their completion; display pressure never skips continuous windows.
+#![warn(clippy::redundant_clone)]
 use crate::{
     calibration::Calibration,
     measurement::{SpectrumInfo, SpectrumMode},
@@ -446,7 +447,7 @@ impl Worker {
             start: 0,
             calibration: None,
         };
-        let placeholder = Processor::new(config.clone());
+        let placeholder = Processor::new(config);
         for _ in 0..RESULT_SLOTS {
             recycle
                 .push(Box::new(placeholder.publication()))
@@ -940,7 +941,7 @@ mod tests {
         assert_eq!(invalid.info.updates, 0);
         assert_eq!(invalid.info.input_missing, 0);
         assert_eq!(invalid.info.missing_windows, 0);
-        p.process(&block(config.clone(), 2048, BLOCK_FRAMES, 0.125), &metrics);
+        p.process(&block(config, 2048, BLOCK_FRAMES, 0.125), &metrics);
         let recovered = p.publication();
         assert_eq!(recovered.result.validity(), spectrum::Validity::Valid);
         assert_eq!(recovered.info.invalid_windows, 4);
@@ -1052,7 +1053,7 @@ mod tests {
         p.latest(false, &metrics);
         assert_eq!(p.info.updates, 1);
         p.process(
-            &block(config.clone(), 524288, 4800.min(BLOCK_FRAMES), 0.25),
+            &block(config, 524288, 4800.min(BLOCK_FRAMES), 0.25),
             &metrics,
         );
         p.last_latest -= LATEST_INTERVAL;

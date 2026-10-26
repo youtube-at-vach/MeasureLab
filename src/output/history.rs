@@ -1,6 +1,7 @@
 //! Bounded observations of actual execution reports on the output clock.
 //! This journal is serviced by the manager, never by a callback or the UI.
 //! Host observation times are not DAC/ADC timestamps or a sample alignment.
+#![warn(clippy::significant_drop_tightening)]
 use super::{CONDITION_CAPACITY, Saved, Target};
 use crate::generator::{Error, State, Status};
 use serde::{Deserialize, Serialize};
@@ -220,7 +221,9 @@ impl Session {
             lost_reports_since_output_worker_start: journal.lost_reports,
             notifications_since_output_worker_start: journal.notifications,
         };
-        let has_audio = journal.audio_changes > self.first_audio_change
+        let audio_changed = journal.audio_changes > self.first_audio_change;
+        drop(journal);
+        let has_audio = audio_changed
             || result
                 .observations()
                 .any(|o| matches!(o.target, Target::Audio { .. }));
