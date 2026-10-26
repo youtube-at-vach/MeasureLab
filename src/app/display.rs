@@ -184,7 +184,7 @@ impl ScopeApp {
         }
         // A real child UI gives the button keyboard/pointer semantics and wraps
         // long source/error names. Its opaque frame masks the grid underneath.
-        let size_id = ui.id().with("scope_notice_size");
+        let size_id = ui.scope_id().with("scope_notice_size");
         let width = rect.width().clamp(40.0, 466.0);
         let previous_height = ui
             .ctx()

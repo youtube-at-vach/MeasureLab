@@ -20,7 +20,7 @@ impl ScopeApp {
                     setting_label(ui, i18n::text("shell.instruments_2"));
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                    let id = egui::Id::new("sidebar_toggle_icon");
+                    let id = egui::IdSalt::new("sidebar_toggle_icon");
                     let button = egui::Button::new(egui::Atom::custom(id, vec2(18.0, 18.0)))
                         .min_size(vec2(36.0, 30.0))
                         .atom_ui(ui);
@@ -32,12 +32,15 @@ impl ScopeApp {
                     } else {
                         i18n::text("shell.compact_sidebar")
                     };
-                    button.response.widget_info(|| {
-                        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, label)
-                    });
+                    button
+                        .response
+                        .widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
                     #[cfg(feature = "qa")]
                     ui.ctx().data_mut(|data| {
-                        data.insert_temp(egui::Id::new("qa_sidebar_toggle"), button.response.rect)
+                        data.insert_temp(
+                            egui::Id::unique("qa_sidebar_toggle"),
+                            button.response.rect,
+                        )
                     });
                     if button.response.on_hover_text(label).clicked() {
                         self.shell.sidebar_compact = !compact;
@@ -108,7 +111,7 @@ pub(super) fn navigation_button(
     } else {
         ui.visuals().text_color()
     };
-    let icon = egui::Id::new("navigation_icon");
+    let icon = egui::IdSalt::new("navigation_icon");
     let atoms = if compact {
         egui::Atoms::new(egui::Atom::custom(icon, vec2(20.0, 20.0)))
     } else {
@@ -135,13 +138,13 @@ pub(super) fn navigation_button(
         let center = button.response.rect.right_bottom() - vec2(5.0, 5.0);
         ui.painter().circle_filled(center, 3.0, status.1);
     }
-    button.response.widget_info(|| {
-        egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, name)
-    });
+    button
+        .response
+        .widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, selected, name));
     #[cfg(feature = "qa")]
     ui.ctx().data_mut(|data| {
         data.insert_temp(
-            egui::Id::new(("qa_navigation", instrument)),
+            egui::Id::unique(("qa_navigation", instrument)),
             button.response.rect,
         )
     });

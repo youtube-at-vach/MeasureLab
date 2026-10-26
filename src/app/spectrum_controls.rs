@@ -82,7 +82,7 @@ impl ScopeApp {
                 let selection = egui::Rect::from_min_max(rect.min, rect.max - vec2(24.0, 0.0));
                 let response = ui.interact(
                     selection,
-                    ui.id().with(("spectrum_select", index)),
+                    ui.scope_id().with(("spectrum_select", index)),
                     egui::Sense::click(),
                 );
                 if response.clicked() {

@@ -280,7 +280,7 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if self.smoke {
             ui.ctx().data_mut(|data| {
-                data.insert_temp(egui::Id::new("qa_trigger_level"), response.rect);
+                data.insert_temp(egui::Id::unique("qa_trigger_level"), response.rect);
             });
         }
         self.dirty |= response.changed() || zero;

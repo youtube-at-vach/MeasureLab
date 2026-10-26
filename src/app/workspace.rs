@@ -706,7 +706,7 @@ impl ScopeApp {
         }
         let current = &self.comparison_current;
         let mut open = self.compare_open;
-        egui::Window::new(i18n::text("common.reference_comparison")).id(egui::Id::new("Reference comparison")).open(&mut open).default_size(vec2(930.0,680.0)).show(ctx,|ui| {
+        egui::Window::new(i18n::text("common.reference_comparison")).id(egui::Id::unique("Reference comparison")).open(&mut open).default_size(vec2(930.0,680.0)).show(ctx,|ui| {
             ui.label(RichText::new(&self.reference_label).small().color(MUTED));
             ui.label(i18n::text("common.one_reference_is_retained_recordings_use_independent_sample_clock"));
             egui::ScrollArea::vertical().show(ui,|ui| {

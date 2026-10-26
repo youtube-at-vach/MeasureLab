@@ -9,6 +9,7 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{BTreeMap, BTreeSet, HashMap},
+    fmt::Write as _,
     sync::{Arc, LazyLock},
 };
 
@@ -104,7 +105,11 @@ struct Catalog {
 }
 
 fn digest(text: &str) -> String {
-    format!("{:x}", Sha256::digest(text.as_bytes()))
+    let mut hex = String::with_capacity(64);
+    for byte in Sha256::digest(text.as_bytes()) {
+        write!(hex, "{byte:02x}").expect("writing to a String cannot fail");
+    }
+    hex
 }
 
 fn variables(mut text: &str) -> Option<BTreeSet<&str>> {
@@ -366,6 +371,10 @@ mod tests {
             digest("Hello"),
             "185f8db32271fe25f561a6fc938b2e264306ec304eda518007d1764826381969"
         );
+        assert_eq!(
+            digest(""),
+            "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        );
     }
 
     #[test]
@@ -542,7 +551,7 @@ mod tests {
     fn stable_edit_id_and_focus_survive_language_and_font_switches() {
         let ctx = egui::Context::default();
         initialize(&ctx, None);
-        let id = egui::Id::new("i18n_focus_fixture");
+        let id = egui::Id::unique("i18n_focus_fixture");
         let mut draft = "unchanged".to_owned();
         let output = ctx.run_ui(Default::default(), |ui| {
             ui.add(egui::TextEdit::singleline(&mut draft).id(id));

@@ -5568,7 +5568,7 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if self.smoke {
             ui.ctx().data_mut(|data| {
-                data.insert_temp(egui::Id::new("qa_scope_plot"), rect);
+                data.insert_temp(egui::Id::unique("qa_scope_plot"), rect);
             });
         }
         if response.hovered() {
@@ -5775,7 +5775,7 @@ impl eframe::App for ScopeApp {
         if self.smoke
             && let Ok(pointer) = std::env::var("MEASURELAB_UI_SMOKE_POINTER")
             && let Some(rect) =
-                ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::new("qa_scope_plot")))
+                ctx.data(|data| data.get_temp::<egui::Rect>(egui::Id::unique("qa_scope_plot")))
         {
             input.events.retain(|event| {
                 !matches!(
@@ -6275,7 +6275,7 @@ impl eframe::App for ScopeApp {
                     self.screenshot_requested = true;
                     self.screenshot_received = false;
                     self.screenshot_requested_at = Some(Instant::now());
-                    ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                    self.screenshot_writer.request(&ctx);
                 }
             }
         }
@@ -6317,20 +6317,6 @@ impl eframe::App for ScopeApp {
                 assert_eq!(self.spectrum_channel, 15);
                 assert_eq!(self.spectrogram_channel, 15);
                 assert!(!self.running());
-            }
-            let screenshot = ctx.input(|input| {
-                input.events.iter().find_map(|event| {
-                    if let egui::Event::Screenshot { image, .. } = event {
-                        Some(image.clone())
-                    } else {
-                        None
-                    }
-                })
-            });
-            if let Some(image) = screenshot
-                && !self.screenshot_received
-            {
-                self.screenshot_writer.submit(image);
             }
             if self.screenshot_writer.pending() {
                 ctx.request_repaint_after(Duration::from_millis(10));
@@ -6683,7 +6669,7 @@ impl eframe::App for ScopeApp {
             {
                 self.screenshot_requested = true;
                 self.screenshot_attempts = 1;
-                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                self.screenshot_writer.request(&ctx);
                 // Slow first-frame GPU preparation must not request Screenshot
                 // and Close together. Allow a fresh readback interval.
                 self.created = Instant::now();
@@ -6700,7 +6686,7 @@ impl eframe::App for ScopeApp {
                     ctx.input(|input| input.viewport().clone())
                 );
                 ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
-                ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
+                self.screenshot_writer.request(&ctx);
             }
             #[cfg(feature = "qa")]
             let ready_to_close =

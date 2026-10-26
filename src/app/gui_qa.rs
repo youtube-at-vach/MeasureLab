@@ -965,6 +965,7 @@ impl ScopeApp {
                 egui::Event::MouseWheel {
                     unit: egui::MouseWheelUnit::Point,
                     phase: egui::TouchPhase::Move,
+                    source: egui::MouseWheelSource::Wheel,
                     delta: vec2(0.0, 60.0),
                     modifiers: egui::Modifiers::NONE,
                 },
@@ -1072,6 +1073,7 @@ impl ScopeApp {
                 egui::Event::MouseWheel {
                     unit: egui::MouseWheelUnit::Point,
                     phase: egui::TouchPhase::Move,
+                    source: egui::MouseWheelSource::Wheel,
                     delta: vec2(0.0, 60.0),
                     modifiers: egui::Modifiers::SHIFT,
                 },
@@ -1515,6 +1517,7 @@ impl ScopeApp {
                     egui::Event::MouseWheel {
                         unit: egui::MouseWheelUnit::Point,
                         phase: egui::TouchPhase::Move,
+                        source: egui::MouseWheelSource::Wheel,
                         delta: vec2(0.0, 30.0),
                         modifiers: egui::Modifiers::NONE,
                     },
@@ -1530,6 +1533,7 @@ impl ScopeApp {
                     egui::Event::MouseWheel {
                         unit: egui::MouseWheelUnit::Point,
                         phase: egui::TouchPhase::Move,
+                        source: egui::MouseWheelSource::Wheel,
                         delta: vec2(0.0, 30.0),
                         modifiers: egui::Modifiers::SHIFT,
                     },
