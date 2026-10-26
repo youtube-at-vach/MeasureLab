@@ -1,5 +1,6 @@
 //! Continuous, sample-clocked STFT on a dedicated worker. All queues and result
 //! storage are bounded; the producer never waits for analysis or result delivery.
+#![warn(clippy::redundant_clone)]
 use crate::{
     channel::ChannelId,
     signal::{History, MAX_CHANNELS},

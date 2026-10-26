@@ -1,5 +1,6 @@
 //! Experimental fundamental-only detector referenced to two synchronous input CHs.
 //! REF is checked and phase-corrected before filtering; timing uses integer samples.
+#![warn(clippy::redundant_clone)]
 use std::{f64::consts::TAU, ops::Range};
 
 #[derive(Clone, Copy, Debug, PartialEq, serde::Serialize, serde::Deserialize)]

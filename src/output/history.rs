@@ -1,7 +1,6 @@
 //! Bounded observations of actual execution reports on the output clock.
 //! This journal is serviced by the manager, never by a callback or the UI.
 //! Host observation times are not DAC/ADC timestamps or a sample alignment.
-#![warn(clippy::significant_drop_tightening)]
 use super::{CONDITION_CAPACITY, Saved, Target};
 use crate::generator::{Error, State, Status};
 use serde::{Deserialize, Serialize};

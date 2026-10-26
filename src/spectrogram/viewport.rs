@@ -1045,7 +1045,7 @@ mod tests {
         assert!(!retained.is_empty());
         assert!(budget.peak.load(Ordering::Relaxed) <= CACHE_BYTES);
         retained.pop();
-        assert!(prepare(&request(snapshot.clone(), parameters()), &budget, &mut None).is_some());
+        assert!(prepare(&request(snapshot, parameters()), &budget, &mut None).is_some());
         drop(retained);
         assert_eq!(budget.used.load(Ordering::Relaxed), 0);
     }

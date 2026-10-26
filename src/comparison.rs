@@ -1,6 +1,7 @@
 //! Synchronous two-channel H1 comparison, independent of excitation and GUI.
 //! Disjoint windows form finite arithmetic Welch batches (hop = N, no overlap).
 //! Pxy = conj(X) Y; positive phase leads REF, positive delay lags REF.
+#![warn(clippy::redundant_clone)]
 use crate::{calibration, spectrum::Window};
 use rustfft::{Fft, FftPlanner, num_complex::Complex};
 use serde::{Deserialize, Serialize};
