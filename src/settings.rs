@@ -22,7 +22,7 @@ use std::{
 
 pub mod preferences;
 
-pub const VERSION: u32 = 9;
+pub const VERSION: u32 = 10;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -1258,12 +1258,25 @@ mod tests {
                 device_name: "16ch".into(),
                 channels: 16,
                 pcm: crate::output::device::Pcm::F64,
+                dither: crate::output::dither::Dither {
+                    enabled: true,
+                    bit_depth: crate::output::dither::BitDepth::Bits16,
+                },
             },
             nominal_sample_rate: 48000,
             signals,
             use_as_input: false,
         });
         assert_eq!(Document::decode(&doc.encode().unwrap()).unwrap(), doc);
+        let mut legacy = serde_json::to_value(&doc).unwrap();
+        legacy["version"] = 9.into();
+        legacy["measurement"]["generator"]["target"]
+            .as_object_mut()
+            .unwrap()
+            .remove("dither");
+        let restored = Document::decode(&serde_json::to_vec(&legacy).unwrap()).unwrap();
+        assert!(matches!(restored.measurement.generator.unwrap().target,
+            crate::output::Target::Audio { dither, .. } if dither == crate::output::dither::Dither::default()));
         while !signals.signals.is_empty() {
             signals.signals.remove(0);
         }

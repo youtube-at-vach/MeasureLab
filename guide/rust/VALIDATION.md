@@ -32,7 +32,7 @@
 | STFTのCPU容量・旧新世代の交換・終了時解放 | [spectrogram_capacity.rs](../../tests/spectrogram_capacity.rs)。独立プロセスの計数アロケーターでFFT・結果プール・履歴・Hold・選択Spectrum A／B・表示準備を合算。確保要求のpayloadとRSS・アロケーター管理費用を区別する |
 | REF・局所位相・二段EMA・校正・無効化・専用転送 | [lockin.rs](../../src/lockin.rs)、[lockin_worker.rs](../../src/lockin_worker.rs)、[loopback.rs](../../src/loopback.rs) |
 | Generatorの独立式・遷移・長い整数時計・優先Stop | [generator/tests.rs](../../src/generator/tests.rs)、[generator/control.rs](../../src/generator/control.rs) |
-| 出力PCM・デバイス・通知・解放・外部履歴 | [output/device.rs](../../src/output/device.rs)、[output/runtime.rs](../../src/output/runtime.rs)、[output/history.rs](../../src/output/history.rs)、[callback_profile.rs](../../src/callback_profile.rs) |
+| 出力PCM・デバイス・通知・解放・外部履歴 | [output/device.rs](../../src/output/device.rs)、[output/dither.rs](../../src/output/dither.rs)、[output/runtime.rs](../../src/output/runtime.rs)、[output/history.rs](../../src/output/history.rs)、[callback_profile.rs](../../src/callback_profile.rs) |
 | 同期比較の独立DFT・既知遅延・雑音・有限平均・無効化 | [comparison.rs](../../src/comparison.rs)、[comparison/tests.rs](../../src/comparison/tests.rs)、[comparison_worker.rs](../../src/comparison_worker.rs) |
 | 設定／結果の互換性・f64往復・不正参照・条件差抑止・原子的保存 | [settings.rs](../../src/settings.rs)、[export.rs](../../src/export.rs)、[results.rs](../../src/results.rs)、[file_io.rs](../../src/file_io.rs) |
 | 起動設定の保存・終了時flush・破損保護・機器不在／列挙順変更 | [settings/preferences.rs](../../src/settings/preferences.rs)、[app/preferences.rs](../../src/app/preferences.rs) の`startup-preferences` GUI QA |

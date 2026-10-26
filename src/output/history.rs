@@ -243,6 +243,10 @@ pub(crate) mod tests {
             device_name: "Output".into(),
             channels: 2,
             pcm: super::super::device::Pcm::F32,
+            dither: super::super::dither::Dither {
+                enabled: true,
+                bit_depth: super::super::dither::BitDepth::Bits24,
+            },
         };
         let mut settings = Settings::default();
         settings.signals[0].enabled = true;

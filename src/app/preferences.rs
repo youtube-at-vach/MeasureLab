@@ -262,6 +262,7 @@ impl ScopeApp {
             device_name: "Unavailable output".into(),
             channels: 2,
             pcm: output::device::Pcm::F32,
+            dither: output::dither::Dither::default(),
         };
         self.restore_settings_with_policy(missing_output.clone(), true)?;
         settled(self)?;

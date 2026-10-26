@@ -40,6 +40,11 @@ impl Preferences {
             return Err("Startup preferences exceed 64 KiB".into());
         }
         let mut preferences: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
+        // Version 10 adds default-OFF output dither; version 9 preferences
+        // otherwise use the same workspace and measurement representation.
+        if preferences.version == 9 {
+            preferences.version = VERSION;
+        }
         preferences.validate()?;
         preferences.workspace.presentation.repair();
         Ok(preferences)
@@ -183,6 +188,33 @@ mod tests {
         let mut invalid = fixture();
         invalid.measurement.as_mut().unwrap().input.channels = 0;
         assert!(invalid.encode().is_err());
+    }
+
+    #[test]
+    fn version_nine_preferences_restore_output_with_dithering_off() {
+        let mut preferences = fixture();
+        preferences.measurement.as_mut().unwrap().generator = Some(crate::output::Saved {
+            target: crate::output::Target::Audio {
+                device_id: "test:output".into(),
+                device_name: "Output".into(),
+                channels: 2,
+                pcm: crate::output::device::Pcm::F32,
+                dither: crate::output::dither::Dither::default(),
+            },
+            nominal_sample_rate: 48_000,
+            signals: crate::generator::Settings::default(),
+            use_as_input: false,
+        });
+        let mut old = serde_json::to_value(&preferences).unwrap();
+        old["version"] = 9.into();
+        old["measurement"]["generator"]["target"]
+            .as_object_mut()
+            .unwrap()
+            .remove("dither");
+        assert_eq!(
+            Preferences::decode(&serde_json::to_vec(&old).unwrap()).unwrap(),
+            preferences
+        );
     }
 
     #[test]

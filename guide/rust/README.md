@@ -210,7 +210,7 @@ OS標準のディレクトリAPI（[dirs](https://docs.rs/dirs/6.0.0/dirs/fn.con
 
 ### 測定設定の保存・復元
 
-上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版9のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜8の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。SpectrumのCH別表示・入力割当・選択、Autoレベル・マーカーも保存し、版5以前は従来の1本表示を維持します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。Spectrogramの色・Manualレンジ・Auto・時間幅も保存し、新フィールドがない旧設定はBlue・Manual・Overlap 75%で復元します。Hold履歴・時間選択・一時的なSpectrum履歴データ源は保存しません。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
+上部 **File / Save settings…** で保存先を選びます。**Restore settings…** は入力・出力停止中にファイルを選んで復元します。従来の **File / File paths & status… / MEASUREMENT SETTINGS** のパス指定も使えます。次回Start用の入力デバイス・CH割当・トリガー・観察幅・Spectrum／Spectrogramの解析設定・PSD帯域・校正定義を版10のJSONへ保存します。Generatorの出力先・Fs・信号条件・内部入力選択、Audio deviceの安定ID・CH数・PCMも保存し、版1〜9の読み込みを維持します。取得中の保持結果や未確定の校正エディター入力を保存する操作ではありません。単独表示／コンソール、計器順・選択区画・希望配置・比率・詳細欄の表示と軸・表示範囲は別のWorkspaceブロックへ保存します。旧2トレース設定は入力割当と倍率を保持して4トレースへ移行し、追加CH3／CH4は表示OFFにします。CHごとのレンジ・オフセット、選択CH、水平位置も保存します。SpectrumのCH別表示・入力割当・選択、Autoレベル・マーカーも保存し、版5以前は従来の1本表示を維持します。旧設定の表示順を引き継ぎ、単一計器は単独表示、複数計器はコンソールへ移行します。Spectrogramの色・Manualレンジ・Auto・時間幅も保存し、新フィールドがない旧設定はBlue・Manual・Overlap 75%で復元します。Hold履歴・時間選択・一時的なSpectrum履歴データ源は保存しません。読込だけで旧ファイルを上書きしません。生サンプル・測定結果・カーソル位置・表示倍率は含めません。Software Loopbackの仮想DUT条件、Scope取得モードと実験段階Lock-inの設定も保存します。これらを含まない版1ファイルはAuto・Lock-in無効として読みます。QA専用内部デモは保存対象外です。
 
 既定の保存先はmacOSで `~/Library/Application Support/MeasureLab/measurement-settings.json`、Windowsで `%APPDATA%/MeasureLab/measurement-settings.json`、Linuxで `$XDG_CONFIG_HOME/MeasureLab/measurement-settings.json`（未設定時は `~/.config/MeasureLab/measurement-settings.json`）です。別のパスも指定できます。この手動保存ファイルは自動保存・起動時読み込みの対象外です。
 
@@ -230,7 +230,9 @@ Square／Triangleは定常状態で0.45 Fs未満の奇数次高調波を最大16
 
 入力Stop／Single完了は結果を保持し、出力は続きます。**Stop output**はフェード後に停止し、入力が取得中なら無音の新しいフレームを続けます。Generatorを隠しても上部の出力状態と**Stop output**は残ります。起動・復元・Fs変更で自動出力せず、アプリ終了時も停止します。
 
-内部出力は44.1／48／96／192 kHz・2chのf64です。**Audio I/O → Input / output**のOutput欄で音声デバイスを選び、共通の **Refresh devices** で入出力を再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。Generatorカードでデバイスの1〜16ch構成へ各信号を1対1で割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**Audio I/O → Input / output**のInput欄で接続先の実入力を選び、個別に**Start input**してください。**Generator loopback**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定は版9、結果は版6で保存し、旧設定版1〜8・結果版1〜5も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの参照との数値差は2カードのSine構成に限り、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+内部出力は44.1／48／96／192 kHz・2chのf64です。**Audio I/O → Input / output**のOutput欄で音声デバイスを選び、共通の **Refresh devices** で入出力を再取得できます。出力先・Fs／CH数／PCMは入力と出力を停止して選びます。Generatorカードでデバイスの1〜16ch構成へ各信号を1対1で割り当て、未割当CHは無音にします。開始時に選択した安定IDと形式を再確認し、使えない設定は開始しません。**Audio I/O → Input / output**のInput欄で接続先の実入力を選び、個別に**Start input**してください。**Generator loopback**は内部接続で使います。ストリーム通知・コールバック停止はERRORとなり、**Reset output (stays OFF)**後の明示Startで再開します。出力校正は未実装です。既存Software Loopbackの既知DUTとは別の入力モードです。設定は版10、結果は版7で保存し、旧設定版1〜9・結果版1〜6も読み込めます。内部接続の結果には受信した最大128区間の出力条件を含め、履歴外・欠落した区間は対応不明とします。保持後のGenerator編集では結果を変更しません。Generator結果のRMS・PSD帯域電力・Lock-inの参照との数値差は2カードのSine構成に限り、両寄与区間が定常で設定・同一周波数の相対carrier位相が一致するときだけ表示します。
+
+**Audio I/O → Input / output → Output** の **Enable dithering (TPDF)** で外部出力のディザを有効にし、**DITHERING BIT DEPTH** で8／16／24 bitを選べます。既定はOFF・24 bitです。選んだ深度のTPDF雑音を加えて丸め・クリップし、f32／f64出力でもその深度へ量子化します。整数PCMでは出力形式で表現できる深度だけを選べ、PCMの精度を下げると深度も対応範囲へ下がります。変更は入出力停止中に行い、次の明示Startで適用します。停止・OFF・未割当CHは無音を維持し、内部ループバックには適用しません。設定と外部出力の観測履歴にディザ条件を保存し、旧設定・旧結果の欠落項目はディザOFFとして読みます。
 
 出力デバイスやCH数を変更したときは、範囲外になるOUT割当を未割当・OFFにします。GEN ID・信号条件と利用可能なOUT割当は保持し、出力は自動開始しません。デバイス再取得・入力停止処理・設定復元の待機中は入出力の接続設定を変更できません。
 
@@ -332,7 +334,7 @@ FreeとTrace SnapはXYの右側詳細欄の **Cursors**（狭幅では **Details
 
 **Stop** の解析完了を待ち、上部 **File / Export results JSON… / CSV… / PNG…** で保存先を選べます。従来のパス指定は、**File / File paths & status… / HELD MEASUREMENT RESULTS** で保存先を確認して **Export held results** を押します。入力開始前、取得中、StopやScopeの条件更新・設定復元が未完了の間は書き出せません。書き出し後は同じ場所に成功・失敗を表示し、下部の保存通知 から開けます。既定の保存先は設定ファイルと同じディレクトリの `measurement-results.json` です。ファイルは同じディレクトリの一時ファイルへの書き込みと同期後に置換し、失敗時は以前のファイルを残します。
 
-結果の形式は `format = measurelab-results`、`version = 6` のJSONです。旧版1〜5の読み込みを維持します。復元用の測定設定JSONとは別の形式で、**File / Load reference result…** から参照として読み込み、**Compare saved reference** で現在の保持結果と並べて確認できます。入力世代・取得時のデバイスID／名前／入力形式・実際に選ばれた公称Fs・CH数を保持し、次回用の入力選択や解析設定・校正で保持結果を再ラベルしません。CH IDは0始まり、サンプル区間は開始を含み終端を含みません。サンプル時計は公称値です。
+結果の形式は `format = measurelab-results`、`version = 7` のJSONです。旧版1〜6の読み込みを維持します。復元用の測定設定JSONとは別の形式で、**File / Load reference result…** から参照として読み込み、**Compare saved reference** で現在の保持結果と並べて確認できます。入力世代・取得時のデバイスID／名前／入力形式・実際に選ばれた公称Fs・CH数を保持し、次回用の入力選択や解析設定・校正で保持結果を再ラベルしません。CH IDは0始まり、サンプル区間は開始を含み終端を含みません。サンプル時計は公称値です。
 
 Scopeは書き出し時に表示する整数区間・観察サンプル数・トリガー条件・補間した横位置と、2本の割当CHの生f64サンプル（FS）、生統計・校正後の統計を保持します。配列の位置 `i` は `sample_range.start + i` に対応し、欠落位置は `null`、存在しないCHは配列全体を `null` として状態を付けます。未取得・欠落・非有限の校正結果を正常なゼロと扱いません。校正はID・版・ゲイン・オフセット・単位・参照条件を含み、物理量は `gain × raw_fs + offset` から再現できます。Autoの停止後の観察幅・トリガー変更は保持サンプルから新しい区間を選ぶため、書き出すScope区間・条件もその選択に対応します。Normal／Singleの捕捉区間・トリガー条件は停止後も固定し、編集は次回Startに適用します。
 
