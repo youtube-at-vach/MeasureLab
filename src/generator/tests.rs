@@ -41,7 +41,8 @@ fn defaults_restore_silent_and_mono_has_no_second_route() {
             engine.next_frame().unwrap(),
             Frame {
                 sequence: n,
-                samples: [0.0; 16]
+                samples: [0.0; 16],
+                active_channels: 0,
             }
         );
     }

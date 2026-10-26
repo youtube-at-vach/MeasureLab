@@ -576,6 +576,10 @@ impl ScopeApp {
                         let candidate = output::Target::Audio {
                             device_id: device.id.clone(), device_name: device.name.clone(),
                             channels: config.channels, pcm: config.pcm,
+                            dither: match g.target {
+                                output::Target::Audio { dither, .. } => dither,
+                                output::Target::Internal => output::dither::Dither::default(),
+                            }.for_pcm(config.pcm),
                         };
                         let active = matches!(&g.target, output::Target::Audio { device_id, .. } if device_id == &device.id);
                         if ui.selectable_label(active, &device.name).clicked() && !active {
@@ -602,11 +606,35 @@ impl ScopeApp {
                 });
             if config != before {
                 let mut target = g.target.clone();
-                if let output::Target::Audio { channels, pcm, .. } = &mut target {
+                if let output::Target::Audio { channels, pcm, dither, .. } = &mut target {
                     *channels = config.channels; *pcm = config.pcm;
+                    *dither = dither.for_pcm(config.pcm);
                 }
                 let settings = settings_for_output_channels(g.settings, target.channels());
                 if let Err(e) = g.select(target, config.rate, settings) { g.error = Some(e); }
+            }
+            if let output::Target::Audio { pcm, dither, .. } = g.target {
+                let mut edited = dither;
+                ui.checkbox(&mut edited.enabled, i18n::text("io.enable_dithering_tpdf"));
+                ui.add_enabled_ui(edited.enabled, |ui| {
+                    setting_label(ui, i18n::text("io.dithering_bit_depth"));
+                    egui::ComboBox::from_id_salt("output_dither_depth")
+                        .width(ui.available_width())
+                        .selected_text(edited.bit_depth.label())
+                        .show_ui(ui, |ui| {
+                            for depth in output::dither::BitDepth::ALL.into_iter().filter(|d| d.supported(pcm)) {
+                                ui.selectable_value(&mut edited.bit_depth, depth, depth.label());
+                            }
+                        });
+                });
+                ui.label(RichText::new(i18n::text("io.dithering_description")).small().color(MUTED));
+                if edited != dither {
+                    let mut target = g.target.clone();
+                    if let output::Target::Audio { dither, .. } = &mut target {
+                        *dither = edited.for_pcm(pcm);
+                    }
+                    if let Err(e) = g.select(target, g.rate, g.settings) { g.error = Some(e); }
+                }
             }
         });
         if !selectable {

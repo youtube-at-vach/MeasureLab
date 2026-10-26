@@ -1024,6 +1024,26 @@ mod tests {
         std::fs::remove_file(csv).unwrap();
         assert!(!matching_excitation(&doc, 0..1024, &doc, 0..1024));
         assert!(lockin_difference(&doc, &doc).is_none());
+        let mut legacy = serde_json::to_value(&doc).unwrap();
+        legacy["version"] = 6.into();
+        let external = &mut legacy["external_output"];
+        for endpoint in ["initial", "latest"] {
+            if let Some(target) = external[endpoint]["target"].as_object_mut() {
+                target.remove("dither");
+            }
+        }
+        for observation in external["changes"].as_array_mut().unwrap() {
+            observation["target"]
+                .as_object_mut()
+                .unwrap()
+                .remove("dither");
+        }
+        let legacy: Document = serde_json::from_value(legacy).unwrap();
+        legacy.validate().unwrap();
+        assert!(
+            matches!(&legacy.external_output.unwrap().latest.unwrap().target,
+            crate::output::Target::Audio { dither, .. } if *dither == crate::output::dither::Dither::default())
+        );
         let plain = fixture();
         assert!(!matching_excitation(&doc, 0..1024, &plain, 0..1024));
         assert!(!matching_excitation(&plain, 0..1024, &doc, 0..1024));

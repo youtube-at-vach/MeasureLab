@@ -606,6 +606,7 @@ impl ScopeApp {
             device_name: device.name.clone(),
             channels: config.channels,
             pcm: config.pcm,
+            dither: output::dither::Dither::default(),
         };
         let mut settings = generator::Settings::default();
         for (i, s) in settings.signals.iter_mut().enumerate() {

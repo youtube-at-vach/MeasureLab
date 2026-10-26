@@ -158,6 +158,7 @@ pub(super) fn run(
                                     device_id,
                                     channels,
                                     pcm,
+                                    dither,
                                     ..
                                 } = &target
                                     && stream.is_none()
@@ -167,8 +168,12 @@ pub(super) fn run(
                                         channels: *channels,
                                         pcm: *pcm,
                                     };
-                                    match device::open(device_id, config, execution.take().unwrap())
-                                    {
+                                    match device::open(
+                                        device_id,
+                                        config,
+                                        *dither,
+                                        execution.take().unwrap(),
+                                    ) {
                                         Ok(opened) => {
                                             device_metrics = Some(opened.1.clone());
                                             observed_notifications = 0;

@@ -188,8 +188,10 @@ pub struct Metrics {
 pub(super) fn open(
     id: &str,
     requested: Config,
+    dither: dither::Dither,
     execution: control::Execution,
 ) -> Result<(cpal::Stream, Arc<Metrics>), String> {
+    dither.validate(requested.pcm)?;
     let mut matches = cpal::default_host()
         .output_devices()
         .map_err(|e| e.to_string())?
@@ -210,7 +212,7 @@ pub(super) fn open(
     let metrics = Arc::new(Metrics::default());
     macro_rules! build {
         ($t:ty) => {
-            build::<$t>(&device, config, execution, metrics.clone())
+            build::<$t>(&device, config, execution, dither, metrics.clone())
         };
     }
     let stream = match requested.pcm {
@@ -259,18 +261,20 @@ fn build<T: Sample>(
     device: &cpal::Device,
     config: cpal::StreamConfig,
     mut execution: control::Execution,
+    dither: dither::Dither,
     metrics: Arc<Metrics>,
 ) -> Result<cpal::Stream, cpal::Error> {
     let channels = config.channels as usize;
     #[cfg(feature = "qa")]
     let rate = config.sample_rate;
     let failure = metrics.clone();
+    let mut quantizer = dither::Quantizer::new(dither);
     device.build_output_stream(
         config,
         move |output: &mut [T], _| {
             #[cfg(feature = "qa")]
             let started = Instant::now();
-            render(output, channels, &mut execution, &metrics);
+            render(output, channels, &mut execution, &mut quantizer, &metrics);
             #[cfg(feature = "qa")]
             metrics
                 .profile
@@ -294,6 +298,7 @@ fn render<T: Sample>(
     output: &mut [T],
     channels: usize,
     execution: &mut control::Execution,
+    quantizer: &mut dither::Quantizer,
     metrics: &Metrics,
 ) {
     output.fill(T::EQUILIBRIUM);
@@ -313,8 +318,12 @@ fn render<T: Sample>(
             }
             match execution.next_frame() {
                 Ok(frame) => {
-                    for (sample, &value) in pcm.iter_mut().zip(&frame.samples) {
-                        *sample = T::encode(value);
+                    for (ch, (sample, &value)) in pcm.iter_mut().zip(&frame.samples).enumerate() {
+                        *sample = T::encode(quantizer.apply(
+                            value,
+                            ch,
+                            frame.active_channels & (1 << ch) != 0,
+                        ));
                     }
                 }
                 Err(_) => break,
@@ -387,6 +396,134 @@ mod tests {
         assert_eq!(cpal::I24::encode(1.0).inner(), 8_388_607);
         assert_eq!(cpal::U24::encode(1.0).inner(), 16_777_215);
     }
+
+    fn check_dithered<T: Sample>(depth: dither::BitDepth)
+    where
+        f64: cpal::FromSample<T>,
+    {
+        let mut quantizer = dither::Quantizer::new(dither::Dither {
+            enabled: true,
+            bit_depth: depth,
+        });
+        for n in 0..=10000 {
+            let sample = n as f64 / 5000.0 - 1.0;
+            let expected = quantizer.apply(sample, 0, true);
+            assert_eq!(T::encode(expected).to_sample::<f64>(), expected);
+        }
+    }
+
+    #[test]
+    fn dither_grid_survives_pcm_encoding_without_a_second_quantization() {
+        use dither::BitDepth::*;
+        check_dithered::<i8>(Bits8);
+        check_dithered::<u8>(Bits8);
+        check_dithered::<i16>(Bits16);
+        check_dithered::<u16>(Bits16);
+        check_dithered::<cpal::I24>(Bits24);
+        check_dithered::<cpal::U24>(Bits24);
+        check_dithered::<i32>(Bits24);
+        check_dithered::<u32>(Bits24);
+        check_dithered::<i64>(Bits24);
+        check_dithered::<u64>(Bits24);
+        for depth in dither::BitDepth::ALL {
+            check_dithered::<f32>(depth);
+            check_dithered::<f64>(depth);
+        }
+    }
+
+    #[test]
+    fn dithered_callbacks_keep_off_channels_and_terminal_stop_silent() {
+        for channels in [1, 2, 16] {
+            let mut settings = Settings::for_channels(channels);
+            settings.signals[0].enabled = true;
+            settings.signals[0].output_channel = Some(channels - 1);
+            settings.signals[1].output_channel = (channels > 1).then_some(0);
+            settings.signals[0].amplitude_dbfs = -120.0;
+            let (mut controller, mut execution) =
+                control::new(48000, channels, settings, 0).unwrap();
+            let dither = dither::Dither {
+                enabled: true,
+                bit_depth: dither::BitDepth::Bits8,
+            };
+            let mut quantizer = dither::Quantizer::new(dither);
+            let mut reference = dither::Quantizer::new(dither);
+            let metrics = Metrics::default();
+            // Stopped state emits actual silence even when dither is enabled.
+            let mut silent = vec![42.0f32; 16 * channels];
+            render(
+                &mut silent,
+                channels,
+                &mut execution,
+                &mut quantizer,
+                &metrics,
+            );
+            assert!(silent.iter().all(|&x| x == 0.0));
+            // Both runs start at the same integer sample, with untouched RNGs.
+            let (mut other, mut contiguous_execution) =
+                control::new(48000, channels, settings, 16).unwrap();
+            controller.start(settings).unwrap();
+            other.start(settings).unwrap();
+            let mut combined = Vec::new();
+            for count in [1, 17, 511, 3, 1024] {
+                let mut pcm = vec![42.0f32; count * channels];
+                render(&mut pcm, channels, &mut execution, &mut quantizer, &metrics);
+                for frame in pcm.chunks_exact(channels) {
+                    assert!(frame[..channels - 1].iter().all(|&x| x == 0.0));
+                }
+                combined.extend(pcm);
+            }
+            let mut expected = vec![42.0f32; combined.len()];
+            render(
+                &mut expected,
+                channels,
+                &mut contiguous_execution,
+                &mut reference,
+                &metrics,
+            );
+            assert_eq!(combined, expected);
+            assert!(combined.iter().any(|&x| x != 0.0));
+            controller.stop().unwrap();
+            let mut stop = vec![42.0f32; 1024 * channels];
+            render(
+                &mut stop,
+                channels,
+                &mut execution,
+                &mut quantizer,
+                &metrics,
+            );
+            assert_eq!(execution.status().state, State::Stopped);
+            assert!(stop[480 * channels..].iter().all(|&x| x == 0.0));
+            controller.start(settings).unwrap();
+            render(
+                &mut stop,
+                channels,
+                &mut execution,
+                &mut quantizer,
+                &metrics,
+            );
+            settings.signals[0].enabled = false;
+            controller.configure(settings).unwrap();
+            render(
+                &mut stop,
+                channels,
+                &mut execution,
+                &mut quantizer,
+                &metrics,
+            );
+            assert_eq!(execution.status().state, State::Running);
+            assert!(stop[480 * channels..].iter().all(|&x| x == 0.0));
+            metrics.failed.store(true, Ordering::Release);
+            let mut failed = vec![42u16; 16 * channels];
+            render(
+                &mut failed,
+                channels,
+                &mut execution,
+                &mut quantizer,
+                &metrics,
+            );
+            assert!(failed.iter().all(|&x| x == 32768));
+        }
+    }
     #[test]
     fn variable_callbacks_match_f64_core_and_stop_survives_unconsumed_reports() {
         for channels in [1, 2, 16] {
@@ -400,9 +537,10 @@ mod tests {
             controller.start(settings).unwrap();
             reference.start(settings, 1).unwrap();
             let metrics = Metrics::default();
+            let mut quantizer = dither::Quantizer::new(dither::Dither::default());
             for count in [1, 511, 17, 1024, 3, 4096] {
                 let mut pcm = vec![42f32; count * channels];
-                render(&mut pcm, channels, &mut execution, &metrics);
+                render(&mut pcm, channels, &mut execution, &mut quantizer, &metrics);
                 for frame in pcm.chunks_exact(channels) {
                     let expected = reference.next_frame().unwrap();
                     for (ch, &value) in frame.iter().enumerate() {
@@ -413,7 +551,7 @@ mod tests {
             let epoch = controller.stop().unwrap();
             reference.stop().unwrap();
             let mut pcm = vec![42f32; 1024 * channels];
-            render(&mut pcm, channels, &mut execution, &metrics);
+            render(&mut pcm, channels, &mut execution, &mut quantizer, &metrics);
             for _ in 0..1024 {
                 reference.next_frame().unwrap();
             }
@@ -422,7 +560,7 @@ mod tests {
             assert_eq!(execution.status().stopped_at, reference.status().stopped_at);
             let mut pcm = vec![42u16; 4 * channels];
             metrics.failed.store(true, Ordering::Release);
-            render(&mut pcm, channels, &mut execution, &metrics);
+            render(&mut pcm, channels, &mut execution, &mut quantizer, &metrics);
             assert!(pcm.iter().all(|&x| x == 32768));
             assert_eq!(
                 execution.status().state,

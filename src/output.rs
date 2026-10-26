@@ -16,6 +16,7 @@ pub const CAPACITY: usize = 16_384;
 pub const CONDITION_CAPACITY: usize = 128;
 pub const RATES: [u32; 4] = [44_100, 48_000, 96_000, 192_000];
 pub mod device;
+pub mod dither;
 pub mod history;
 mod runtime;
 
@@ -29,6 +30,8 @@ pub enum Target {
         device_name: String,
         channels: u16,
         pcm: device::Pcm,
+        #[serde(default)]
+        dither: dither::Dither,
     },
 }
 impl Target {
@@ -78,6 +81,9 @@ impl Saved {
                 return Err("Invalid audio output identity or internal input selection".into());
             }
             _ => {}
+        }
+        if let Target::Audio { pcm, dither, .. } = self.target {
+            dither.validate(pcm)?;
         }
         self.signals
             .validate(self.nominal_sample_rate, self.target.channels())
@@ -414,6 +420,7 @@ mod tests {
             device_name: "Missing test output".into(),
             channels: 2,
             pcm: device::Pcm::F32,
+            dither: dither::Dither::default(),
         };
         worker.select(target, 48_000, settings()).unwrap();
         worker.start(settings()).unwrap();
@@ -454,6 +461,7 @@ mod tests {
                 device_name: "Output".into(),
                 channels: 16,
                 pcm: device::Pcm::F32,
+                dither: dither::Dither::default(),
             },
             nominal_sample_rate: 96000,
             signals: settings(),

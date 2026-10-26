@@ -679,12 +679,17 @@ impl ScopeApp {
             device_name: "Output format QA (synthetic)".into(),
             channels: config.channels,
             pcm: config.pcm,
+            dither: output::dither::Dither::default(),
         };
         self.generator.devices = vec![output::device::DeviceInfo {
             id: "common-io-output-qa".into(),
             name: "Output format QA (synthetic)".into(),
             configs: vec![
                 config,
+                output::device::Config {
+                    pcm: output::device::Pcm::I8,
+                    ..config
+                },
                 output::device::Config {
                     channels: 2,
                     ..config
@@ -720,7 +725,13 @@ impl ScopeApp {
             self.busy = guard == 0;
             self.workspace_restoring = guard == 1;
             self.settings_task = (guard == 2).then_some(SettingsTask::Restore);
+            let target = self.generator.target.clone();
             driver.frame(self, vec![]);
+            driver.click_at(
+                self,
+                driver.text_positions(i18n::text("io.enable_dithering_tpdf"))[0],
+            );
+            assert_eq!(self.generator.target, target);
             for label in ["16ch · f32", "Output format QA (synthetic)", "48000 Hz"] {
                 driver.click_at(self, driver.text_positions(label)[0]);
                 assert!(
@@ -741,6 +752,7 @@ impl ScopeApp {
         self.workspace_restoring = false;
         self.settings_task = None;
         driver.frame(self, vec![]);
+        self.check_output_dither_interactions(driver)?;
         driver.click(self, "16ch · f32")?;
         driver.click(self, "2ch · f32")?;
         assert_eq!(self.generator.target.channels(), 2);
@@ -771,6 +783,67 @@ impl ScopeApp {
         self.generator.devices = saved.3;
         println!(
             "Output format controls OK: 16/2/1ch keeps GEN IDs, unassigns unavailable OUTs and stays OFF; refresh/restore guards preserve held input"
+        );
+        Ok(())
+    }
+
+    fn check_output_dither_interactions(&mut self, driver: &mut Driver) -> Result<(), String> {
+        use output::dither::{BitDepth, Dither};
+        let original = self.generator.target.clone();
+        let settle = |app: &mut ScopeApp| {
+            let deadline = Instant::now() + Duration::from_secs(2);
+            while app.generator.pending {
+                app.generator.poll();
+                assert!(
+                    Instant::now() < deadline,
+                    "Dither acknowledgement timed out"
+                );
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            assert!(app.generator.stopped());
+            assert!(app.generator.error.is_none());
+        };
+        driver.click(self, i18n::text("io.enable_dithering_tpdf"))?;
+        settle(self);
+        driver.frame(self, vec![]);
+        driver.click(self, "24-bit")?;
+        driver.click(self, "16-bit")?;
+        settle(self);
+        assert!(
+            matches!(self.generator.target, output::Target::Audio { dither, .. }
+            if dither == Dither { enabled: true, bit_depth: BitDepth::Bits16 })
+        );
+        let document = self.capture_settings()?;
+        let restored = settings::Document::decode(&document.encode()?)?;
+        assert_eq!(document, restored);
+        driver.frame(self, vec![]);
+        driver.click(self, i18n::text("io.enable_dithering_tpdf"))?;
+        settle(self);
+        assert!(
+            matches!(self.generator.target, output::Target::Audio { dither, .. } if !dither.enabled)
+        );
+        self.generator
+            .restore(restored.measurement.generator.unwrap())?;
+        settle(self);
+        driver.frame(self, vec![]);
+        driver.click(self, "16ch · f32")?;
+        driver.click(self, "16ch · i8")?;
+        settle(self);
+        assert!(
+            matches!(self.generator.target, output::Target::Audio { dither, .. }
+            if dither == Dither { enabled: true, bit_depth: BitDepth::Bits8 })
+        );
+        driver.frame(self, vec![]);
+        driver.click(self, "8-bit")?;
+        assert!(driver.text_positions("16-bit").is_empty());
+        assert!(driver.text_positions("24-bit").is_empty());
+        driver.key(self, egui::Key::Escape, egui::Modifiers::NONE);
+        self.generator
+            .select(original, self.generator.rate, self.generator.settings)?;
+        settle(self);
+        driver.frame(self, vec![]);
+        println!(
+            "Dithering controls OK: enable/depth, PCM precision, settings roundtrip and OFF restore; guarded edits stay unchanged"
         );
         Ok(())
     }

@@ -296,6 +296,8 @@ impl Status {
 pub struct Frame {
     pub sequence: u64,
     pub samples: Samples,
+    /// OUTs with nonzero gain, including fades and signal zero crossings.
+    pub active_channels: u16,
 }
 
 #[derive(Clone, Copy)]
@@ -645,6 +647,7 @@ impl Engine {
         let mut frame = Frame {
             sequence: n,
             samples: [0.0; crate::signal::MAX_CHANNELS],
+            active_channels: 0,
         };
         for (o, s) in self
             .oscillators
@@ -666,6 +669,7 @@ impl Engine {
                 && let Some(ch) = s.output_channel
             {
                 frame.samples[ch] = amplitude * value;
+                frame.active_channels |= 1 << ch;
             }
             o.advance(hz / rate as f64);
         }
