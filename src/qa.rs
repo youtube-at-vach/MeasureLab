@@ -47,6 +47,8 @@ pub fn spectrogram_fixture(output: &mut crate::spectrogram::History) -> crate::s
         ..Settings::default()
     };
     let config = Config {
+        analysis: crate::stft::Analysis::Spectrogram,
+        log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
         sample_rate: 48000,
         channels: 2,
         channel: 0,
@@ -78,6 +80,7 @@ pub fn spectrogram_fixture(output: &mut crate::spectrogram::History) -> crate::s
         assert!(analyzer.update_window(&source, end - config.size as u64..end, 0));
         assert!(output.push(
             RowInfo {
+                cepstrum: None,
                 generation: 1,
                 config,
                 start: end - config.size as u64,
@@ -107,6 +110,8 @@ pub fn cursor_fixture(
         ..Settings::default()
     };
     let config = Config {
+        analysis: crate::stft::Analysis::Spectrogram,
+        log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
         sample_rate,
         channels: source.channels(),
         channel: 0,
@@ -136,6 +141,7 @@ pub fn cursor_fixture(
         assert!(analyzer.update_window(source, end - config.size as u64..end, 0));
         assert!(output.push(
             RowInfo {
+                cepstrum: None,
                 generation: 1,
                 config,
                 start: end - config.size as u64,
@@ -520,6 +526,8 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
     let mut history = History::with_channels(8192, 16);
     let mut worker = stft::Worker::new();
     worker.configure(stft::Config {
+        analysis: crate::stft::Analysis::Spectrogram,
+        log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
         sample_rate: capture.sample_rate,
         channels: 16,
         channel: 15,

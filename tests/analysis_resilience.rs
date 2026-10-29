@@ -60,6 +60,8 @@ fn config(rate: u32, channels: usize, generation: u64) -> Config {
         xy_channels: Pair::default(),
         stft_generation: generation,
         stft: stft::Config {
+            analysis: measurelab::stft::Analysis::Spectrogram,
+            log_floor_db: measurelab::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: rate,
             channels,
             channel: channels - 1,

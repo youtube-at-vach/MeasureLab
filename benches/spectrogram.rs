@@ -26,11 +26,20 @@ fn wait(mut ready: impl FnMut() -> bool) {
 }
 
 fn main() {
-    for (size, overlap) in [1024, 8192, 32768]
+    for (analysis, size, overlap) in [1024, 8192, 32768]
         .into_iter()
         .flat_map(|size| Overlap::ALL.map(|overlap| (size, overlap)))
+        .flat_map(|(size, overlap)| {
+            [
+                measurelab::stft::Analysis::Spectrogram,
+                measurelab::stft::Analysis::Cepstrogram,
+            ]
+            .map(move |analysis| (analysis, size, overlap))
+        })
     {
         let config = Config {
+            analysis,
+            log_floor_db: measurelab::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: 48000,
             channels: 16,
             channel: 15,
@@ -76,13 +85,20 @@ fn main() {
         collector.freeze();
         let snapshot = collector.snapshot();
         println!(
-            "{size:>5}-point f64 STFT + collector, CH 16 / 48000 Hz: {rows} FFTs, overlap {}, {:.3} ms/FFT, {:.3} ms/collected row, {:.3} s retained, {:.3} MiB frames",
+            "{analysis:?} {size:>5}-point f64 STFT + collector, CH 16 / 48000 Hz: {rows} FFTs, overlap {}, {:.3} ms/FFT, {:.3} ms/collected row, {:.3} s retained, {:.3} MiB frames",
             overlap.name(),
             stft.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6 / rows as f64,
             collector.metrics.processing_nanos.load(Ordering::Relaxed) as f64 / 1e6 / rows as f64,
             snapshot.retained_seconds(),
             collector.peak_frame_bytes() as f64 / 1048576.0,
         );
+        println!(
+            "{analysis:?} extra log + inverse FFT: {:.3} ms/row",
+            stft.metrics.cepstrum_nanos.load(Ordering::Relaxed) as f64 / 1e6 / rows as f64
+        );
+        if analysis == measurelab::stft::Analysis::Spectrogram {
+            assert_eq!(stft.metrics.cepstrum_nanos.load(Ordering::Relaxed), 0);
+        }
         let mut worker = ViewWorker::default();
         for auto in [false, true] {
             let mut times = Vec::new();
@@ -90,6 +106,9 @@ fn main() {
                 worker.submit(
                     snapshot.clone(),
                     Parameters {
+                        quefrency: (analysis == measurelab::stft::Analysis::Cepstrogram)
+                            .then(Default::default),
+                        manual_range: Default::default(),
                         anchor: Some(frames as u64 - iteration as u64),
                         seconds: 60.0,
                         view: View::full(48000, FrequencyScale::Linear, -120.0),
@@ -110,7 +129,7 @@ fn main() {
             }
             times.sort_by(f64::total_cmp);
             println!(
-                "{size:>5}-point numerical history -> {MAX_COLUMNS}x{ROWS} raster, Auto {auto}, 60 s: mean {:.3} / p95 {:.3} / max {:.3} ms; {:.3} MiB peak raster reservation",
+                "{analysis:?} {size:>5}-point numerical history -> {MAX_COLUMNS}x{ROWS} raster, Auto {auto}, 60 s: mean {:.3} / p95 {:.3} / max {:.3} ms; {:.3} MiB peak raster reservation",
                 times.iter().sum::<f64>() / times.len() as f64,
                 times[(times.len() * 95 / 100).min(times.len() - 1)],
                 times.last().unwrap(),

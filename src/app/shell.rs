@@ -133,7 +133,8 @@ impl Shell {
 
 impl ScopeApp {
     pub(super) fn navigate(&mut self, action: Action) {
-        let link_history = self.presentation.screen == Screen::Single(Instrument::Spectrogram)
+        let link_history = !self.cepstrogram_applied()
+            && self.presentation.screen == Screen::Single(Instrument::Spectrogram)
             && matches!(action, Action::PairWith(Instrument::Spectrum));
         if matches!(
             action,
@@ -385,9 +386,14 @@ impl ScopeApp {
         let mut matches = 0;
         for instrument in Instrument::ALL {
             if !format!(
-                "{} {}",
+                "{} {} {}",
                 instrument.display_name(),
-                instrument.display_purpose()
+                instrument.display_purpose(),
+                if instrument == Instrument::Spectrogram {
+                    i18n::text("spectrogram.search_terms")
+                } else {
+                    ""
+                }
             )
             .to_lowercase()
             .contains(&query)
@@ -590,7 +596,7 @@ impl ScopeApp {
         ui.heading(if instrument == Instrument::Scope {
             i18n::text("shell.scope_settings")
         } else {
-            instrument.display_name()
+            self.instrument_title(instrument)
         });
         ui.separator();
         if self.preferences.loading
@@ -669,7 +675,7 @@ impl ScopeApp {
                     if self.shell.narrow_details
                         && let Some(i) = self.presentation.selected()
                     {
-                        ui.label(i.display_name());
+                        ui.label(self.instrument_title(i));
                     }
                 });
                 if self.shell.narrow_details {
@@ -682,7 +688,7 @@ impl ScopeApp {
             match self.presentation.screen {
                 Screen::Single(i) => {
                     ui.horizontal_wrapped(|ui| {
-                        ui.heading(i.display_name());
+                        ui.heading(self.instrument_title(i));
                         ui.menu_button(i18n::text("shell.split_view_with"), |ui| {
                             if !self.presentation.console.instruments.is_empty() {
                                 ui.label(i18n::text(
@@ -837,7 +843,11 @@ impl ScopeApp {
                     if ui
                         .selectable_label(
                             self.presentation.console.selected == Some(i),
-                            pane_title(i, self.presentation.console.selected == Some(i)),
+                            pane_title(
+                                i,
+                                self.presentation.console.selected == Some(i),
+                                self.instrument_title(i),
+                            ),
                         )
                         .clicked()
                     {
@@ -908,6 +918,7 @@ impl ScopeApp {
                                                             i,
                                                             self.presentation.console.selected
                                                                 == Some(i),
+                                                            self.instrument_title(i),
                                                         ),
                                                     )
                                                     .clicked()
@@ -1155,11 +1166,11 @@ fn instrument_button(
     sidebar::navigation_button(ui, presentation, Some(instrument), active, status, false)
 }
 
-fn pane_title(instrument: Instrument, selected: bool) -> String {
+fn pane_title(_instrument: Instrument, selected: bool, title: &str) -> String {
     if selected {
-        i18n::format("shell.selected", &[("name", (instrument.display_name()))]).to_string()
+        i18n::format("shell.selected", &[("name", title)]).to_string()
     } else {
-        instrument.display_name().into()
+        title.into()
     }
 }
 

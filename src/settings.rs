@@ -22,7 +22,7 @@ use std::{
 
 pub mod preferences;
 
-pub const VERSION: u32 = 10;
+pub const VERSION: u32 = 11;
 pub const MAX_BYTES: usize = 64 * 1024;
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -108,10 +108,46 @@ pub struct Spectrum {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct Spectrogram {
+    #[serde(default)]
+    pub mode: crate::stft::Analysis,
+    #[serde(default = "default_log_floor")]
+    pub log_floor_db: i16,
     pub channel: ChannelId,
     pub analysis: Settings,
     #[serde(default)]
     pub overlap: crate::stft::Overlap,
+}
+
+fn default_log_floor() -> i16 {
+    crate::cepstrum::DEFAULT_LOG_FLOOR_DB
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct CepstrogramDisplay {
+    pub quefrency: crate::spectrogram::QuefrencyRange,
+    pub floor_db: f32,
+    pub ceiling_db: f32,
+    pub color_map: ColorMap,
+    pub auto_color: bool,
+}
+impl Default for CepstrogramDisplay {
+    fn default() -> Self {
+        Self {
+            quefrency: Default::default(),
+            floor_db: -80.0,
+            ceiling_db: 0.0,
+            color_map: ColorMap::Viridis,
+            auto_color: true,
+        }
+    }
+}
+impl CepstrogramDisplay {
+    pub fn validate(self) -> Result<(), &'static str> {
+        self.quefrency.validate()?;
+        ColorRange::new(self.floor_db, self.ceiling_db).ok_or("Invalid cepstral color range")?;
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
@@ -187,6 +223,8 @@ pub struct Measurement {
 #[serde(deny_unknown_fields)]
 pub struct Workspace {
     #[serde(default)]
+    pub cepstrogram: CepstrogramDisplay,
+    #[serde(default)]
     pub spectrum_display: SpectrumDisplay,
     pub presentation: Presentation,
     #[serde(default)]
@@ -223,6 +261,7 @@ pub struct Workspace {
 impl Workspace {
     pub fn validate(&self) -> Result<(), String> {
         let w = self;
+        w.cepstrogram.validate()?;
         if w.spectrum_display.selected >= 4
             || w.spectrum_display
                 .overlay_channels
@@ -411,6 +450,7 @@ impl Document {
         in_range(m.scope.trigger.level, -1.0, 1.0, "trigger level")?;
         analysis(m.spectrum.analysis, &FFT_SIZES)?;
         analysis(m.spectrogram.analysis, &STFT_SIZES)?;
+        crate::cepstrum::validate_floor(m.spectrogram.log_floor_db)?;
         if m.spectrogram.analysis.quantity != Quantity::Amplitude
             || m.spectrogram.analysis.averages != 1
         {
@@ -752,6 +792,8 @@ mod tests {
                     band_max_hz: 0.0,
                 },
                 spectrogram: Spectrogram {
+                    mode: crate::stft::Analysis::Spectrogram,
+                    log_floor_db: default_log_floor(),
                     channel: 7,
                     overlap: crate::stft::Overlap::default(),
                     analysis: Settings {
@@ -775,6 +817,7 @@ mod tests {
                 }],
             },
             workspace: Workspace {
+                cepstrogram: Default::default(),
                 spectrum_display: SpectrumDisplay::default(),
                 presentation: Presentation::default(),
                 lockin_display: LockinDisplay::Polar,
@@ -805,7 +848,7 @@ mod tests {
         }
     }
 
-    fn legacy_fixture(version: u32) -> serde_json::Value {
+    pub(super) fn legacy_fixture(version: u32) -> serde_json::Value {
         let mut value = serde_json::to_value(fixture()).unwrap();
         value["version"] = version.into();
         value["measurement"]["scope"]["channels"] = serde_json::json!([15, 7]);
@@ -1569,5 +1612,107 @@ mod tests {
         assert_eq!(std::fs::read_dir(&directory).unwrap().count(), 1);
         drop(worker);
         std::fs::remove_dir_all(directory).unwrap();
+    }
+}
+
+#[cfg(test)]
+mod cepstrogram_tests {
+    use super::*;
+    #[test]
+    fn version_eleven_roundtrip_and_versions_one_to_ten_defaults_preserve_spectral_settings() {
+        let mut document = super::tests::fixture();
+        for mode in [
+            crate::stft::Analysis::Spectrogram,
+            crate::stft::Analysis::Cepstrogram,
+        ] {
+            document.measurement.spectrogram.mode = mode;
+            document.measurement.spectrogram.log_floor_db = -271;
+            document.workspace.cepstrogram.quefrency = crate::spectrogram::QuefrencyRange {
+                min_seconds: 0.001,
+                max_seconds: 0.003,
+            };
+            document.workspace.cepstrogram.floor_db = -72.0;
+            document.workspace.cepstrogram.color_map = ColorMap::Inferno;
+            document.workspace.cepstrogram.auto_color = false;
+            assert_eq!(
+                Document::decode(&document.encode().unwrap()).unwrap(),
+                document
+            );
+        }
+        for version in 1..=10 {
+            let mut value = if version < 4 {
+                super::tests::legacy_fixture(version)
+            } else {
+                serde_json::to_value(super::tests::fixture()).unwrap()
+            };
+            if version == 4 {
+                let legacy = super::tests::legacy_fixture(4);
+                value["measurement"]["scope"]["channels"] =
+                    legacy["measurement"]["scope"]["channels"].clone();
+                let workspace = value["workspace"].as_object_mut().unwrap();
+                for key in [
+                    "scope_vertical",
+                    "scope_selected",
+                    "scope_horizontal_position",
+                ] {
+                    workspace.remove(key);
+                }
+                for key in ["scope_fs_per_div", "scope_enabled"] {
+                    workspace.insert(key.into(), legacy["workspace"][key].clone());
+                }
+            }
+            value["version"] = version.into();
+            let m = value["measurement"]["spectrogram"].as_object_mut().unwrap();
+            m.remove("mode");
+            m.remove("log_floor_db");
+            value["workspace"]
+                .as_object_mut()
+                .unwrap()
+                .remove("cepstrogram");
+            let restored = Document::decode(&serde_json::to_vec(&value).unwrap()).unwrap();
+            assert_eq!(
+                restored.measurement.spectrogram.mode,
+                crate::stft::Analysis::Spectrogram
+            );
+            assert_eq!(restored.measurement.spectrogram.log_floor_db, -160);
+            assert_eq!(
+                restored.workspace.cepstrogram,
+                CepstrogramDisplay::default()
+            );
+            assert_eq!(
+                restored.measurement.spectrogram.analysis,
+                super::tests::fixture().measurement.spectrogram.analysis
+            );
+        }
+    }
+    #[test]
+    fn malformed_cepstral_conditions_and_ranges_are_rejected_without_mutation() {
+        let document = super::tests::fixture();
+        let original = document.clone();
+        let baseline = serde_json::to_value(&document).unwrap();
+        for (key, value) in [
+            ("mode", serde_json::json!("mfcc")),
+            ("log_floor_db", serde_json::json!(-301)),
+            ("log_floor_db", serde_json::json!(-59)),
+            ("log_floor_db", serde_json::json!(-160.5)),
+            ("log_floor_db", serde_json::json!("-160")),
+        ] {
+            let mut bad = baseline.clone();
+            bad["measurement"]["spectrogram"][key] = value;
+            assert!(Document::decode(&serde_json::to_vec(&bad).unwrap()).is_err());
+        }
+        for (min, max) in [(-0.1, 0.02), (0.02, 0.02), (0.04, 0.02)] {
+            let mut bad = baseline.clone();
+            bad["workspace"]["cepstrogram"]["quefrency"] =
+                serde_json::json!({"min_seconds":min,"max_seconds":max});
+            assert!(Document::decode(&serde_json::to_vec(&bad).unwrap()).is_err());
+        }
+        let mut bad = document.clone();
+        bad.workspace.cepstrogram.quefrency.max_seconds = f64::INFINITY;
+        assert!(bad.validate().is_err());
+        bad = document.clone();
+        bad.workspace.cepstrogram.floor_db = f32::NAN;
+        assert!(bad.validate().is_err());
+        assert_eq!(document, original);
     }
 }

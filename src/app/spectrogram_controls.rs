@@ -11,6 +11,7 @@ pub(super) struct PendingClick {
     pub anchor: u64,
     pub sample: Option<u64>,
     pub frequency: f64,
+    pub quefrency: Option<f64>,
     pub index: usize,
     pub time: f64,
 }
@@ -62,25 +63,30 @@ impl ScopeApp {
         if let Some((end, power)) = self.spectrogram_profile.selected {
             let selected = self.spectrogram_selected[0].as_ref().expect("fixed time A");
             assert_eq!(selected.info.end, end);
-            assert_eq!(selected.power()[1].to_bits(), power);
+            assert_eq!(selected.values().slice()[1].to_bits(), power);
         }
         match phase {
             0 => {
                 self.hold_spectrogram();
                 let frame = self.spectrogram_hold.as_ref().unwrap().latest().unwrap();
-                let (end, power) = (frame.info.end, frame.power()[1].to_bits());
+                let (end, power) = (frame.info.end, frame.values().slice()[1].to_bits());
                 self.select_spectrogram_sample(0, end - 1);
                 self.spectrogram_profile.selected = Some((end, power));
             }
             1..=14 => {
                 self.pan_spectrogram_time(if phase.is_multiple_of(2) { -0.1 } else { 0.2 });
                 self.spectrogram_seconds = [5.0, 10.0, 30.0, 60.0][phase as usize % 4];
-                self.spectrogram_color_map =
+                let map =
                     spectrogram::ColorMap::ALL[phase as usize % spectrogram::ColorMap::ALL.len()];
-                self.spectrogram_auto_color = phase.is_multiple_of(2);
-                let axis = self.spectrogram_frequency_range().zoom(0.5, 0.9).pan(0.02);
-                self.spectrogram_min_hz = axis.min as f32;
-                self.spectrogram_max_hz = axis.max as f32;
+                if self.cepstrogram_applied() {
+                    self.cepstrogram_display.color_map = map;
+                    self.cepstrogram_display.auto_color = phase.is_multiple_of(2);
+                } else {
+                    self.spectrogram_color_map = map;
+                    self.spectrogram_auto_color = phase.is_multiple_of(2);
+                }
+                self.zoom_history_horizontal(0.5, 0.9);
+                self.pan_history_horizontal(0.02);
             }
             15 => {
                 self.live_spectrogram();
@@ -189,6 +195,10 @@ impl ScopeApp {
     }
 
     fn spectrogram_display_controls(&mut self, ui: &mut egui::Ui) {
+        if self.cepstrogram_applied() {
+            self.cepstrogram_display_controls(ui);
+            return;
+        }
         setting_label(ui, i18n::text("spectrogram.color_map"));
         egui::ComboBox::from_id_salt("spectrogram_color_map")
             .width(ui.available_width())
@@ -304,7 +314,7 @@ impl ScopeApp {
             .map_or(self.sample_rate, |c| c.sample_rate)
     }
 
-    fn spectrogram_frequency_range(&self) -> FrequencyRange {
+    pub(super) fn spectrogram_frequency_range(&self) -> FrequencyRange {
         let config = self
             .spectrogram_snapshot
             .config
@@ -320,6 +330,10 @@ impl ScopeApp {
     }
 
     fn reset_spectrogram_frequency(&mut self) {
+        if self.cepstrogram_applied() {
+            self.cepstrogram_display.quefrency = Default::default();
+            return;
+        }
         self.spectrogram_min_hz = if self.spectrogram_scale == FrequencyScale::Log {
             20.0
         } else {
@@ -336,7 +350,10 @@ impl ScopeApp {
 
     pub(super) fn spectrogram_display_view(&mut self, _ui: &egui::Ui) -> View {
         let mut view = self.spectrogram_view();
-        if self.spectrogram_auto_color {
+        let (manual, auto, _) = self.spectrogram_active_colors();
+        view.floor_db = manual.min;
+        view.ceiling_db = manual.max;
+        if auto && self.spectrogram_snapshot.latest().is_some() {
             view.floor_db = self.spectrogram_auto_result.min;
             view.ceiling_db = self.spectrogram_auto_result.max;
         }
@@ -353,6 +370,7 @@ impl ScopeApp {
         self.spectrogram_anchor = 0;
         self.spectrogram_scroll.reset();
         self.spectrogram_selected = [None, None];
+        self.cursors.quefrency_seconds = [None; 2];
         self.spectrogram_unavailable_selection = [false; 2];
         self.spectrogram_auto_result = ColorRange::default();
         for time in &mut self.cursors.times {
@@ -376,6 +394,7 @@ impl ScopeApp {
         self.spectrogram_hold = None;
         self.spectrogram_hold_anchor = None;
         self.spectrogram_selected = [None, None];
+        self.cursors.quefrency_seconds = [None; 2];
         self.spectrogram_unavailable_selection = [false; 2];
         for time in &mut self.cursors.times {
             if time.is_some_and(|t| t.spectrogram_sample().is_some()) {
@@ -451,12 +470,14 @@ impl ScopeApp {
         self.spectrogram_view_worker.submit(
             snapshot,
             spectrogram::viewport::Parameters {
+                quefrency: self.cepstrogram_applied().then(|| self.quefrency_range()),
+                manual_range: self.spectrogram_active_colors().0,
                 anchor: self.spectrogram_hold_anchor,
                 seconds: self.spectrogram_seconds,
                 view: self.spectrogram_view(),
                 columns: (rect.width() * pixels_per_point).ceil().max(1.0) as usize,
                 rows: (rect.height() * pixels_per_point).ceil().max(1.0) as usize,
-                auto: self.spectrogram_auto_color,
+                auto: self.spectrogram_active_colors().1,
                 live: self.running() && self.spectrogram_hold.is_none(),
             },
         );
@@ -576,11 +597,7 @@ impl ScopeApp {
             } else {
                 let delta = ui.input(|input| input.pointer.delta());
                 if delta.x != 0.0 {
-                    let axis = self
-                        .spectrogram_frequency_range()
-                        .pan(-delta.x as f64 / rect.width() as f64);
-                    self.spectrogram_min_hz = axis.min as f32;
-                    self.spectrogram_max_hz = axis.max as f32;
+                    self.pan_history_horizontal(-delta.x as f64 / rect.width() as f64);
                 }
                 if delta.y != 0.0 {
                     self.pan_spectrogram_time(
@@ -613,11 +630,7 @@ impl ScopeApp {
                     self.pan_spectrogram_time(scroll as f64 * 0.002 * self.spectrogram_seconds);
                 } else {
                     let x = (pointer.x - rect.left()) / rect.width();
-                    let axis = self
-                        .spectrogram_frequency_range()
-                        .zoom(x as f64, (-scroll as f64 * 0.005).exp());
-                    self.spectrogram_min_hz = axis.min as f32;
-                    self.spectrogram_max_hz = axis.max as f32;
+                    self.zoom_history_horizontal(x as f64, (-scroll as f64 * 0.005).exp());
                 }
             }
         }
@@ -632,7 +645,7 @@ impl ScopeApp {
             let top = i as f32 / 64.0;
             let bottom = (i + 1) as f32 / 64.0;
             let db = view.ceiling_db + (view.floor_db - view.ceiling_db) * (top + bottom) * 0.5;
-            let rgb = self.spectrogram_color_map.rgb(
+            let rgb = self.spectrogram_active_colors().2.rgb(
                 ColorRange::new(view.floor_db, view.ceiling_db)
                     .unwrap()
                     .fraction(db),
@@ -664,25 +677,73 @@ impl ScopeApp {
             );
         }
         ui.painter().text(
-            pos2(bar.left(), bar.top() - 4.0),
-            egui::Align2::LEFT_BOTTOM,
-            "dBFS",
+            if self.cepstrogram_applied() {
+                rect.right_top() - vec2(0.0, 4.0)
+            } else {
+                pos2(bar.left(), bar.top() - 4.0)
+            },
+            if self.cepstrogram_applied() {
+                egui::Align2::RIGHT_BOTTOM
+            } else {
+                egui::Align2::LEFT_BOTTOM
+            },
+            if self.cepstrogram_applied() {
+                i18n::text("spectrogram.cepstral_power")
+            } else {
+                "dBFS"
+            },
             egui::FontId::monospace(10.0),
             MUTED,
         );
     }
 
     fn spectrogram_analysis_controls(&mut self, ui: &mut egui::Ui) {
-        let before = (
-            self.spectrogram_settings,
-            self.spectrogram_channel,
-            self.spectrogram_overlap,
-        );
-        fft_precision(
-            ui,
-            "spectrogram_precision",
-            &mut self.spectrogram_settings.precision,
-        );
+        let before = self.stft_config();
+        let mode_response = egui::ComboBox::from_id_salt("stft_analysis_mode")
+            .width(ui.available_width())
+            .selected_text(if self.spectrogram_mode == stft::Analysis::Cepstrogram {
+                i18n::text("spectrogram.cepstrogram")
+            } else {
+                i18n::text("spectrogram.spectrogram")
+            })
+            .show_ui(ui, |ui| {
+                ui.selectable_value(
+                    &mut self.spectrogram_mode,
+                    stft::Analysis::Spectrogram,
+                    i18n::text("spectrogram.spectrogram"),
+                );
+                ui.selectable_value(
+                    &mut self.spectrogram_mode,
+                    stft::Analysis::Cepstrogram,
+                    i18n::text("spectrogram.cepstrogram"),
+                );
+            });
+        #[cfg(feature = "qa")]
+        ui.ctx().data_mut(|data| {
+            data.insert_temp(
+                egui::Id::unique("qa_stft_mode"),
+                mode_response.response.rect,
+            )
+        });
+        #[cfg(not(feature = "qa"))]
+        let _ = mode_response;
+        if self.spectrogram_mode == stft::Analysis::Cepstrogram {
+            ui.label(i18n::text("spectrogram.f64_required"));
+            ui.horizontal_wrapped(|ui| {
+                ui.label(i18n::text("spectrogram.log_floor"));
+                ui.add(
+                    egui::DragValue::new(&mut self.cepstrum_log_floor_db)
+                        .range(-300..=-60)
+                        .suffix(" dB"),
+                );
+            });
+        } else {
+            fft_precision(
+                ui,
+                "spectrogram_precision",
+                &mut self.spectrogram_settings.precision,
+            );
+        }
         setting_label(ui, i18n::text("spectrogram.fft_length"));
         egui::ComboBox::from_id_salt("stft_size")
             .width(ui.available_width())
@@ -740,14 +801,7 @@ impl ScopeApp {
             &mut self.spectrogram_settings.remove_dc,
             i18n::text("spectrogram.remove_dc_offset"),
         );
-        if before
-            != (
-                self.spectrogram_settings,
-                self.spectrogram_channel,
-                self.spectrogram_overlap,
-            )
-            && self.running()
-        {
+        if before != self.stft_config() && self.running() {
             self.reset_stft();
         }
         if !self.running() {
@@ -761,41 +815,69 @@ impl ScopeApp {
         }
         let captured = self.spectrogram_history.lock().unwrap().config();
         if let Some(config) = captured {
-            ui.label(
-                RichText::new(
+            if config.analysis == stft::Analysis::Cepstrogram {
+                ui.label(
                     i18n::format(
-                        "spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz",
+                        "spectrogram.captured_cepstral",
                         &[
-                            ("sample_rate", &(config.sample_rate).to_string()),
-                            (
-                                "sample_rate_2",
-                                &format!("{:.3}", config.size as f64 / config.sample_rate as f64),
-                            ),
-                            (
-                                "sample_rate_3",
-                                &format!(
-                                    "{:.2}",
-                                    config.hop as f64 / config.sample_rate as f64 * 1000.0
-                                ),
-                            ),
-                            (
-                                "size",
-                                &format!("{:.3}", config.sample_rate as f64 / config.size as f64),
-                            ),
+                            ("fs", &config.sample_rate.to_string()),
+                            ("n", &config.size.to_string()),
+                            ("hop", &config.hop.to_string()),
+                            ("floor", &config.log_floor_db.to_string()),
                         ],
                     )
                     .as_ref(),
-                )
+                );
+            } else {
+                ui.label(
+                    RichText::new(
+                        i18n::format(
+                            "spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz",
+                            &[
+                                ("sample_rate", &(config.sample_rate).to_string()),
+                                (
+                                    "sample_rate_2",
+                                    &format!(
+                                        "{:.3}",
+                                        config.size as f64 / config.sample_rate as f64
+                                    ),
+                                ),
+                                (
+                                    "sample_rate_3",
+                                    &format!(
+                                        "{:.2}",
+                                        config.hop as f64 / config.sample_rate as f64 * 1000.0
+                                    ),
+                                ),
+                                (
+                                    "size",
+                                    &format!(
+                                        "{:.3}",
+                                        config.sample_rate as f64 / config.size as f64
+                                    ),
+                                ),
+                            ],
+                        )
+                        .as_ref(),
+                    )
+                    .small()
+                    .color(MUTED),
+                );
+            }
+        }
+        if self.cepstrogram_applied() {
+            if let Some(frame) = self.spectrogram_snapshot.latest() {
+                ui.label(self.cepstral_status(frame));
+            }
+            ui.label(i18n::text("spectrogram.cepstral_definition"));
+        } else {
+            ui.label(
+                RichText::new(i18n::text(
+                    "spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing",
+                ))
                 .small()
                 .color(MUTED),
             );
         }
-        ui.label(
-            RichText::new(i18n::text(
-                "spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing",
-            ))
-            .small()
-            .color(MUTED),
-        );
     }
 }

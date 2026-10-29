@@ -31,6 +31,7 @@ pub struct Renderer {
     vertices: Vec<[f32; 4]>,
     parameters: [f32; PARAMETER_FLOATS],
     pub color_map: ColorMap,
+    pub quefrency: Option<crate::spectrogram::QuefrencyRange>,
     pub anchor: Option<u64>,
     pub uploaded_rows: u64,
     pub uploaded_buffers: u64,
@@ -134,6 +135,7 @@ impl Renderer {
             vertices: Vec::with_capacity(ROWS * 2),
             parameters: [0.0; PARAMETER_FLOATS],
             color_map: ColorMap::default(),
+            quefrency: None,
             anchor: None,
             uploaded_rows: 0,
             uploaded_buffers: 0,
@@ -228,13 +230,24 @@ impl Renderer {
             self.seconds = seconds;
         }
         let mut parameters = [0.0; PARAMETER_FLOATS];
+        let quefrency = self
+            .quefrency
+            .map(|r| r.effective(config.sample_rate, config.size));
+        if (config.analysis == crate::stft::Analysis::Cepstrogram) != quefrency.is_some() {
+            self.count = 0;
+            return;
+        }
         parameters[..8].copy_from_slice(&[
-            view.min_hz,
-            view.max_hz,
-            config.sample_rate as f32 / config.size as f32,
+            quefrency.map_or(view.min_hz, |r| r.min_seconds as f32),
+            quefrency.map_or(view.max_hz, |r| r.max_seconds as f32),
+            if quefrency.is_some() {
+                1.0 / config.sample_rate as f32
+            } else {
+                config.sample_rate as f32 / config.size as f32
+            },
             view.floor_db,
             view.ceiling_db,
-            if view.scale == FrequencyScale::Log {
+            if quefrency.is_none() && view.scale == FrequencyScale::Log {
                 1.0
             } else {
                 0.0
@@ -248,6 +261,7 @@ impl Renderer {
         ]);
         let stops = self.color_map.stops();
         parameters[8] = (stops.len() - 1) as f32;
+        parameters[11] = if quefrency.is_some() { 1.0 } else { 0.0 };
         parameters[9..11].copy_from_slice(
             &history.display_transform(
                 self.anchor
@@ -319,6 +333,7 @@ fn binding(
 }
 
 pub struct Callback {
+    pub quefrency: Option<crate::spectrogram::QuefrencyRange>,
     // Only UI and renderer access this lock. Acquisition and DSP never lock it.
     pub history: Arc<Mutex<History>>,
     pub view: View,
@@ -338,6 +353,7 @@ impl egui_wgpu::CallbackTrait for Callback {
     ) -> Vec<wgpu::CommandBuffer> {
         if let Some(renderer) = resources.get_mut::<Renderer>() {
             renderer.color_map = self.color_map;
+            renderer.quefrency = self.quefrency;
             renderer.anchor = Some(self.anchor);
             renderer.prepare(
                 device,

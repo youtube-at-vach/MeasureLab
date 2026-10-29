@@ -61,6 +61,8 @@ impl Overlap {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Config {
+    pub analysis: Analysis,
+    pub log_floor_db: i16,
     pub sample_rate: u32,
     pub channels: usize,
     /// Zero-based source channel, independent of the number of displayed traces.
@@ -73,6 +75,14 @@ pub struct Config {
 }
 
 impl Config {
+    /// Display magnitude is power for spectra and abs(c) for real cepstra.
+    pub fn display_level(self, magnitude: f64) -> f64 {
+        match self.analysis {
+            Analysis::Spectrogram => crate::spectrum::level_db(magnitude),
+            Analysis::Cepstrogram => crate::cepstrum::level_db(magnitude),
+        }
+    }
+
     pub fn validate(self) -> Result<(), &'static str> {
         if self.sample_rate == 0
             || !(1..=MAX_CHANNELS).contains(&self.channels)
@@ -83,7 +93,47 @@ impl Config {
         {
             return Err("Invalid STFT sample rate, channels, FFT size or hop");
         }
+        crate::cepstrum::validate_floor(self.log_floor_db)?;
+        if self.analysis == Analysis::Cepstrogram && self.precision != Precision::F64 {
+            return Err("Cepstrogram requires f64 precision");
+        }
         Ok(())
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Analysis {
+    #[default]
+    Spectrogram,
+    Cepstrogram,
+}
+
+/// Borrowed payloads cannot accidentally enter a Spectrum amplitude API.
+#[derive(Clone, Copy)]
+pub enum Values<'a> {
+    SpectrumPower(&'a [f64]),
+    RealCepstrum(&'a [f64]),
+}
+
+impl<'a> Values<'a> {
+    pub(crate) fn slice(self) -> &'a [f64] {
+        match self {
+            Self::SpectrumPower(v) | Self::RealCepstrum(v) => v,
+        }
+    }
+    pub fn matches(self, info: RowInfo) -> bool {
+        if let Some(cepstrum) = info.cepstrum
+            && (cepstrum.algorithm != crate::cepstrum::ALGORITHM
+                || cepstrum.floored_bins > info.config.size / 2 + 1)
+        {
+            return false;
+        }
+        matches!(
+            (self, info.config.analysis, info.cepstrum),
+            (Self::SpectrumPower(_), Analysis::Spectrogram, None)
+                | (Self::RealCepstrum(_), Analysis::Cepstrogram, Some(_))
+        )
     }
 }
 
@@ -100,6 +150,7 @@ pub struct Gap {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct RowInfo {
+    pub cepstrum: Option<crate::cepstrum::Info>,
     pub generation: u64,
     pub config: Config,
     pub start: u64,
@@ -116,7 +167,24 @@ pub struct Row {
 impl Row {
     /// Squared peak-bin amplitude in uncalibrated FS², never reconstructed from dB.
     pub fn power(&self) -> &[f64] {
+        assert_eq!(self.info.config.analysis, Analysis::Spectrogram);
         &self.power[..self.info.config.size / 2 + 1]
+    }
+
+    pub fn values(&self) -> Values<'_> {
+        let values = &self.power[..self.info.config.size / 2 + 1];
+        match self.info.config.analysis {
+            Analysis::Spectrogram => Values::SpectrumPower(values),
+            Analysis::Cepstrogram => Values::RealCepstrum(values),
+        }
+    }
+
+    pub fn real_cepstrum(&self) -> Option<&[f64]> {
+        if let Values::RealCepstrum(values) = self.values() {
+            Some(values)
+        } else {
+            None
+        }
     }
 
     /// Compatibility adapter for display-only consumers. Silence stays −∞,
@@ -141,6 +209,7 @@ pub struct Metrics {
     /// Finite-input QA can await consumption without polling result delivery.
     pub processed_frames: AtomicU64,
     pub processing_nanos: AtomicU64,
+    pub cepstrum_nanos: AtomicU64,
 }
 
 #[derive(Clone)]
@@ -176,6 +245,8 @@ struct Processor {
     history: History,
     analyzer: Analyzer,
     invalid_power: Box<[f64]>,
+    cepstrum: Option<crate::cepstrum::Analyzer>,
+    cepstrum_nanos: u64,
     expected: Option<u64>,
     next_end: u64,
     gap: Gap,
@@ -199,6 +270,9 @@ impl Processor {
                 config.sample_rate,
             ),
             invalid_power: vec![f64::NAN; config.size / 2 + 1].into_boxed_slice(),
+            cepstrum: (config.analysis == Analysis::Cepstrogram)
+                .then(|| crate::cepstrum::Analyzer::new(config.size, config.log_floor_db).unwrap()),
+            cepstrum_nanos: 0,
             expected: None,
             next_end: 0,
             gap: Gap {
@@ -233,7 +307,8 @@ impl Processor {
             }
             let start = end - self.config.size as u64;
             self.analyzer.update_window(&self.history, start..end, 0);
-            let info = RowInfo {
+            let mut info = RowInfo {
+                cepstrum: None,
                 generation: self.generation,
                 config: self.config,
                 start,
@@ -247,7 +322,15 @@ impl Processor {
             } else {
                 &self.invalid_power
             };
-            if emit(info, power) {
+            let values = if let Some(cepstrum) = &mut self.cepstrum {
+                let started = Instant::now();
+                info.cepstrum = Some(cepstrum.process(power));
+                self.cepstrum_nanos += started.elapsed().as_nanos() as u64;
+                cepstrum.coefficients()
+            } else {
+                power
+            };
+            if emit(info, values) {
                 self.gap = Gap::default();
             } else {
                 self.gap.result_rows += 1;
@@ -293,6 +376,8 @@ impl Worker {
         let (mut outgoing, results) = RingBuffer::new(result_rows);
         let (mut recycle, mut free) = RingBuffer::new(result_rows);
         let placeholder = Config {
+            analysis: crate::stft::Analysis::Spectrogram,
+            log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: 48000,
             channels: 1,
             channel: 0,
@@ -306,6 +391,7 @@ impl Worker {
             recycle
                 .push(Row {
                     info: RowInfo {
+                        cepstrum: None,
                         generation: 0,
                         config: placeholder,
                         start: 0,
@@ -358,7 +444,9 @@ impl Worker {
                         .fetch_max(started.elapsed().as_nanos() as u64, Ordering::Relaxed);
                 }
                 let started = Instant::now();
-                processor.as_mut().unwrap().process(&block, |info, power| {
+                let processor = processor.as_mut().unwrap();
+                let inverse_before = processor.cepstrum_nanos;
+                processor.process(&block, |info, power| {
                     if info.generation != active.load(Ordering::Acquire) {
                         return true; // obsolete data cannot become a visible result
                     }
@@ -378,6 +466,9 @@ impl Worker {
                     }
                     true
                 });
+                counters
+                    .cepstrum_nanos
+                    .fetch_add(processor.cepstrum_nanos - inverse_before, Ordering::Relaxed);
                 counters
                     .processed_frames
                     .fetch_add(block.len as u64, Ordering::Release);
@@ -598,6 +689,8 @@ pub fn smoke_test(
     let device = crate::audio::input_device(device_name)?;
     let (_stream, mut capture) = crate::audio::start_device(&device, sample_rate)?;
     let config = Config {
+        analysis: crate::stft::Analysis::Spectrogram,
+        log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
         sample_rate: capture.sample_rate,
         channels: capture.channels as usize,
         channel,
@@ -729,8 +822,11 @@ mod tests {
                                             "{cfg:?}, bin {bin}"
                                         );
                                     }
-                                    let result =
-                                        crate::spectrum::Result::from_stft(info, power).unwrap();
+                                    let result = crate::spectrum::Result::from_stft(
+                                        info,
+                                        Values::SpectrumPower(power),
+                                    )
+                                    .unwrap();
                                     assert_eq!(result.power(), power);
                                     let reading = result
                                         .cursor(32.0 * cfg.sample_rate as f64 / size as f64)
@@ -775,6 +871,7 @@ mod tests {
     fn retained_spectrum_adapter_keeps_weak_bins_silence_and_invalidity() {
         let cfg = config();
         let info = RowInfo {
+            cepstrum: None,
             generation: 9,
             config: cfg,
             start: 1 << 54,
@@ -783,7 +880,8 @@ mod tests {
         };
         let mut power = vec![0.0; cfg.size / 2 + 1];
         power[32] = 1e-300 + f64::MIN_POSITIVE;
-        let result = crate::spectrum::Result::from_stft(info, &power).unwrap();
+        let result =
+            crate::spectrum::Result::from_stft(info, Values::SpectrumPower(&power)).unwrap();
         assert_eq!(result.power()[32].to_bits(), power[32].to_bits());
         let reading = result.cursor(1500.0).unwrap();
         assert_eq!(reading.value, power[32].sqrt());
@@ -791,17 +889,21 @@ mod tests {
         assert_eq!(result.cursor(0.0).unwrap().level_db, f64::NEG_INFINITY);
         assert_eq!(result.db()[32], crate::spectrum::DB_MIN);
         power[32] = f64::NAN;
-        let invalid = crate::spectrum::Result::from_stft(info, &power).unwrap();
+        let invalid =
+            crate::spectrum::Result::from_stft(info, Values::SpectrumPower(&power)).unwrap();
         assert_eq!(invalid.validity(), crate::spectrum::Validity::NonFinite);
         assert!(invalid.cursor(1500.0).is_none());
-        assert!(crate::spectrum::Result::from_stft(info, &power[..512]).is_none());
+        assert!(
+            crate::spectrum::Result::from_stft(info, Values::SpectrumPower(&power[..512]))
+                .is_none()
+        );
         assert!(
             crate::spectrum::Result::from_stft(
                 RowInfo {
                     start: info.start + 1,
                     ..info
                 },
-                &power
+                Values::SpectrumPower(&power)
             )
             .is_none()
         );
@@ -845,6 +947,8 @@ mod tests {
 
     fn config() -> Config {
         Config {
+            analysis: crate::stft::Analysis::Spectrogram,
+            log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: 48000,
             channels: 16,
             channel: 15,
@@ -1190,22 +1294,37 @@ mod tests {
 
     #[test]
     fn result_pool_saturation_recycles_storage_and_marks_missing_rows() {
-        let mut worker = Worker::with_capacity(32, 1);
-        worker.configure(config()).unwrap();
-        submit(&mut worker, 0, 2048);
-        wait_until(|| worker.metrics.result_dropped.load(Ordering::Relaxed) == 4);
-        worker.drain(|row| {
-            assert_eq!(row.info.start, 0);
-            assert!((row.db()[32] + 6.0206).abs() < 0.003);
-        });
-        submit(&mut worker, 2048, 256);
-        let mut next = None;
-        wait_until(|| {
-            worker.drain(|row| next = Some(row.info));
-            next.is_some()
-        });
-        assert_eq!(next.unwrap().start, 1280);
-        assert_eq!(next.unwrap().gap.result_rows, 4);
+        for analysis in [Analysis::Spectrogram, Analysis::Cepstrogram] {
+            let mut worker = Worker::with_capacity(32, 1);
+            worker
+                .configure(Config {
+                    analysis,
+                    ..config()
+                })
+                .unwrap();
+            submit(&mut worker, 0, 2048);
+            wait_until(|| worker.metrics.result_dropped.load(Ordering::Relaxed) == 4);
+            worker.drain(|row| {
+                assert_eq!(row.info.start, 0);
+                if analysis == Analysis::Spectrogram {
+                    assert!((row.db()[32] + 6.0206).abs() < 0.003);
+                } else {
+                    assert_eq!(
+                        row.info.cepstrum.unwrap().status,
+                        crate::cepstrum::Status::Valid
+                    );
+                    assert!(row.real_cepstrum().unwrap().iter().all(|c| c.is_finite()));
+                }
+            });
+            submit(&mut worker, 2048, 256);
+            let mut next = None;
+            wait_until(|| {
+                worker.drain(|row| next = Some(row.info));
+                next.is_some()
+            });
+            assert_eq!(next.unwrap().start, 1280);
+            assert_eq!(next.unwrap().gap.result_rows, 4);
+        }
     }
 
     #[test]
@@ -1276,6 +1395,8 @@ mod tests {
         let mut previous = first;
         for overlap in Overlap::ALL {
             let cfg = Config {
+                analysis: crate::stft::Analysis::Spectrogram,
+                log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
                 sample_rate: 96000,
                 channels: 1,
                 channel: 0,

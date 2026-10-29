@@ -8,7 +8,7 @@ mod display;
 pub mod history;
 mod scroll;
 pub mod viewport;
-pub use display::{AutoRange, ColorMap, ColorRange, FrequencyRange, TimeAxis};
+pub use display::{AutoRange, ColorMap, ColorRange, FrequencyRange, QuefrencyRange, TimeAxis};
 pub use scroll::ScrollClock;
 
 pub const ROWS: usize = 512;
@@ -322,6 +322,8 @@ mod tests {
     }
     fn config() -> Config {
         Config {
+            analysis: crate::stft::Analysis::Spectrogram,
+            log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: 48000,
             channels: 16,
             channel: 15,
@@ -334,6 +336,7 @@ mod tests {
     }
     fn info(end: u64) -> RowInfo {
         RowInfo {
+            cepstrum: None,
             generation: 1,
             config: config(),
             start: end - 1024,

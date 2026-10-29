@@ -1,6 +1,6 @@
 //! Numerical STFT retention, collected independently of UI result delivery.
 //! The display ring is a separate cache; it is never the source of f64 readings.
-use crate::stft::{Config, Results, RowInfo};
+use crate::stft::{Analysis, Config, Results, RowInfo, Values};
 use std::{
     collections::VecDeque,
     mem::{size_of, size_of_val},
@@ -63,25 +63,73 @@ pub struct Frame {
 
 impl Frame {
     pub fn power(&self) -> &[f64] {
+        assert_eq!(self.info.config.analysis, Analysis::Spectrogram);
         &self.power
     }
 
     pub fn amplitude(&self, bin: usize) -> Option<f64> {
+        if self.info.config.analysis != Analysis::Spectrogram {
+            return None;
+        }
         self.power.get(bin).map(|p| p.sqrt())
     }
 
     pub fn level_db(&self, bin: usize) -> Option<f64> {
+        if self.info.config.analysis != Analysis::Spectrogram {
+            return None;
+        }
         self.power.get(bin).map(|&p| crate::spectrum::level_db(p))
     }
 
     pub fn valid(&self) -> bool {
-        self.power.iter().all(|p| p.is_finite() && *p >= 0.0)
+        match self.info.config.analysis {
+            Analysis::Spectrogram => self.power.iter().all(|p| p.is_finite() && *p >= 0.0),
+            Analysis::Cepstrogram => {
+                self.info
+                    .cepstrum
+                    .is_some_and(|i| i.status == crate::cepstrum::Status::Valid)
+                    && self.power.iter().all(|c| c.is_finite())
+            }
+        }
+    }
+
+    pub fn values(&self) -> Values<'_> {
+        match self.info.config.analysis {
+            Analysis::Spectrogram => Values::SpectrumPower(&self.power),
+            Analysis::Cepstrogram => Values::RealCepstrum(&self.power),
+        }
+    }
+
+    pub fn coefficient(&self, q: usize) -> Option<f64> {
+        (self.info.config.analysis == Analysis::Cepstrogram && self.valid())
+            .then(|| self.power.get(q).copied())
+            .flatten()
+    }
+
+    pub fn cepstral_level_db(&self, q: usize) -> Option<f64> {
+        self.coefficient(q).map(crate::cepstrum::level_db)
+    }
+
+    pub(super) fn display_values(&self) -> &[f64] {
+        &self.power
+    }
+
+    pub(super) fn magnitude(&self, value: f64) -> f64 {
+        if self.info.config.analysis == Analysis::Cepstrogram {
+            match self.info.cepstrum.map(|i| i.status) {
+                Some(crate::cepstrum::Status::Valid) => value.abs(),
+                Some(crate::cepstrum::Status::NoSignal) => f64::INFINITY,
+                _ => f64::NAN,
+            }
+        } else {
+            value
+        }
     }
 
     pub fn db(&self) -> Vec<f32> {
         self.power
             .iter()
-            .map(|&p| crate::spectrum::level_db(p) as f32)
+            .map(|&v| self.info.config.display_level(self.magnitude(v)) as f32)
             .collect()
     }
 }
@@ -195,7 +243,16 @@ impl Archive {
         self.snapshot.retired += 1;
     }
 
-    fn push(&mut self, mut info: RowInfo, power: &[f64]) -> bool {
+    #[cfg(test)]
+    fn push(&mut self, info: RowInfo, power: &[f64]) -> bool {
+        self.push_values(info, Values::SpectrumPower(power))
+    }
+
+    fn push_values(&mut self, mut info: RowInfo, values: Values<'_>) -> bool {
+        if !values.matches(info) {
+            return false;
+        }
+        let power = values.slice();
         if self.snapshot.config != Some(info.config)
             || self.snapshot.generation != info.generation
             || power.len() != info.config.size / 2 + 1
@@ -329,7 +386,7 @@ impl Collector {
                         dirty = false;
                     }
                     if accepting && row.info.generation == generation {
-                        if archive.push(row.info, row.power()) {
+                        if archive.push_values(row.info, row.values()) {
                             counters.collected.fetch_add(1, Ordering::Relaxed);
                             dirty = true;
                         } else {
@@ -465,7 +522,11 @@ pub(crate) fn fixture(
 ) -> Arc<Snapshot> {
     let mut archive = Archive::new(input_generation, generation, Some(config), Arc::default());
     for (info, power) in rows {
-        assert!(archive.push(info, &power));
+        let values = match config.analysis {
+            Analysis::Spectrogram => Values::SpectrumPower(&power),
+            Analysis::Cepstrogram => Values::RealCepstrum(&power),
+        };
+        assert!(archive.push_values(info, values));
     }
     Arc::new(archive.snapshot.clone())
 }
@@ -481,6 +542,8 @@ mod tests {
 
     fn config() -> Config {
         Config {
+            analysis: crate::stft::Analysis::Spectrogram,
+            log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: 1024,
             channels: 1,
             channel: 0,
@@ -494,6 +557,7 @@ mod tests {
 
     fn info(config: Config, generation: u64, end: u64) -> RowInfo {
         RowInfo {
+            cepstrum: None,
             generation,
             config,
             start: end - config.size as u64,
@@ -733,5 +797,49 @@ mod tests {
             assert!(collector.snapshot().latest().is_none());
             assert!(collector.peak_frame_bytes() <= FRAME_BYTES);
         }
+    }
+}
+
+#[cfg(test)]
+mod payload_tests {
+    use super::*;
+    #[test]
+    fn mismatched_payload_and_algorithm_are_rejected_before_retention() {
+        let c = Config {
+            analysis: Analysis::Cepstrogram,
+            log_floor_db: -160,
+            sample_rate: 48000,
+            channels: 1,
+            channel: 0,
+            size: 1024,
+            hop: 256,
+            window: crate::spectrum::Window::Rectangular,
+            remove_dc: false,
+            precision: crate::spectrum::Precision::F64,
+        };
+        let mut archive = Archive::new(1, 2, Some(c), Arc::default());
+        let mut info = RowInfo {
+            generation: 2,
+            config: c,
+            start: 0,
+            end: 1024,
+            gap: Default::default(),
+            cepstrum: Some(crate::cepstrum::Info {
+                algorithm: crate::cepstrum::ALGORITHM,
+                status: crate::cepstrum::Status::Valid,
+                floored_bins: 0,
+            }),
+        };
+        let coefficients = vec![-0.5; 513];
+        assert!(!archive.push_values(info, Values::SpectrumPower(&coefficients)));
+        info.cepstrum.as_mut().unwrap().algorithm = "unknown-definition";
+        assert!(!archive.push_values(info, Values::RealCepstrum(&coefficients)));
+        assert!(archive.snapshot.latest().is_none());
+        info.cepstrum.as_mut().unwrap().algorithm = crate::cepstrum::ALGORITHM;
+        assert!(archive.push_values(info, Values::RealCepstrum(&coefficients)));
+        assert_eq!(
+            archive.snapshot.latest().unwrap().coefficient(13),
+            Some(-0.5)
+        );
     }
 }

@@ -227,6 +227,8 @@ impl Core {
             xy_channels: Pair::<2>::default(),
             stft_generation: 0,
             stft: stft::Config {
+                analysis: crate::stft::Analysis::Spectrogram,
+                log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
                 sample_rate: 48000,
                 channels: 2,
                 channel: 0,
@@ -1681,6 +1683,8 @@ mod tests {
             xy_channels: Pair::<2>::default(),
             stft_generation: 0,
             stft: stft::Config {
+                analysis: crate::stft::Analysis::Spectrogram,
+                log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
                 sample_rate: 48000,
                 channels,
                 channel: channels - 1,

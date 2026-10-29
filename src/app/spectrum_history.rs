@@ -39,6 +39,9 @@ impl Default for HistorySpectrum {
 
 impl ScopeApp {
     pub(super) fn link_spectrum_history(&mut self) {
+        if self.cepstrogram_applied() {
+            return;
+        }
         self.hold_spectrogram();
         self.spectrum_history.view = self.spectrum_view();
         self.spectrum_history.linked = true;
@@ -69,7 +72,7 @@ impl ScopeApp {
             let key = frame.map(|f| (f.input_generation, f.info));
             if self.spectrum_history.keys[i] != key {
                 self.spectrum_history.results[i] = frame
-                    .and_then(|f| spectrum::Result::from_stft(f.info, f.power()))
+                    .and_then(|f| spectrum::Result::from_stft(f.info, f.values()))
                     .unwrap_or_else(|| {
                         spectrum::Result::empty(
                             Settings {

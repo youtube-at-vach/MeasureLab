@@ -79,6 +79,8 @@ pub(super) struct Raster {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Parameters {
+    pub quefrency: Option<super::QuefrencyRange>,
+    pub manual_range: ColorRange,
     /// None follows the latest complete frame; Some fixes a Hold upper edge.
     pub anchor: Option<u64>,
     pub seconds: f64,
@@ -324,22 +326,48 @@ fn prepare(
     let mut rows = vec![None; height];
     let mut missing = vec![false; height];
     let mut coverage: Vec<Option<(u64, u64)>> = vec![None; height];
-    let bin_hz = latest.config.sample_rate as f32 / latest.config.size as f32;
+    let cepstral = latest.config.analysis == crate::stft::Analysis::Cepstrogram;
+    if cepstral != p.quefrency.is_some() {
+        return None;
+    }
+    let step = if cepstral {
+        1.0 / latest.config.sample_rate as f64
+    } else {
+        latest.config.sample_rate as f64 / latest.config.size as f64
+    };
+    let quefrency = p
+        .quefrency
+        .map(|r| r.effective(latest.config.sample_rate, latest.config.size));
+    let coordinate =
+        |x: f32| quefrency.map_or_else(|| p.view.frequency(x) as f64, |r| r.at(x as f64));
+    let lower = quefrency.map_or(p.view.min_hz as f64, |r| r.min_seconds);
+    let upper = quefrency.map_or(p.view.max_hz as f64, |r| r.max_seconds);
     let max_bin = latest.config.size / 2;
-    let min = (p.view.min_hz / bin_hz).ceil() as usize;
-    let max = ((p.view.max_hz / bin_hz).floor() as usize).min(max_bin);
+    // Effective quefrency endpoints are on the sample grid. Round their
+    // indices so floating-point division cannot discard an endpoint after
+    // zooming down to the minimum two-point range.
+    let min = if cepstral {
+        (lower / step).round()
+    } else {
+        (lower / step).ceil()
+    } as usize;
+    let max = (if cepstral {
+        (upper / step).round()
+    } else {
+        (upper / step).floor()
+    } as usize)
+        .min(max_bin);
     if min > max {
         return None;
     }
     let bins: Vec<_> = (0..width)
         .map(|x| {
-            let first = (p.view.frequency(x as f32 / width as f32) / bin_hz).ceil() as usize;
-            let last = (p.view.frequency((x + 1) as f32 / width as f32) / bin_hz).floor() as usize;
+            let first = (coordinate(x as f32 / width as f32) / step).ceil() as usize;
+            let last = (coordinate((x + 1) as f32 / width as f32) / step).floor() as usize;
             if first <= last {
                 (first.clamp(min, max), last.clamp(min, max))
             } else {
-                let nearest =
-                    (p.view.frequency((x as f32 + 0.5) / width as f32) / bin_hz).round() as usize;
+                let nearest = (coordinate((x as f32 + 0.5) / width as f32) / step).round() as usize;
                 (nearest.clamp(min, max), nearest.clamp(min, max))
             }
         })
@@ -394,8 +422,8 @@ fn prepare(
             bins.iter()
                 .map(|&(first, last)| {
                     let mut power = 0.0_f64;
-                    accumulate_power(&mut power, &frame.power()[first..=last]);
-                    crate::spectrum::level_db(power) as f32
+                    accumulate_frame(&mut power, frame, first, last);
+                    latest.config.display_level(power) as f32
                 })
                 .collect::<Vec<_>>()
         });
@@ -421,12 +449,13 @@ fn prepare(
             && info.end as i128 > visible_anchor as i128 - visible_span
             && start < visible_anchor
         {
-            for &power in &frame.power()[min..=max] {
+            for &value in &frame.display_values()[min..=max] {
+                let power = frame.magnitude(value);
                 if power.is_finite() && power > 0.0 {
                     peak_power = peak_power.max(power);
                 }
             }
-            for &power in frame.power()[min..=max]
+            for &value in frame.display_values()[min..=max]
                 .iter()
                 .skip(frame_index % step)
                 .step_by(step)
@@ -435,8 +464,9 @@ fn prepare(
                     break;
                 }
                 sampled += 1;
+                let power = frame.magnitude(value);
                 if power.is_finite() && power > 0.0 {
-                    let value = crate::spectrum::level_db(power) as f32;
+                    let value = latest.config.display_level(power) as f32;
                     histogram[(value.floor() + 3328.0).clamp(0.0, 6655.0) as usize] += 1;
                     count += 1;
                 }
@@ -458,11 +488,11 @@ fn prepare(
             let end = anchor as i128 - (y as i128 * span / height as i128);
             for frame in snapshot.overlapping_hops(start, end) {
                 for (power, &(first, last)) in powers.iter_mut().zip(&bins) {
-                    accumulate_power(power, &frame.power()[first..=last]);
+                    accumulate_frame(power, frame, first, last);
                 }
             }
             for (out, &power) in db[y * width..(y + 1) * width].iter_mut().zip(&powers) {
-                *out = crate::spectrum::level_db(power) as f32;
+                *out = latest.config.display_level(power) as f32;
             }
         }
     }
@@ -475,7 +505,7 @@ fn prepare(
                 cumulative >= count.div_ceil(5)
             })
             .unwrap();
-        let max = crate::spectrum::level_db(peak_power) as f32 + 3.0;
+        let max = latest.config.display_level(peak_power) as f32 + 3.0;
         if let Some(target) = ColorRange::new((percentile as f32 - 3331.0).min(max - 12.0), max) {
             *range = Some(if p.live {
                 range.map_or(target, |old| ColorRange {
@@ -556,9 +586,26 @@ fn prepare(
         snapshot: snapshot.clone(),
         anchor: requested_anchor,
         history,
-        range: range.unwrap_or_default(),
+        range: range.unwrap_or(p.manual_range),
         processing_ms: 0.0,
     })
+}
+
+fn accumulate_frame(peak: &mut f64, frame: &super::history::Frame, first: usize, last: usize) {
+    if frame.info.config.analysis == crate::stft::Analysis::Spectrogram {
+        accumulate_power(peak, &frame.display_values()[first..=last]);
+    } else {
+        for &c in &frame.display_values()[first..=last] {
+            let value = frame.magnitude(c);
+            if value.is_nan() {
+                *peak = f64::NAN;
+                return;
+            }
+            if !peak.is_nan() {
+                *peak = peak.max(value);
+            }
+        }
+    }
 }
 
 fn accumulate_power(power: &mut f64, values: &[f64]) {
@@ -597,6 +644,8 @@ mod tests {
 
     fn config() -> Config {
         Config {
+            analysis: crate::stft::Analysis::Spectrogram,
+            log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: 48000,
             channels: 16,
             channel: 15,
@@ -622,6 +671,7 @@ mod tests {
                 }
                 (
                     RowInfo {
+                        cepstrum: None,
                         generation,
                         config,
                         start: end - 1024,
@@ -635,6 +685,8 @@ mod tests {
     }
     fn parameters() -> Parameters {
         Parameters {
+            quefrency: None,
+            manual_range: Default::default(),
             anchor: None,
             seconds: 10.0,
             view: View::full(48000, FrequencyScale::Linear, -120.0),
@@ -706,6 +758,7 @@ mod tests {
                 config,
                 [(
                     RowInfo {
+                        cepstrum: None,
                         generation: 6,
                         config,
                         start: 0,
@@ -757,6 +810,7 @@ mod tests {
                 }
                 (
                     RowInfo {
+                        cepstrum: None,
                         generation: 4,
                         config,
                         start: end - config.size as u64,
@@ -883,6 +937,7 @@ mod tests {
                     let end = origin + size as u64 + i as u64 * config.hop as u64;
                     (
                         RowInfo {
+                            cepstrum: None,
                             generation: 7,
                             config,
                             start: end - size as u64,
@@ -954,6 +1009,7 @@ mod tests {
                 let power = if i >= 380 { 1.0 } else { 1e-4 };
                 (
                     RowInfo {
+                        cepstrum: None,
                         generation: 7,
                         config,
                         start: end - 1024,
@@ -998,6 +1054,7 @@ mod tests {
             .map(|(offset, power, gap)| {
                 (
                     RowInfo {
+                        cepstrum: None,
                         generation: 4,
                         config,
                         start: origin + offset - 1024,
@@ -1079,5 +1136,121 @@ mod tests {
         assert_eq!(held.snapshot.generation, 1);
         assert_eq!(held.history.raster.as_ref().unwrap().db, data);
         assert!(worker.peak_cache_bytes() <= CACHE_BYTES);
+    }
+}
+
+#[cfg(test)]
+mod cepstrogram_tests {
+    use super::*;
+    use crate::{
+        cepstrum::{ALGORITHM, Info, Status},
+        spectrum::{FrequencyScale, Precision, Window},
+        stft::{Analysis, Config, Gap},
+    };
+    fn config() -> Config {
+        Config {
+            analysis: Analysis::Cepstrogram,
+            log_floor_db: -160,
+            sample_rate: 1024,
+            channels: 1,
+            channel: 0,
+            size: 1024,
+            hop: 256,
+            window: Window::Rectangular,
+            remove_dc: false,
+            precision: Precision::F64,
+        }
+    }
+    fn render(rows: usize, status: Status, invert: bool) -> Prepared {
+        let c = config();
+        let source = super::super::history::fixture(
+            7,
+            9,
+            c,
+            (0..rows).map(|i| {
+                let mut values = vec![0.01; 513];
+                values[0] = 1e200;
+                values[13] = if invert { -0.4 } else { 0.4 };
+                (
+                    RowInfo {
+                        generation: 9,
+                        config: c,
+                        start: i as u64 * 256,
+                        end: 1024 + i as u64 * 256,
+                        gap: Gap::default(),
+                        cepstrum: Some(Info {
+                            algorithm: ALGORITHM,
+                            status,
+                            floored_bins: 0,
+                        }),
+                    },
+                    values,
+                )
+            }),
+        );
+        let p = Parameters {
+            quefrency: Some(super::super::QuefrencyRange {
+                min_seconds: 0.0,
+                max_seconds: 0.1,
+            }),
+            manual_range: ColorRange::new(-80.0, 0.0).unwrap(),
+            anchor: None,
+            seconds: 10.0,
+            view: View::full(1024, FrequencyScale::Linear, -120.0),
+            columns: 1,
+            rows: 1,
+            auto: true,
+            live: false,
+        };
+        let request = Request {
+            id: 1,
+            submitted_at: Instant::now(),
+            snapshot: source,
+            parameters: p,
+        };
+        prepare(&request, &Arc::default(), &mut None).unwrap()
+    }
+    #[test]
+    fn negative_peaks_survive_frequency_and_dense_time_reduction_zero_is_excluded() {
+        for rows in [1, 20] {
+            let positive = render(rows, Status::Valid, false);
+            let negative = render(rows, Status::Valid, true);
+            let a = &positive.history.raster.as_ref().unwrap().db;
+            let b = &negative.history.raster.as_ref().unwrap().db;
+            assert_eq!(a, b);
+            assert!((a[0] as f64 - 20.0 * 0.8_f64.log10()).abs() < 1e-5);
+            assert!(negative.range.max < 10.0, "q=0 must not dominate Auto");
+            assert_eq!(
+                negative.snapshot.latest().unwrap().coefficient(13),
+                Some(-0.4)
+            );
+        }
+    }
+    #[test]
+    fn no_signal_and_nonfinite_are_distinct_and_do_not_affect_auto() {
+        let silent = render(20, Status::NoSignal, false);
+        let invalid = render(20, Status::NonFinite, false);
+        assert_eq!(silent.history.raster.as_ref().unwrap().db[0], f32::INFINITY);
+        assert!(invalid.history.raster.as_ref().unwrap().db[0].is_nan());
+        assert_eq!(silent.range, ColorRange::new(-80.0, 0.0).unwrap());
+        assert!(silent.snapshot.latest().unwrap().coefficient(13).is_none());
+    }
+    #[test]
+    fn quefrency_axes_use_nominal_sample_spacing_and_preserve_requested_range() {
+        let requested = super::super::QuefrencyRange::default();
+        for fs in [8000, 48000, 192000, 768000] {
+            for size in crate::spectrum::STFT_SIZES {
+                let mut r = requested.effective(fs, size);
+                assert!(r.min_seconds >= 1.0 / fs as f64);
+                assert!(r.max_seconds <= size as f64 / (2.0 * fs as f64));
+                assert!(r.max_seconds - r.min_seconds >= (1.0 / fs as f64) * (1.0 - 1e-12));
+                for _ in 0..50 {
+                    r = r.zoom(0.5, 0.1, fs, size).pan(100.0, fs, size);
+                }
+                assert!(r.min_seconds > 0.0);
+                assert!(r.max_seconds <= size as f64 / (2.0 * fs as f64));
+            }
+        }
+        assert_eq!(requested.max_seconds, 0.02);
     }
 }

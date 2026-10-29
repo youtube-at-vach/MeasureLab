@@ -3,6 +3,7 @@
 use super::*;
 use crate::generator;
 
+mod cepstrogram;
 mod language;
 mod measurement_ux;
 mod scope;
@@ -889,6 +890,7 @@ impl ScopeApp {
                 power[64] = 0.0625 * (1.0 + (i % 200) as f64 / 200.0);
                 (
                     RowInfo {
+                        cepstrum: None,
                         generation: self.stft_generation,
                         config,
                         start: end - 1024,

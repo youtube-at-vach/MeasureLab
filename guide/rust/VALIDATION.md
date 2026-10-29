@@ -208,6 +208,22 @@ MVPの基本受け入れと、長時間・他の高負荷操作への耐性を�
 
 高Fsの反復操作は、欠落なしだけでUI応答の受け入れにしない。Liveとの差、GPU転送量、UI更新間隔と操作感を確認する。意図したUI停止時間を最大フレーム間隔の退行と取り違えず、取得・FFT窓の欠落と表示更新の省略を区別する。
 
+### Cepstrogramの検証
+
+数値定義と合否は`src/cepstrum.rs`の独立DFT／逆DFT・2インパルス・ゲイン・極小値・無音／無効・倍音＋雑音のテスト、`tests/cepstrogram.rs`の全窓長・窓関数・Overlapと実ワーカー／履歴の回帰を正本とする。負のピーク・時間縮約・0番目と無効状態のAuto除外・ケフレンシー範囲は`src/spectrogram/viewport.rs`、旧設定の移行・拒否は`src/settings.rs`に置く。容量テストは旧新モードのHold・選択行・ラスタ・結果プール・FFT scratchを含め、従来のCPU上限内で終了時解放まで確認する。
+
+```sh
+./scripts/cargo.sh test --locked --no-default-features --lib cepstr
+./scripts/cargo.sh test --locked --no-default-features --test cepstrogram
+./scripts/cargo.sh test --locked --no-default-features --test spectrogram_capacity -- --nocapture
+./scripts/cargo.sh run --locked --profile dev-fast --features qa -- --gpu-smoke
+MEASURELAB_UI_SMOKE_CEPSTROGRAM=1 ./scripts/cargo.sh run --locked --profile dev-fast --features qa -- --ui-smoke
+```
+
+GUI QAは実モード選択・停止中の予約・f64適用とf32設定保持・カーソルの独立・Spectrum連動拒否・通常幅／狭幅を自動操作で確認する。GPU読み戻しは実STFT→履歴→表示準備→描画を通し、符号が逆で等しい絶対値の係数、0番目の除外、NoSignalの中立色、NonFiniteの縞を確認する。内部・有限入力の成功をSoftware Loopback・仮想I/O・物理系の精度や長時間Liveの受け入れへ代用しない。
+
+`benches/spectrogram.rs`は同じFs・16ch中の選択1ch・窓長・Overlapで両モードを比較し、追加の対数／逆FFT時間、収集・表示準備の平均／p95／最大、欠落と容量を出力する。`cargo test`は各条件1回だけ、反復性能評価は理由を示して`cargo bench --locked --no-default-features --bench spectrogram`を実行する。実時間のLive／Hold・UI停止・CPU競合・高Fs・仮想／物理経路の連続評価は別の受け入れとして残す。`scripts/qa_spectrogram.py --analysis cepstrogram --basic --route demo-75 --output dist/cepstrogram-basic`で、モード・バイナリ・ソースハッシュ・RSSと合否を保存できる。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えると同じ表示・入力条件でCepstrogramを選べる。`live`／`stress`の反復操作は現在のモードの軸・色を操作し、内部入力の有限Stop後に独立した全複素FFT／直接逆DFTで係数を照合する。条件比較ではビルドを再利用し、別のビルドやベンチを並行実行しない。
+
 ### Spectrogramの追加手動確認
 
 MVP基本受け入れとは別に、操作可能な環境のQAなし通常ビルドで、通常幅・最小幅付近・倍率変更に対して次を確認する。現在のIntel Macはこの手動確認の対象外とする。自動イベント・画像検証の成功を手動確認済みへ読み替えない。

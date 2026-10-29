@@ -436,7 +436,13 @@ pub struct Result {
 impl Result {
     /// Read-only adapter for an already normalized STFT window. No FFT,
     /// calibration or averaging is applied to the retained f64 bin powers.
-    pub fn from_stft(info: crate::stft::RowInfo, power: &[f64]) -> Option<Self> {
+    pub fn from_stft(info: crate::stft::RowInfo, values: crate::stft::Values<'_>) -> Option<Self> {
+        if !values.matches(info) {
+            return None;
+        }
+        let crate::stft::Values::SpectrumPower(power) = values else {
+            return None;
+        };
         info.config.validate().ok()?;
         if info.end.checked_sub(info.start) != Some(info.config.size as u64)
             || power.len() != info.config.size / 2 + 1
