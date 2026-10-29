@@ -392,7 +392,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 ## 検証・計測
 
-共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・過去の実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。CepstrogramとSpectrogramの実時間比較は [全窓長・Overlapの実行表](VALIDATION.md#cepstrogramの検証) を使い、同じバイナリと入力条件でLive／Hold・表示操作・UI停止・有限Stopを確認します。高Fs・16ch・CPU競合の解析継続と再開後の数値は、両モードを選べる [コア負荷試験](VALIDATION.md#コア解析の負荷耐性qa) で確認します。条件・許容差・合否はテストコードとQAのassertionを正本とします。
+共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・過去の実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。CepstrogramとSpectrogramの実時間比較は [全窓長・Overlapと入力経路の実行表](VALIDATION.md#cepstrogramの検証) を使い、同じバイナリと入力条件でLive／Hold・表示操作・UI停止・有限Stopを確認します。通常の連続比較は各120秒以上とし、Software Loopbackと仮想16ch入力の実適用CH・数値・出力解放後の通知監査まで検査します。高Fs・16ch・CPU競合の解析継続と再開後の数値は、両モードを選べる [コア負荷試験](VALIDATION.md#コア解析の負荷耐性qa) で確認します。条件・許容差・合否はテストコードとQAのassertionを正本とします。
 
 ## コードの入口
 
