@@ -236,7 +236,8 @@ def peak_rss(path):
         samples = [float(line.split(",")[1]) for line in path.read_text().splitlines()[1:] if line.strip()]
     except (IndexError, ValueError) as error:
         raise ValueError(f"Invalid RSS samples: {path}") from error
-    if not samples or any(not (0 < value < float("inf")) for value in samples):
+    # ps can observe a terminating process after it has released its memory.
+    if not samples or any(not (0 <= value < float("inf")) for value in samples) or max(samples) == 0:
         raise ValueError(f"Invalid RSS samples: {path}")
     return max(samples) / 1024.0
 

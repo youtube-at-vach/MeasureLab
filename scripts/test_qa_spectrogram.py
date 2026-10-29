@@ -135,11 +135,17 @@ class ComparisonMatrix(unittest.TestCase):
             path = Path(directory) / "rss.csv"
             with self.assertRaises(ValueError):
                 peak_rss(path)
-            for contents in ("elapsed,rss\n", "elapsed,rss\n0\n", "elapsed,rss\n0,nan\n", "elapsed,rss\n0,-1\n"):
+            for contents in (
+                "elapsed,rss\n",
+                "elapsed,rss\n0\n",
+                "elapsed,rss\n0,nan\n",
+                "elapsed,rss\n0,-1\n",
+                "elapsed,rss\n0,0\n",
+            ):
                 path.write_text(contents)
                 with self.subTest(contents=contents), self.assertRaises(ValueError):
                     peak_rss(path)
-            path.write_text("elapsed,rss\n0,1024\n1,2048\n")
+            path.write_text("elapsed,rss\n0,1024\n1,2048\n2,0\n")
             self.assertEqual(peak_rss(path), 2)
 
     def test_audit_respects_per_case_analysis_and_rejects_an_incomplete_matrix(self):
