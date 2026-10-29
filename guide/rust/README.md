@@ -392,7 +392,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 ## 検証・計測
 
-共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・過去の実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。条件・許容差・合否はテストコードとQAのassertionを正本とします。
+共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・過去の実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。CepstrogramとSpectrogramの実時間比較は [全窓長・Overlapの実行表](VALIDATION.md#cepstrogramの検証) を使い、同じバイナリと入力条件でLive／Hold・表示操作・UI停止・有限Stopを確認します。条件・許容差・合否はテストコードとQAのassertionを正本とします。
 
 ## コードの入口
 
