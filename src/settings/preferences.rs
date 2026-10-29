@@ -40,9 +40,9 @@ impl Preferences {
             return Err("Startup preferences exceed 64 KiB".into());
         }
         let mut preferences: Self = serde_json::from_slice(bytes).map_err(|e| e.to_string())?;
-        // Version 10 adds default-OFF output dither; version 9 preferences
-        // otherwise use the same workspace and measurement representation.
-        if preferences.version == 9 {
+        // Versions 9/10 migrate missing cepstral settings through defaults;
+        // version 9 also defaults output dither to OFF.
+        if (9..=10).contains(&preferences.version) {
             preferences.version = VERSION;
         }
         preferences.validate()?;

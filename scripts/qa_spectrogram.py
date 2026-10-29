@@ -82,7 +82,10 @@ def metrics(log):
     }
 
 
-def assess(log, mode, seconds, returncode, baseline, screenshots=False):
+def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis="spectrogram"):
+    if analysis not in ("spectrogram", "cepstrogram"):
+        raise ValueError(f"Unknown analysis: {analysis}")
+    numerical_marker = "Cepstrogram numerical QA OK:" if analysis == "cepstrogram" else "Spectrogram numerical QA OK:"
     if (
         returncode != 0
         or "UI screenshot failed:" in log
@@ -90,7 +93,7 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False):
             marker in log
             for marker in (
                 f"Spectrogram {mode} QA OK:",
-                "Spectrogram numerical QA OK:",
+                numerical_marker,
                 "UI stall OK:",
                 "UI QA profile complete: finite result audited and input stopped",
                 "QA skipped surface acquisitions after warm-up: 0",
@@ -139,6 +142,7 @@ def audit_manifest(path):
                 case["returncode"],
                 baselines.get(route),
                 original.get("repeated_screenshots", False),
+                analysis=original.get("analysis", "spectrogram"),
             )
             error = None
         except ValueError as exception:
@@ -180,6 +184,7 @@ def run_profile(command, env, timeout):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--analysis", choices=["spectrogram", "cepstrogram"], default="spectrogram")
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/spectrogram-s6")
     parser.add_argument(
@@ -239,6 +244,7 @@ def main():
         patch += added.stdout
     (output / "source.patch").write_bytes(patch)
     manifest = {
+        "analysis": args.analysis,
         "revision": subprocess.check_output([git, "rev-parse", "HEAD"], cwd=ROOT, text=True).strip(),  # noqa: S603
         "binary": str(binary),
         "binary_sha256": hashlib.sha256(binary.read_bytes()).hexdigest(),
@@ -274,6 +280,8 @@ def main():
                 "FOREGROUND": "1",
                 "FFT_SIZE": "32768" if options.get("SAMPLE_RATE") == "192000" else "8192",
             } | options
+            if args.analysis == "cepstrogram":
+                case_options["CEPSTROGRAM"] = "1"
             if args.screenshots:
                 case_options["SCREENSHOT"] = "repeat"
             case_env = env | {PREFIX + key: value for key, value in case_options.items()}
@@ -290,7 +298,9 @@ def main():
             try:
                 result = run_profile(command, case_env, args.seconds + 90)
                 log = result.stdout
-                passed, values = assess(log, mode, args.seconds, result.returncode, baseline, args.screenshots)
+                passed, values = assess(
+                    log, mode, args.seconds, result.returncode, baseline, args.screenshots, analysis=args.analysis
+                )
                 if mode == "live":
                     baseline = values if passed else None
                 returncode = result.returncode

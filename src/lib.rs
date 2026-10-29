@@ -8,6 +8,7 @@ pub mod audio;
 pub mod calibration;
 #[cfg(feature = "qa")]
 pub mod callback_profile;
+pub mod cepstrum;
 pub mod channel;
 pub mod comparison;
 pub mod comparison_worker;

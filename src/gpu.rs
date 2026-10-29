@@ -332,6 +332,8 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             stft::{Config, Gap, RowInfo},
         };
         let config = Config {
+            analysis: crate::stft::Analysis::Spectrogram,
+            log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate: 48000,
             channels: 16,
             channel: 15,
@@ -361,6 +363,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             let end = config.size as u64 + (i + usize::from(latest)) as u64 * config.hop as u64;
             history.push(
                 RowInfo {
+                    cepstrum: None,
                     generation: 1,
                     config,
                     start: end - config.size as u64,
@@ -535,6 +538,7 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
                 db[..config.size / 4].fill(f32::NAN);
                 history.push(
                     RowInfo {
+                        cepstrum: None,
                         start: previous.start + config.hop as u64,
                         end: previous.end + config.hop as u64,
                         gap: Gap::default(),
@@ -663,6 +667,8 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
         raster_worker.submit(
             collector.snapshot(),
             spectrogram::viewport::Parameters {
+                quefrency: None,
+                manual_range: Default::default(),
                 anchor: None,
                 seconds: 0.25,
                 view: raster_view,
@@ -693,6 +699,8 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             raster_worker.submit(
                 collector.snapshot(),
                 spectrogram::viewport::Parameters {
+                    quefrency: None,
+                    manual_range: Default::default(),
                     anchor: None,
                     seconds: 0.25,
                     view: raster_view,
@@ -799,6 +807,138 @@ pub fn smoke_test() -> Result<(), Box<dyn std::error::Error>> {
             drop(pixels);
             readback.unmap();
         }
+        // Real Cepstrogram production path: signed echo coefficients must have
+        // equal colors, q=0 must be absent, and silence is a neutral state.
+        for (case, echo) in [(0, 0.4_f64), (1, -0.4), (2, 0.0), (3, f64::NAN)] {
+            let cep_config = Config {
+                analysis: crate::stft::Analysis::Cepstrogram,
+                log_floor_db: -160,
+                ..raster_config
+            };
+            let generation = stft_worker.configure(cep_config)?;
+            collector.configure(12, generation, cep_config);
+            for n in 0..1024 {
+                let sample = if case == 2 {
+                    0.0
+                } else if case == 3 {
+                    f64::NAN
+                } else if n == 0 {
+                    1.0
+                } else if n == 13 {
+                    echo
+                } else {
+                    0.0
+                };
+                stft_worker.submit(n, &[sample]);
+            }
+            stft_worker.flush();
+            let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+            while collector.snapshot().latest().is_none() {
+                if std::time::Instant::now() > deadline {
+                    return Err("Cepstrogram GPU input timed out".into());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            }
+            collector.freeze();
+            let range = spectrogram::QuefrencyRange {
+                min_seconds: 0.0,
+                max_seconds: 0.5,
+            };
+            raster_worker.submit(
+                collector.snapshot(),
+                spectrogram::viewport::Parameters {
+                    quefrency: Some(range),
+                    manual_range: spectrogram::ColorRange::new(-40.0, 0.0).unwrap(),
+                    anchor: None,
+                    seconds: 0.25,
+                    view: raster_view,
+                    columns: 256,
+                    rows: 64,
+                    auto: false,
+                    live: false,
+                },
+            );
+            let prepared = loop {
+                if let Some(prepared) = raster_worker.take() {
+                    break prepared;
+                }
+                if std::time::Instant::now() > deadline {
+                    return Err("Cepstrogram GPU preparation timed out".into());
+                }
+                std::thread::sleep(std::time::Duration::from_millis(1));
+            };
+            image.anchor = None;
+            image.quefrency = Some(range);
+            let cep_view = View {
+                floor_db: -40.0,
+                ceiling_db: 0.0,
+                ..raster_view
+            };
+            image.prepare(&device, &queue, &prepared.history, cep_view, 0.25, 256.0);
+            let mut encoder = device.create_command_encoder(&Default::default());
+            {
+                let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                    color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                        view: &view,
+                        depth_slice: None,
+                        resolve_target: None,
+                        ops: wgpu::Operations {
+                            load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                            store: wgpu::StoreOp::Store,
+                        },
+                    })],
+                    ..Default::default()
+                });
+                image.paint(&mut pass);
+            }
+            encoder.copy_texture_to_buffer(
+                texture.as_image_copy(),
+                wgpu::TexelCopyBufferInfo {
+                    buffer: &readback,
+                    layout: wgpu::TexelCopyBufferLayout {
+                        offset: 0,
+                        bytes_per_row: Some(1024),
+                        rows_per_image: Some(256),
+                    },
+                },
+                texture.size(),
+            );
+            queue.submit([encoder.finish()]);
+            let (sender, receiver) = std::sync::mpsc::channel();
+            readback
+                .slice(..)
+                .map_async(wgpu::MapMode::Read, move |result| {
+                    let _ = sender.send(result);
+                });
+            device.poll(wgpu::PollType::wait_indefinitely())?;
+            receiver.recv()??;
+            let pixels = readback.slice(..).get_mapped_range()?;
+            let pixel = &pixels[(128 * 256 + 6) * 4..(128 * 256 + 6) * 4 + 3];
+            if case < 2 {
+                // q=13, c=±0.2 => 20log10(0.4) dB re 1.
+                let expected = 255.0 * (20.0 * 0.4_f64.log10() + 40.0) / 40.0;
+                if pixel.iter().any(|&v| (v as f64 - expected).abs() > 1.0) {
+                    return Err(
+                        format!("Signed cepstrum GPU color mismatch: {case} {pixel:?}").into(),
+                    );
+                }
+                let zero = &pixels[(128 * 256) * 4..(128 * 256) * 4 + 3];
+                if zero[0] > 10 {
+                    return Err("q=0 leaked into Cepstrogram".into());
+                }
+            } else if case == 2 {
+                if pixel[0] > 40 || pixel[2] < 25 {
+                    return Err(format!("NoSignal must be neutral: {pixel:?}").into());
+                }
+            } else if pixel[0] < 40 || pixel[2] > 20 {
+                return Err("NonFinite Cepstrogram must be striped".into());
+            }
+            drop(pixels);
+            readback.unmap();
+        }
+        println!(
+            "Cepstrogram GPU QA OK: signed peaks, q=0 exclusion, neutral NoSignal, invalid stripes"
+        );
         println!(
             "GPU OK: {:?}, {} / {} green / {} blue / {} XY purple pixels / 512k f64 Spectrum individual-bin peak / stopped trace transfer exclusion / spectrogram wrap, order, gap, packed Nyquist, independent view changes, {} shared palettes, production raster DC/Nyquist, {uploads} row uploads",
             adapter.get_info().backend,

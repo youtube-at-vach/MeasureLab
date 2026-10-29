@@ -530,9 +530,13 @@ impl ScopeApp {
                 self.hold_spectrogram();
             }
             ui.label(
-                RichText::new(i18n::text("oscilloscope.spectrogram_time_hz_cursor"))
-                    .small()
-                    .color(MUTED),
+                RichText::new(if self.cepstrogram_applied() {
+                    i18n::text("spectrogram.time_quefrency_cursor")
+                } else {
+                    i18n::text("oscilloscope.spectrogram_time_hz_cursor")
+                })
+                .small()
+                .color(MUTED),
             );
             self.cursor_controls(ui, Instrument::Spectrogram);
         });

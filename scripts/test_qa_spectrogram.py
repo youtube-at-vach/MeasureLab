@@ -20,6 +20,15 @@ class ProfileAcceptance(unittest.TestCase):
     def accepted(self, log):
         return assess(log, "stress", 120, 0, {"ui_p95_ms": 27.0})[0]
 
+    def test_cepstrogram_requires_its_own_numerical_oracle(self):
+        cepstral = LOG.replace("Spectrogram numerical QA OK:", "Cepstrogram numerical QA OK:")
+        args = ("stress", 120, 0, {"ui_p95_ms": 27.0})
+        self.assertFalse(assess(LOG, *args, analysis="cepstrogram")[0])
+        self.assertTrue(assess(cepstral, *args, analysis="cepstrogram")[0])
+        self.assertFalse(assess(cepstral, *args)[0])
+        with self.assertRaises(ValueError):
+            assess(LOG, *args, analysis="unknown")
+
     def test_intentional_one_second_stall_is_allowed(self):
         self.assertTrue(self.accepted(LOG))
 

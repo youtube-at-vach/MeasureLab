@@ -13,6 +13,7 @@
 | Scope | 任意4ch、独立した表示と独立／共通の縦軸、測定面の時間軸・倍率・Autosetと下部CHバー、全CHトリガー、Auto／Normal／Single、生サンプル統計・カーソル |
 | Spectrum | 最大4ch重ね表示、独立ON/OFF・下部CHバー、Auto／Manualレベル、振幅／PSD・帯域電力／ESD・窓エネルギー、f64数値、平均・保持、周波数A／Bカーソル、Live／Continuous／Latest |
 | Spectrogram／XY | 独立STFT、有界f64履歴、色・表示範囲・Overlap調整、収集中のHold／履歴閲覧、時間A／BとSpectrumの連動、欠落表示。同期XY、任意CH割当 |
+| Cepstrogram | Spectrogram内の解析モード、独立したf64実ケプストラム、ケフレンシー軸・符号付き読値、時間A／B・Hold／履歴、独立した表示条件と設定版11。結果出力は対象外 |
 | 校正・結果再利用 | CH校正、版付き設定、停止中復元、条件付きJSON／CSV・参照比較。Scope／SpectrumのPNG |
 | Software Loopback／Lock-in | 既知DUT、同期入力REFによる基本波f64 Lock-in、専用ワーカー・数値GUI |
 | Generator | 最大16カードの追加／削除／複製／並べ替え、Sine／Square／Triangle／Noise、独立GEN IDと重複しないOUT割当、カードごとのON／OFF・ライブ数値編集、広幅／狭幅のカード配置、内部2ch／CPAL最大16ch、独立Stop、条件保存・OFF復元 |
@@ -186,6 +187,7 @@ AC比較、複素値・符号・無効条件は [同期比較設計](COMPARISON_
 
 | 候補 | 前提 |
 | --- | --- |
+| [Cepstrogramモード](CEPSTROGRAM_PLAN.md)の追加受け入れ | 数値・履歴・GUI・設定保存と自動回帰の入口を実装。実時間の負荷上限、仮想／物理経路の長時間評価は既存Spectrogramと分けて確認。初回Rust公開の必須条件には追加しない |
 | 任意波形・スイープ／変調、同期・リンク・Mix | カードと基本多波形出力の受け入れ。必要な用途、波形別のレベル・再現性、容量上限、測定条件との対応を定義 |
 | ESDとシングルショット・トリガーの連携 | 現行ESDと取得操作の受け入れ。過渡を含む入力区間、トリガー位置、窓・正規化・欠落を結果へ対応付ける |
 | Windows／Linuxの品質評価 | 各OSでGPU・音声I/O・保存復元・長時間・操作応答を再確認 |

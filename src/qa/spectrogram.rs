@@ -34,7 +34,22 @@ pub fn validate(input: &measurement::Snapshot, retained: &history::Snapshot, ori
     let mut max_error = 0.0_f64;
     for index in [0, frames.len() / 2, frames.len() - 1] {
         let frame = frames[index];
-        max_error = max_error.max(check_frame(&input.history, frame.info, frame.power()));
+        max_error = max_error.max(if config.analysis == stft::Analysis::Cepstrogram {
+            check_cepstral_frame(&input.history, frame)
+        } else {
+            check_frame(&input.history, frame.info, frame.power())
+        });
+    }
+    if config.analysis == stft::Analysis::Cepstrogram {
+        println!(
+            "Cepstrogram numerical QA OK: {} Hz, CH {}, N {}, hop {}, {} retained windows; independent full-complex forward / direct inverse at 3 times, max coefficient error {max_error:.3e}",
+            config.sample_rate,
+            config.channel + 1,
+            config.size,
+            config.hop,
+            retained.frames().len()
+        );
+        return;
     }
     println!(
         "Spectrogram numerical QA OK: {} Hz, CH {}, N {}, hop {}, {} retained windows; independent raw-input DFT at 3 times, max amplitude error {max_error:.3e} FS; original f64 Spectrum reads",
@@ -90,7 +105,8 @@ fn check_frame(raw: &History, info: stft::RowInfo, power: &[f64]) -> f64 {
     ];
     bins.sort_unstable();
     bins.dedup();
-    let result = spectrum::Result::from_stft(info, power).expect("retained Spectrum adapter");
+    let result = spectrum::Result::from_stft(info, crate::stft::Values::SpectrumPower(power))
+        .expect("retained Spectrum adapter");
     let mut max_error = 0.0_f64;
     for bin in bins {
         let (mut re, mut im) = (0.0, 0.0);
@@ -122,6 +138,72 @@ fn check_frame(raw: &History, info: stft::RowInfo, power: &[f64]) -> f64 {
     max_error
 }
 
+fn check_cepstral_frame(raw: &History, frame: &history::Frame) -> f64 {
+    use rustfft::{FftPlanner, num_complex::Complex};
+    let c = frame.info.config;
+    let input: Vec<_> = (frame.info.start..frame.info.end)
+        .map(|n| raw.get(n).expect("raw cepstral window")[c.channel])
+        .collect();
+    let mean = if c.remove_dc {
+        input.iter().sum::<f64>() / c.size as f64
+    } else {
+        0.0
+    };
+    let mut gain = 0.0;
+    let mut bins: Vec<_> = input
+        .iter()
+        .enumerate()
+        .map(|(i, &x)| {
+            let phase = std::f64::consts::TAU * i as f64 / c.size as f64;
+            let w = match c.window {
+                spectrum::Window::Rectangular => 1.0,
+                spectrum::Window::Hann => (1.0 - phase.cos()) / 2.0,
+                spectrum::Window::BlackmanHarris => {
+                    0.35875 - 0.48829 * phase.cos() + 0.14128 * (2.0 * phase).cos()
+                        - 0.01168 * (3.0 * phase).cos()
+                }
+            };
+            gain += w;
+            Complex::new((x - mean) * w, 0.0)
+        })
+        .collect();
+    FftPlanner::new()
+        .plan_fft_forward(c.size)
+        .process(&mut bins);
+    let mut log: Vec<_> = bins.iter().map(|x| (x.norm() / gain).ln()).collect();
+    let maximum = log.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    if maximum == f64::NEG_INFINITY {
+        assert_eq!(
+            frame.info.cepstrum.unwrap().status,
+            crate::cepstrum::Status::NoSignal
+        );
+        return 0.0;
+    }
+    assert!(maximum.is_finite());
+    let floor = maximum + c.log_floor_db as f64 * 10.0_f64.ln() / 20.0;
+    let floored = log[..=c.size / 2].iter().filter(|&&l| l < floor).count();
+    assert_eq!(frame.info.cepstrum.unwrap().floored_bins, floored);
+    for l in &mut log {
+        *l = l.max(floor);
+    }
+    let mut error = 0.0_f64;
+    for q in [0, 1, 2, 13, 31, c.size / 4, c.size / 2] {
+        let expected = log
+            .iter()
+            .enumerate()
+            .map(|(k, &l)| l * (std::f64::consts::TAU * k as f64 * q as f64 / c.size as f64).cos())
+            .sum::<f64>()
+            / c.size as f64;
+        let difference = (frame.coefficient(q).unwrap() - expected).abs();
+        assert!(
+            difference < 2e-7,
+            "independent full-complex forward / direct inverse cepstrum mismatch q={q}: {difference}"
+        );
+        error = error.max(difference);
+    }
+    error
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -132,8 +214,11 @@ mod tests {
             raw.push([0.0, 0.5 * (TAU * 32.0 * n as f64 / 1024.0).sin() + 0.2]);
         }
         let info = stft::RowInfo {
+            cepstrum: None,
             generation: 1,
             config: stft::Config {
+                analysis: crate::stft::Analysis::Spectrogram,
+                log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
                 sample_rate: 48000,
                 channels: 2,
                 channel: 1,

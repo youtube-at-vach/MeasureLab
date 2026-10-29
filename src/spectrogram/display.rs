@@ -392,6 +392,82 @@ impl FrequencyRange {
     }
 }
 
+/// Requested and effective horizontal coordinates in seconds, independent of Hz.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct QuefrencyRange {
+    pub min_seconds: f64,
+    pub max_seconds: f64,
+}
+
+impl Default for QuefrencyRange {
+    fn default() -> Self {
+        Self {
+            min_seconds: 0.0,
+            max_seconds: 0.020,
+        }
+    }
+}
+impl QuefrencyRange {
+    pub fn validate(self) -> Result<(), &'static str> {
+        if self.min_seconds.is_finite()
+            && self.max_seconds.is_finite()
+            && self.min_seconds >= 0.0
+            && self.min_seconds < self.max_seconds
+        {
+            Ok(())
+        } else {
+            Err("Quefrency range requires finite 0 <= Min < Max")
+        }
+    }
+    pub fn effective(self, sample_rate: u32, size: usize) -> Self {
+        let step = 1.0 / sample_rate as f64;
+        let upper = size as f64 * 0.5 * step;
+        let max_seconds = ((self.max_seconds / step).ceil() * step).clamp(2.0 * step, upper);
+        let min_seconds =
+            ((self.min_seconds / step).floor() * step).clamp(step, max_seconds - step);
+        Self {
+            min_seconds,
+            max_seconds,
+        }
+    }
+    pub fn at(self, fraction: f64) -> f64 {
+        self.min_seconds + (self.max_seconds - self.min_seconds) * fraction
+    }
+    pub fn fraction(self, seconds: f64) -> f64 {
+        (seconds - self.min_seconds) / (self.max_seconds - self.min_seconds)
+    }
+    fn shifted(self, min: f64, max: f64, sample_rate: u32, size: usize) -> Self {
+        let step = 1.0 / sample_rate as f64;
+        let upper = size as f64 * 0.5 * step;
+        let width = (max - min).clamp(step, upper - step);
+        let min_seconds = min.clamp(step, upper - width);
+        Self {
+            min_seconds,
+            max_seconds: min_seconds + width,
+        }
+    }
+    pub fn pan(self, fraction: f64, sample_rate: u32, size: usize) -> Self {
+        let shift = (self.max_seconds - self.min_seconds) * fraction;
+        self.shifted(
+            self.min_seconds + shift,
+            self.max_seconds + shift,
+            sample_rate,
+            size,
+        )
+    }
+    pub fn zoom(self, fraction: f64, factor: f64, sample_rate: u32, size: usize) -> Self {
+        let pivot = self.at(fraction.clamp(0.0, 1.0));
+        let factor = factor.clamp(0.1, 10.0);
+        self.shifted(
+            pivot + (self.min_seconds - pivot) * factor,
+            pivot + (self.max_seconds - pivot) * factor,
+            sample_rate,
+            size,
+        )
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -405,6 +481,8 @@ mod tests {
         history.reset(
             7,
             Config {
+                analysis: crate::stft::Analysis::Spectrogram,
+                log_floor_db: crate::cepstrum::DEFAULT_LOG_FLOOR_DB,
                 sample_rate: 48000,
                 channels: 16,
                 channel: 15,
@@ -422,6 +500,7 @@ mod tests {
         let config = history.config().unwrap();
         assert!(history.push(
             RowInfo {
+                cepstrum: None,
                 generation: 7,
                 config,
                 start: end - config.size as u64,

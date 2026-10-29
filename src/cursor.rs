@@ -44,6 +44,7 @@ impl TimeCursor {
 #[derive(Default)]
 pub struct Cursors {
     epoch: u64,
+    pub quefrency_seconds: [Option<f64>; 2],
     pub times: [Option<TimeCursor>; 2],
     pub spectrum_frequencies_hz: [Option<f64>; 2],
     /// Most recently placed frequency, shared with the Spectrogram.
@@ -59,6 +60,7 @@ impl Cursors {
 
     pub fn clear(&mut self) {
         self.times = [None; 2];
+        self.quefrency_seconds = [None; 2];
         self.spectrum_frequencies_hz = [None; 2];
         self.frequency_hz = None;
         self.xy_points = [None; 2];

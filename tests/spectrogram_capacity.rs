@@ -85,6 +85,9 @@ fn wait(mut ready: impl FnMut() -> bool) {
 
 fn parameters(config: Config, anchor: Option<u64>) -> Parameters {
     Parameters {
+        quefrency: (config.analysis == measurelab::stft::Analysis::Cepstrogram)
+            .then(Default::default),
+        manual_range: Default::default(),
         anchor,
         seconds: 60.0,
         view: View::full(config.sample_rate, FrequencyScale::Linear, -120.0),
@@ -178,15 +181,54 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
     let collector = Collector::new(worker.take_results());
     let mut view = ViewWorker::default();
     let mut image = None;
-    for (index, (size, sample_rate, channels, precision, overlap)) in [
-        (32768, 768000, 16, Precision::F64, Overlap::Half),
-        (1024, 48000, 1, Precision::F32, Overlap::ThreeQuarters),
-        (32768, 768000, 16, Precision::F32, Overlap::SevenEighths),
+    for (index, (size, sample_rate, channels, precision, overlap, analysis)) in [
+        (
+            32768,
+            768000,
+            16,
+            Precision::F64,
+            Overlap::Half,
+            measurelab::stft::Analysis::Spectrogram,
+        ),
+        (
+            32768,
+            768000,
+            16,
+            Precision::F64,
+            Overlap::SevenEighths,
+            measurelab::stft::Analysis::Cepstrogram,
+        ),
+        (
+            1024,
+            48000,
+            1,
+            Precision::F32,
+            Overlap::ThreeQuarters,
+            measurelab::stft::Analysis::Spectrogram,
+        ),
+        (
+            1024,
+            48000,
+            1,
+            Precision::F64,
+            Overlap::SevenEighths,
+            measurelab::stft::Analysis::Cepstrogram,
+        ),
+        (
+            32768,
+            768000,
+            16,
+            Precision::F32,
+            Overlap::SevenEighths,
+            measurelab::stft::Analysis::Spectrogram,
+        ),
     ]
     .into_iter()
     .enumerate()
     {
         let config = Config {
+            analysis,
+            log_floor_db: measurelab::cepstrum::DEFAULT_LOG_FLOOR_DB,
             sample_rate,
             size,
             channels,
@@ -204,7 +246,15 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
         let rows = HISTORY_BYTES / ((size / 2 + 1) * 8) + 128;
         feed(&mut worker, &collector, config, &mut sequence, rows, |_| {});
         let snapshot = collector.snapshot();
-        assert_eq!(snapshot.capacity_limited, sample_rate == 768000);
+        let row_bytes = std::mem::size_of::<measurelab::spectrogram::history::Frame>()
+            + 2 * std::mem::size_of::<usize>()
+            + (size / 2 + 1) * 8
+            + std::mem::size_of::<Arc<measurelab::spectrogram::history::Frame>>();
+        let full_span_bytes = (120 * sample_rate as usize).div_ceil(config.hop) * row_bytes;
+        assert_eq!(
+            snapshot.capacity_limited,
+            full_span_bytes > HISTORY_BYTES - 2 * 1024 * 1024
+        );
         assert!(snapshot.retired > 0);
         assert!(snapshot.storage_bytes() <= HISTORY_BYTES);
         assert!(snapshot.retained_seconds() <= 120.0);
@@ -224,10 +274,21 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
         let held = snapshot;
         let selected = held.latest().unwrap().clone();
         let spectra = std::array::from_fn::<_, 2, _>(|_| {
-            measurelab::spectrum::Result::from_stft(selected.info, selected.power()).unwrap()
+            measurelab::spectrum::Result::from_stft(selected.info, selected.values())
         });
-        let selected_power = selected.power()[size / 256];
-        assert!((selected_power - 0.25).abs() < 1e-6);
+        let value = |frame: &measurelab::spectrogram::history::Frame| {
+            if analysis == measurelab::stft::Analysis::Cepstrogram {
+                frame.coefficient(size / 256).unwrap()
+            } else {
+                frame.power()[size / 256]
+            }
+        };
+        let selected_power = value(&selected);
+        if analysis == measurelab::stft::Analysis::Spectrogram {
+            assert!((selected_power - 0.25).abs() < 1e-6);
+        } else {
+            assert!(spectra.iter().all(Option::is_none));
+        }
         let fixed_end = selected.info.end;
         // Leave an image unread while producing a second full ring and flood
         // the single-slot request mailbox with pans, zooms, Auto and widths.
@@ -250,12 +311,11 @@ fn full_pipeline_hold_wrap_reconfigure_and_release_fit_cpu_budget() {
                 assert!(latest.storage_bytes() <= HISTORY_BYTES);
             },
         );
-        assert_eq!(
-            selected.power()[size / 256].to_bits(),
-            selected_power.to_bits()
-        );
+        assert_eq!(value(&selected).to_bits(), selected_power.to_bits());
         assert_eq!(held.latest().unwrap().info.end, fixed_end);
-        assert_eq!(spectra[0].power(), selected.power());
+        if let Some(spectrum) = &spectra[0] {
+            assert_eq!(spectrum.power(), selected.power());
+        }
         assert!(collector.snapshot().at_sample(fixed_end - 1).is_none());
         assert!(collector.snapshot().retired > rows as u64);
         assert!(collector.peak_frame_bytes() <= FRAME_BYTES);
