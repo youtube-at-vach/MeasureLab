@@ -48,19 +48,26 @@
 
 ## コア解析の負荷耐性QA
 
-[analysis_resilience.rs](../../tests/analysis_resilience.rs)は、通常版と共通の入力転送・取得・Spectrum・STFT履歴収集・Lock-in・同期比較をGUIなしで同時実行する。既知f64信号、2／16ch、表示受信停止、有限Stop、同じワーカーの再開後の数値と世代分離を確認する。短い回帰は通常の`cargo test`に含まれる。
+[analysis_resilience.rs](../../tests/analysis_resilience.rs)は、通常版と共通の入力転送・取得・Spectrum・STFT履歴収集・Lock-in・同期比較をGUIなしで同時実行する。STFTはSpectrogram／Cepstrogramを選択できる。既知f64信号、2／16ch、表示受信停止、有限Stop、同じワーカーの再開後の数値と世代分離を確認する。短い回帰は両モード・窓長の両端・全Overlap・高Fsを含み、通常の`cargo test`に入る。STFTの最終履歴は、周期Hannを掛けた既知正弦波の3ビンと対数スペクトルの解析的逆変換で照合する。Cepstrogramでは0番目・負の係数・下限適用数も検査し、再開前の保持結果を変更しない。
 
 実時間試験はrelease・qaなしで明示的に実行する。CPU競合スレッドを継続実行し、取得・各解析の欠落、窓数、STFTキューの最大滞留、取得の進捗、Stop時間を`ANALYSIS_RESILIENCE`のJSONへ出力する。`processing_seconds`は計測区間の経過時間の合計で、スレッドCPU時間ではない。`core_max_lag_frames`は生成数と取得処理数の最大差で、受付欠落を含み、キュー滞留だけを表さない。欠落時のSpectrum・Lock-in・同期比較の更新窓数はリセット後の値とする。
 
 ```sh
-MEASURELAB_STRESS_SECONDS=120 MEASURELAB_STRESS_RATE=192000 \
-    MEASURELAB_STRESS_CHANNELS=16 MEASURELAB_STRESS_COMPETITORS=3 \
-    MEASURELAB_STRESS_REQUIRE_CONTINUOUS=true \
-    ./scripts/cargo.sh test --release --locked --no-default-features \
-    --test analysis_resilience -- --ignored --nocapture
+./scripts/cargo.sh test --release --locked --no-default-features --test analysis_resilience --no-run
+for analysis in spectrogram cepstrogram; do
+    MEASURELAB_STRESS_ANALYSIS="$analysis" \
+        MEASURELAB_STRESS_SECONDS=120 MEASURELAB_STRESS_RATE=192000 \
+        MEASURELAB_STRESS_CHANNELS=16 MEASURELAB_STRESS_COMPETITORS=3 \
+        MEASURELAB_STRESS_STFT_SIZE=1024 MEASURELAB_STRESS_OVERLAP=87.5 \
+        MEASURELAB_STRESS_REQUIRE_CONTINUOUS=true \
+        ./scripts/cargo.sh test --release --locked --no-default-features \
+        --test analysis_resilience -- --ignored --nocapture
+done
 ```
 
-無欠落を受け入れる条件では`MEASURELAB_STRESS_REQUIRE_CONTINUOUS=true`を指定する。限界探索では省略し、欠落を含む結果を記録する。その場合も解析エラー・進捗停止・有限終端の不一致・再開後の数値不一致は失敗とする。入力レート・CH数・競合数・時間を変更し、同一条件の改善前後を複数回比較する。試験中はビルド・他の音声試験を並行実行せず、OS／CPU・Rust版・ソース差分・実行ファイル識別とログを`dist/`へ保存する。
+無欠落を受け入れる条件では`MEASURELAB_STRESS_REQUIRE_CONTINUOUS=true`を指定する。限界探索では省略し、欠落を含む結果を記録する。その場合も解析エラー・進捗停止・有限終端の不一致・再開後の数値不一致は失敗とする。再開後の照合を終えてから無欠落の合否を判定し、欠落があったケースでも復帰を検査する。`ANALYSIS_RECOVERY`は新しい入力・解析世代、窓数、数値照合と旧保持結果の不変性の確認を出力する。
+
+`MEASURELAB_STRESS_ANALYSIS`は既定`spectrogram`、`MEASURELAB_STRESS_STFT_SIZE`は既定1024点で既存の全窓長、`MEASURELAB_STRESS_OVERLAP`は`50`／`75`／`87.5`（既定）を指定できる。レポートには実適用した解析条件・アルゴリズム、追加対数／逆FFTと履歴収集の処理時間、履歴・フレームの容量、最後の整数窓区間も保持する。Spectrogramの追加対数／逆FFT時間は0であることを検査する。入力レート・CH数・競合数・時間・窓長・Overlapを変更し、同一バイナリと条件で両モードを直列比較する。試験中はビルド・他の音声試験を並行実行せず、OS／CPU・Rust版・ソース差分・実行ファイル識別とログを`dist/`へ保存する。
 
 実入力と同じワーカーへの模擬フレーム供給であり、OSの音声callback・物理入出力・GPU／表示応答の受け入れは別に行う。STFTは短時間の取得滞留に備える固定容量と、小さいFFTの高い行頻度に対応する小容量行の追加プールを持つ。大きいFFTは従来のフルサイズ行だけを使い、持続的な処理能力超過では欠落を明示する。CPU側の既定メモリ上限は容量テストで確認する。容量・負荷条件・許容差の正本はコードとする。
 
@@ -238,7 +245,7 @@ C4の実時間比較は`qa_spectrogram.py --analysis both`で、同一バイナ�
 
 `--stft-size`は繰り返し指定でき、省略時は従来の窓長を使う。`--sample-rate`も省略時は各経路の既定値を維持する。ログ・RSS・ソース／バイナリ識別は`manifest.json`へ保存し、`comparisons`は同じ表示操作条件の両モードについてUI／表示応答のp95・最大、フレーム容量・ピークRSS、表示準備時間、1行当たりのSTFT・追加対数／逆FFT・収集CPU時間の差を示す。片側の失敗を比較成功とせず、既存manifestのある出力先は再利用しない。`--audit`は各ケースのモードで数値照合のマーカーを検査し、予定条件が揃わない実行表や受け入れ時間未満の試運転を合格にしない。判定の回帰は`scripts/test_qa_spectrogram.py`に置く。
 
-120秒以上のSoftware Loopbackなどの連続比較は、別の出力先で`--basic`を外して行う。CPU競合・高Fs・入力16ch・仮想／物理経路の限界条件は基本実行表と分け、未実施条件を検証済みにしない。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えて単独実行する入口も維持する。
+120秒以上のSoftware Loopbackなどの連続比較は、別の出力先で`--basic`を外して行う。CPU競合・高Fs・入力16chは[コア解析の負荷耐性QA](#コア解析の負荷耐性qa)でも両モードを比較する。コア試験にはGUI・GPU・音声callbackを含まないため、表示応答と仮想／物理経路の長時間評価は別に行う。限界条件は基本実行表と分け、未実施条件を検証済みにしない。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えて単独実行する入口も維持する。
 
 ### Spectrogramの追加手動確認
 
