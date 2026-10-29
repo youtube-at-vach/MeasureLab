@@ -43,7 +43,11 @@ def routes(devices, basic=False):
             },
             ["--demo"],
         )
-    yield "software", {"SOFTWARE_LOOPBACK": "1", "SAMPLE_RATE": "192000", "STFT_OVERLAP": "87.5"}, []
+    yield (
+        "software",
+        {"SOFTWARE_LOOPBACK": "1", "SAMPLE_RATE": "192000", "CHANNEL": "2", "STFT_OVERLAP": "87.5"},
+        [],
+    )
     yield "generator", {"GENERATOR_INTERNAL": "1", "SAMPLE_RATE": "192000", "STFT_OVERLAP": "87.5"}, []
     for device in devices:
         physical = device == "ZOOM UAC-232"
@@ -115,6 +119,7 @@ def metrics(log):
         "gpu_uploaded_bytes": number(r"Spectrogram GPU payload: .*?, (\d+) uploaded bytes"),
         "peak_frame_mib": number(r"MiB retained / ([\d.]+) MiB peak frames"),
         "screenshots": len(re.findall(r"UI screenshot: dist/ui-smoke\.png", log)),
+        "surface_skips": number(r"QA skipped surface acquisitions after warm-up: (\d+)"),
         "input_dropped": number(r"UI profile: .*?input dropped (\d+)"),
         "stft_rows": number(r"STFT profile: .*?rows (\d+)"),
         "stft_input_dropped": number(r"STFT profile: .*?input dropped (\d+)"),
@@ -126,6 +131,7 @@ def metrics(log):
         "preparation_mean_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms mean"),
         "preparation_max_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms max"),
         "sample_rate": number(r"STFT profile: (\d+) Hz"),
+        "input_channels": number(r"STFT profile: .*?Hz, (\d+) ch"),
         "stft_size": number(r"STFT profile: .*?, (\d+)-point"),
         "channel": number(r"STFT profile: .*?CH (\d+)"),
         "hop": number(r"(?:Spectrogram|Cepstrogram) numerical QA OK: .*?hop (\d+)"),
@@ -146,25 +152,36 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis
                 numerical_marker,
                 "UI stall OK:",
                 "UI QA profile complete: finite result audited and input stopped",
-                "QA skipped surface acquisitions after warm-up: 0",
+                "QA skipped surface acquisitions after warm-up:",
             )
         )
     ):
         return False, {}
     values = metrics(log)
+    numerical = re.search(rf"{numerical_marker} (\d+) Hz, CH (\d+), N (\d+), hop (\d+),", log)
+    if numerical is None:
+        return False, values
     passed = (
         values["ui_p95_ms"] <= UI_P95_MS
         and values["ui_max_interval_ms"] <= UI_MAX_INTERVAL_MS
-        and values["ui_seconds"] <= seconds + LIMITS["maximum_duration_overrun_seconds"]
+        and seconds <= values["ui_seconds"] <= seconds + LIMITS["maximum_duration_overrun_seconds"]
         and values["ui_frames"] >= seconds * LIMITS["minimum_ui_frames_per_second"]
         and values["response_p95_ms"] <= RESPONSE_P95_MS
         and values["responses"] >= max(1, values["display_steps"] // 20)
         and values["stft_rows"] >= 3
         and all(
             values[key] == 0
-            for key in ("input_dropped", "stft_input_dropped", "stft_result_dropped", "storage_dropped")
+            for key in (
+                "input_dropped",
+                "stft_input_dropped",
+                "stft_result_dropped",
+                "storage_dropped",
+                "surface_skips",
+            )
         )
         and (analysis == "cepstrogram" or values["cepstrum_cpu_ms"] == 0)
+        and tuple(map(int, numerical.groups()))
+        == tuple(values[key] for key in ("sample_rate", "channel", "stft_size", "hop"))
     )
     if mode == "stress":
         passed = (
@@ -183,7 +200,19 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis
             and values["stft_size"] == size
             and values["channel"] == int(environment.get("CHANNEL", "1"))
             and values["hop"] == hop
+            and values["input_channels"] == (16 if environment.get("DEVICE") == "BlackHole 16ch" else 2)
         )
+        if "KNOWN_OUTPUT" in environment or "PHYSICAL_OUTPUT" in environment:
+            audits = re.findall(r"QA output audit: attachment notifications (\d+), measured notifications (\d+)", log)
+            passed = passed and (
+                len(audits) >= 2
+                and all(int(measured) == 0 for _, measured in audits)
+                and "QA output nominal rate restored to " in log
+                and ("KNOWN_OUTPUT" not in environment or "Known Spectrum OK:" in log)
+            )
+            if audits:
+                values["output_attachment_notifications"] = int(audits[-1][0])
+                values["output_measured_notifications"] = int(audits[-1][1])
     return passed, values
 
 
@@ -242,6 +271,30 @@ def peak_rss(path):
     return max(samples) / 1024.0
 
 
+def manifest_passed(document):
+    """Accept complete planned cells, never a short run or duplicate substitute."""
+    cases = document["cases"]
+    minimum_seconds = 20 if document.get("acceptance_scope") == "basic" else 120
+    if not (
+        cases
+        and len(cases) == document["planned_cases"]
+        and len({case["name"] for case in cases}) == len(cases)
+        and document["duration_seconds"] >= minimum_seconds
+        and document["acceptance_duration"]
+        and all(case["passed"] for case in cases)
+    ):
+        return False
+    # Older manifests did not persist the planned cells. Preserve their audit
+    # entry point, while checking exact coverage for newly recorded runs.
+    if "plan" in document:
+        fields = ("name", "analysis", "mode", "comparison_key", "baseline_key", "environment", "app_args")
+        return len(document["plan"]) == len(cases) and all(
+            all(case.get(key) == planned.get(key) for key in fields)
+            for case, planned in zip(cases, document["plan"], strict=True)
+        )
+    return True
+
+
 def audit_manifest(path):
     original = json.loads(path.read_text())
     document = original | {
@@ -279,13 +332,9 @@ def audit_manifest(path):
         print(f"{'PASS' if passed else 'FAIL'} {case['name']}: {values}")
     target = path.with_stem(path.stem + "-audited")
     document["comparisons"] = comparisons(document["cases"])
+    document["passed"] = manifest_passed(document)
     target.write_text(json.dumps(document, indent=2) + "\n")
-    return (
-        bool(document["cases"])
-        and len(document["cases"]) == document["planned_cases"]
-        and document["acceptance_duration"]
-        and all(case["passed"] for case in document["cases"])
-    )
+    return document["passed"]
 
 
 def run_profile(command, env, timeout):
@@ -347,6 +396,8 @@ def main():
         args.seconds = 20 if args.basic else 120
     if args.seconds < 20:
         parser.error("At least 20 seconds is required for complete stress cycles")
+    if args.seconds > 3600:
+        parser.error("At most 3600 seconds is supported by the application profile")
     binary = args.binary.resolve()
     if not binary.is_file():
         parser.error("Build a release QA binary first")
@@ -365,6 +416,10 @@ def main():
         parser.error("Output already contains a manifest; choose a new directory to preserve previous results")
     output.mkdir(parents=True, exist_ok=True)
     planned = list(profile_cases(selected, args.analysis, tuple(dict.fromkeys(args.stft_size or ())), args.sample_rate))
+    for case in planned:
+        case["environment"] |= {"SECONDS": str(args.seconds)}
+        if args.screenshots:
+            case["environment"]["SCREENSHOT"] = "repeat"
     patch = subprocess.check_output([git, "diff", "--binary", "HEAD"], cwd=ROOT)  # noqa: S603 - resolved Git, fixed arguments
     untracked = subprocess.check_output(  # noqa: S603 - resolved Git, fixed arguments
         [git, "ls-files", "--others", "--exclude-standard", "-z"], cwd=ROOT
@@ -399,6 +454,8 @@ def main():
         "physical_connection": args.physical_connection,
         "limits": LIMITS,
         "planned_cases": len(planned),
+        "plan": planned,
+        "passed": False,
         "comparisons": [],
         "scope": "Automated input/FFT/history/display comparison; manual normal-build operations and native monitor DPI remain separate.",
         "cases": [],
@@ -408,9 +465,7 @@ def main():
     baselines = {}
     for case in planned:
         name, mode = case["name"], case["mode"]
-        case_options = case["environment"] | {"SECONDS": str(args.seconds)}
-        if args.screenshots:
-            case_options["SCREENSHOT"] = "repeat"
+        case_options = case["environment"]
         case_env = env | {PREFIX + key: value for key, value in case_options.items()}
         started = time.monotonic()
         command = [str(ROOT / "scripts/profile-stage2.sh"), name, *case["app_args"]]
@@ -453,11 +508,8 @@ def main():
             if oracle.is_file():
                 shutil.copy2(oracle, output / f"{name}-{oracle.name}")
         manifest["cases"].append(
-            {
-                "name": name,
-                "analysis": case["analysis"],
-                "comparison_key": case["comparison_key"],
-                "environment": case_options,
+            case
+            | {
                 "command": command,
                 "seconds": round(time.monotonic() - started, 3),
                 "returncode": returncode,
@@ -467,12 +519,15 @@ def main():
             }
         )
         manifest["comparisons"] = comparisons(manifest["cases"])
+        manifest["passed"] = manifest_passed(manifest)
         (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
         print(f"{'PASS' if passed else 'FAIL'} {name}: {values}", flush=True)
         if not passed:
             failures.append(name)
     if failures:
         raise SystemExit(f"Spectrogram QA failed: {', '.join(failures)}; see {output}")
+    if not manifest_passed(manifest):
+        raise SystemExit(f"Spectrogram QA did not complete the acceptance duration or planned cases; see {output}")
     print(f"Spectrogram comparison complete: {output}")
 
 

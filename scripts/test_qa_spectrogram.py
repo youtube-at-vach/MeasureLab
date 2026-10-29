@@ -7,7 +7,16 @@ from pathlib import Path
 import tempfile
 import unittest
 
-from qa_spectrogram import STFT_SIZES, assess, audit_manifest, comparisons, peak_rss, profile_cases, routes
+from qa_spectrogram import (
+    STFT_SIZES,
+    assess,
+    audit_manifest,
+    comparisons,
+    manifest_passed,
+    peak_rss,
+    profile_cases,
+    routes,
+)
 
 LOG = """UI profile: 6000 frames over 122.0 s, frame interval p95 27.0 ms, max 1020.0 ms, input dropped 0
 Spectrogram stress QA OK: 1200 display steps
@@ -43,12 +52,20 @@ class ProfileAcceptance(unittest.TestCase):
     def test_long_gui_suspension_fails_even_with_good_p95(self):
         self.assertFalse(self.accepted(LOG.replace("max 1020.0", "max 180000.0")))
 
+    def test_occluded_run_retains_diagnostics_without_accepting_rendering(self):
+        log = LOG.replace("acquisitions after warm-up: 0", "acquisitions after warm-up: 78000")
+        passed, values = assess(log, "stress", 120, 0, {"ui_p95_ms": 27})
+        self.assertFalse(passed)
+        self.assertEqual(values["surface_skips"], 78000)
+        self.assertEqual(values["input_dropped"], 0)
+
     def test_incomplete_display_and_operation_coverage_fails(self):
         self.assertFalse(self.accepted(LOG.replace("6000 frames", "38 frames")))
         self.assertFalse(self.accepted(LOG.replace("1200 display steps", "34 display steps")))
 
     def test_late_finite_stop_is_not_a_120_second_interactive_run(self):
         self.assertFalse(self.accepted(LOG.replace("over 122.0", "over 192.0")))
+        self.assertFalse(self.accepted(LOG.replace("over 122.0", "over 22.0")))
 
     def test_failed_baseline_cannot_accept_the_stress_comparison(self):
         self.assertFalse(assess(LOG, "stress", 120, 0, None)[0])
@@ -71,6 +88,40 @@ class ProfileAcceptance(unittest.TestCase):
             with self.subTest(key=key):
                 self.assertFalse(assess(*args, environment={key: value})[0])
 
+    def test_numerical_oracle_must_describe_the_profiled_conditions(self):
+        for old, new in (("48000 Hz", "192000 Hz"), ("CH 1", "CH 2"), ("N 8192", "N 1024")):
+            oracle = "Spectrogram numerical QA OK: 48000 Hz, CH 1, N 8192, hop 2048,"
+            log = LOG.replace(oracle, oracle.replace(old, new))
+            with self.subTest(condition=old):
+                self.assertFalse(self.accepted(log))
+
+    def test_software_loopback_uses_its_actual_second_channel(self):
+        selected = [route for route in routes(()) if route[0] == "software"]
+        case = next(profile_cases(selected, "spectrogram", [8192], 48000))
+        self.assertEqual(case["environment"]["CHANNEL"], "2")
+        args = ("stress", 120, 0, {"ui_p95_ms": 27})
+        self.assertFalse(assess(LOG, *args, environment=case["environment"])[0])
+        log = LOG.replace("CH 1", "CH 2").replace("hop 2048", "hop 1024")
+        self.assertTrue(assess(log, *args, environment=case["environment"])[0])
+
+    def test_virtual_route_requires_channel_count_and_final_output_audit(self):
+        environment = {"DEVICE": "BlackHole 16ch", "CHANNEL": "16", "KNOWN_OUTPUT": "1"}
+        log = LOG.replace("CH 1", "CH 16").replace("2 ch", "16 ch")
+        args = ("stress", 120, 0, {"ui_p95_ms": 27})
+        self.assertFalse(assess(log, *args, environment=environment)[0])
+        audit = "QA output audit: attachment notifications 1, measured notifications 0\n"
+        restored = "QA output nominal rate restored to 48000 Hz\n"
+        complete = log + "Known Spectrum OK:\n" + audit + restored + audit
+        self.assertTrue(assess(complete, *args, environment=environment)[0])
+        for invalid in (
+            complete.replace("16 ch", "2 ch"),
+            complete.replace("measured notifications 0", "measured notifications 1", 1),
+            complete.removesuffix(audit),
+            complete.replace(restored, ""),
+            complete.replace("Known Spectrum OK:", ""),
+        ):
+            self.assertFalse(assess(invalid, *args, environment=environment)[0])
+
     def test_repeated_capture_requires_completed_writes_and_still_rejects_gui_stalls(self):
         captures = LOG + "UI screenshot: dist/ui-smoke.png (worker 80.0 ms)\n" * 100
         args = ("stress", 120, 0, {"ui_p95_ms": 27.0}, True)
@@ -81,6 +132,26 @@ class ProfileAcceptance(unittest.TestCase):
 
 
 class ComparisonMatrix(unittest.TestCase):
+    def test_acceptance_requires_duration_and_each_planned_cell(self):
+        plan = list(profile_cases([("demo-75", {}, [])], "both"))
+        cases = [case | {"passed": True} for case in plan]
+        document = {
+            "duration_seconds": 120,
+            "acceptance_duration": True,
+            "planned_cases": 4,
+            "plan": plan,
+            "cases": cases,
+        }
+        self.assertTrue(manifest_passed(document))
+        self.assertFalse(manifest_passed(document | {"duration_seconds": 20}))
+        self.assertTrue(manifest_passed(document | {"duration_seconds": 20, "acceptance_scope": "basic"}))
+        self.assertFalse(manifest_passed(document | {"cases": cases[:2]}))
+        self.assertFalse(manifest_passed(document | {"cases": [cases[0]] * 4}))
+        self.assertFalse(manifest_passed(document | {"cases": list(reversed(cases))}))
+        replaced = cases.copy()
+        replaced[0] = cases[0] | {"environment": {"SAMPLE_RATE": "96000"}}
+        self.assertFalse(manifest_passed(document | {"cases": replaced}))
+
     def test_all_sizes_overlaps_and_modes_have_isolated_live_baselines(self):
         selected = [route for route in routes(()) if route[0].startswith("demo-")]
         cases = list(profile_cases(selected, "both", STFT_SIZES, 48000))

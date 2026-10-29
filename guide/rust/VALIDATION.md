@@ -243,9 +243,18 @@ C4の実時間比較は`qa_spectrogram.py --analysis both`で、同一バイナ�
     --output dist/cepstrogram-c4-matrix
 ```
 
-`--stft-size`は繰り返し指定でき、省略時は従来の窓長を使う。`--sample-rate`も省略時は各経路の既定値を維持する。ログ・RSS・ソース／バイナリ識別は`manifest.json`へ保存し、`comparisons`は同じ表示操作条件の両モードについてUI／表示応答のp95・最大、フレーム容量・ピークRSS、表示準備時間、1行当たりのSTFT・追加対数／逆FFT・収集CPU時間の差を示す。片側の失敗を比較成功とせず、既存manifestのある出力先は再利用しない。`--audit`は各ケースのモードで数値照合のマーカーを検査し、予定条件が揃わない実行表や受け入れ時間未満の試運転を合格にしない。判定の回帰は`scripts/test_qa_spectrogram.py`に置く。
+`--stft-size`は繰り返し指定でき、省略時は従来の窓長を使う。`--sample-rate`も省略時は各経路の既定値を維持する。ログ・RSS・ソース／バイナリ識別は`manifest.json`へ保存し、`comparisons`は同じ表示操作条件の両モードについてUI／表示応答のp95・最大、フレーム容量・ピークRSS、表示準備時間、1行当たりのSTFT・追加対数／逆FFT・収集CPU時間の差を示す。片側の失敗を比較成功とせず、既存manifestのある出力先は再利用しない。実行と`--audit`は同じ受け入れ判定を使い、通常120秒／`--basic`20秒未満、予定セルの不足・重複・条件違いを合格にしない。新しいmanifestは予定セルと全体の`passed`も保持する。旧manifestには予定セルがないため、保存済み件数・重複・各ケースの条件を検査する。判定の回帰は`scripts/test_qa_spectrogram.py`に置く。
 
-120秒以上のSoftware Loopbackなどの連続比較は、別の出力先で`--basic`を外して行う。CPU競合・高Fs・入力16chは[コア解析の負荷耐性QA](#コア解析の負荷耐性qa)でも両モードを比較する。コア試験にはGUI・GPU・音声callbackを含まないため、表示応答と仮想／物理経路の長時間評価は別に行う。限界条件は基本実行表と分け、未実施条件を検証済みにしない。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えて単独実行する入口も維持する。
+120秒以上の連続比較は、別の出力先で`--basic`を外して行う。例えばSoftware LoopbackのCH 2とBlackHole 16chのCH 16を、192 kHz・1,024点・87.5% Overlapで比較する入口は次とする。解析条件は数値照合とプロファイルの両方で照合し、入力CH数も確認する。仮想／物理出力では、有限結果の照合に加えて出力の測定区間通知0・解放後の監査・元の公称Fsへの復元を要求する。接続待機区間の通知数は別に記録する。
+
+```sh
+./.venv/bin/python scripts/qa_spectrogram.py --analysis both --seconds 120 \
+    --route software --route blackhole-16ch --device "BlackHole 16ch" \
+    --stft-size 1024 --output dist/cepstrogram-c4-routes
+./.venv/bin/python scripts/qa_spectrogram.py --audit dist/cepstrogram-c4-routes/manifest.json
+```
+
+CPU競合・高Fs・入力16chは[コア解析の負荷耐性QA](#コア解析の負荷耐性qa)でも両モードを比較する。コア試験にはGUI・GPU・音声callbackを含まないため、表示応答と仮想／物理経路の長時間評価は別に行う。限界条件は基本実行表と分け、未実施条件を検証済みにしない。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えて単独実行する入口も維持する。
 
 ### Spectrogramの追加手動確認
 
@@ -396,6 +405,7 @@ Intel Iris Pro Graphics 6200（BDW GT3）／Vulkanで同じ配布実行ファイ
 
 | 対象・基点／条件 | 確認した範囲と制限 |
 | --- | --- |
+| Cepstrogram C4の入力経路QA、`ff490409`／既存release QAをソース・バイナリ一致で再利用、Software Loopback・192 kHz・CH 2・1,024点・87.5% Overlap | SpectrogramのLive／反復操作を各120秒実行し、取得・STFT入力／結果／履歴保存の欠落0、独立DFT・UI停止中の継続・有限Stopを確認。ただしMacのロックでMetalが`Occluded`となり、両条件とも表示不合格。残りのCepstrogram／BlackHole 16chを含む実行表は中断し、受け入れ未完了。ログ・再監査・中断理由は`dist/cepstrogram-c4-routes/`、バイナリ一致の記録は`dist/cepstrogram-route-common/binary-reuse.json`。ロック解除後の全予定条件の再実行と物理経路の長時間比較を次回に残す |
 | Spectrogram S6、`514ff17a`＋S6差分／release QA・内蔵5K・native scale 2.0 | MVP基本受け入れを完了。内部デモ3 Overlap、Software Loopback・通常Generator内部入力・BlackHole 16chの192 kHz、BlackHole 2ch・UAC-232の48 kHzでLive／反復操作・UI停止中の継続・独立数値照合を確認。UAC-232はL-L TRS、R-Rは−20 dBアッテネーター付きXLR。証拠は`dist/spectrogram-s6-basic/manifest.json`の内部／BlackHoleと`dist/spectrogram-s6-basic-uac48/manifest.json`。単独／Pair・通常幅／狭幅の画像とイベントは`dist/spectrogram-s6-ui/`・`dist/spectrogram-s6-ui-measurement/`。通常ビルドの包括的手動操作・実モニター間DPIは未確認 |
 | 同S6で観測した制限／高負荷・物理192 kHz | 撮影操作が重なった長時間評価でGUI更新の長い停止、STFT転送とGenerator内部入力の欠落を観測。失敗・中断は`dist/spectrogram-s6/manifest-audited.json`等に保存。UAC-232の192 kHz起動時のSTFT転送欠落は`dist/spectrogram-s6-basic/`・`dist/spectrogram-s6-basic-uac-recheck/`で不合格。下記の修正後も物理192 kHzは再確認が必要で、48 kHzや仮想入力の成功で置き換えない |
 | Spectrogram負荷修正、`f06d68946`＋修正差分／release QA・Metal Intel Iris Pro 6200・native scale 2.0 | BlackHole 16ch・192 kHzの入力専用起動でSTFT転送欠落を再現し、修正後は同条件で欠落なし。Software Loopback・通常Generator内部入力・BlackHole 16chの192 kHzで反復撮影を含むLive／表示操作、Generatorでは各120秒、独立DFT・UI停止中の継続・有限Stopを確認。I/O統合操作・単独／Pair表示・Generator操作・GPU読み戻しも確認。証拠は`dist/spectrogram-stall-fix/`の`baseline.json`、`repeat-basic/manifest.json`、`generator-120/manifest.json`、`gui/manifest.json`。UAC-232は接続できず未実施。過去の長いGUI停止・Generator入力欠落は今回再現せず、他負荷・物理系を含む解決判定は残る |
