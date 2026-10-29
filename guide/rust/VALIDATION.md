@@ -222,7 +222,23 @@ MEASURELAB_UI_SMOKE_CEPSTROGRAM=1 ./scripts/cargo.sh run --locked --profile dev-
 
 GUI QAは実モード選択・停止中の予約・f64適用とf32設定保持・カーソルの独立・Spectrum連動拒否・通常幅／狭幅を自動操作で確認する。GPU読み戻しは実STFT→履歴→表示準備→描画を通し、符号が逆で等しい絶対値の係数、0番目の除外、NoSignalの中立色、NonFiniteの縞を確認する。内部・有限入力の成功をSoftware Loopback・仮想I/O・物理系の精度や長時間Liveの受け入れへ代用しない。
 
-`benches/spectrogram.rs`は同じFs・16ch中の選択1ch・窓長・Overlapで両モードを比較し、追加の対数／逆FFT時間、収集・表示準備の平均／p95／最大、欠落と容量を出力する。`cargo test`は各条件1回だけ、反復性能評価は理由を示して`cargo bench --locked --no-default-features --bench spectrogram`を実行する。実時間のLive／Hold・UI停止・CPU競合・高Fs・仮想／物理経路の連続評価は別の受け入れとして残す。`scripts/qa_spectrogram.py --analysis cepstrogram --basic --route demo-75 --output dist/cepstrogram-basic`で、モード・バイナリ・ソースハッシュ・RSSと合否を保存できる。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えると同じ表示・入力条件でCepstrogramを選べる。`live`／`stress`の反復操作は現在のモードの軸・色を操作し、内部入力の有限Stop後に独立した全複素FFT／直接逆DFTで係数を照合する。条件比較ではビルドを再利用し、別のビルドやベンチを並行実行しない。
+`benches/spectrogram.rs`は同じFs・16ch中の選択1ch・窓長・Overlapで両モードを比較し、追加の対数／逆FFT時間、収集・表示準備の平均／p95／最大、欠落と容量を出力する。`cargo test`は各条件1回だけ、反復性能評価は理由を示して`cargo bench --locked --no-default-features --bench spectrogram`を実行する。
+
+C4の実時間比較は`qa_spectrogram.py --analysis both`で、同一バイナリ・入力・Fs・窓長・OverlapのSpectrogram／Cepstrogramを直列に動かす。各モードのLiveを独立した基準にし、stressでHold・時間選択・パン・ズーム・色・時間幅・Liveを反復する。両方で1秒のUI停止中の解析継続と有限Stop後の独立数値照合を行う。Spectrogramは追加の対数／逆FFT時間が0であることも判定する。
+
+代表48 kHz・選択1ch・全窓長／Overlapの基本実行表は次の72条件とする。最適化済みバイナリは実時間の欠落と表示応答を測るために必要で、同じRustソース・機能構成の検証済みバイナリがあれば再利用する。測定中はビルド・ベンチ・別の音声QAを並行実行しない。
+
+```sh
+./.venv/bin/python scripts/qa_spectrogram.py --analysis both --basic --sample-rate 48000 \
+    --route demo-50 --route demo-75 --route demo-87_5 \
+    --stft-size 1024 --stft-size 2048 --stft-size 4096 \
+    --stft-size 8192 --stft-size 16384 --stft-size 32768 \
+    --output dist/cepstrogram-c4-matrix
+```
+
+`--stft-size`は繰り返し指定でき、省略時は従来の窓長を使う。`--sample-rate`も省略時は各経路の既定値を維持する。ログ・RSS・ソース／バイナリ識別は`manifest.json`へ保存し、`comparisons`は同じ表示操作条件の両モードについてUI／表示応答のp95・最大、フレーム容量・ピークRSS、表示準備時間、1行当たりのSTFT・追加対数／逆FFT・収集CPU時間の差を示す。片側の失敗を比較成功とせず、既存manifestのある出力先は再利用しない。`--audit`は各ケースのモードで数値照合のマーカーを検査し、予定条件が揃わない実行表や受け入れ時間未満の試運転を合格にしない。判定の回帰は`scripts/test_qa_spectrogram.py`に置く。
+
+120秒以上のSoftware Loopbackなどの連続比較は、別の出力先で`--basic`を外して行う。CPU競合・高Fs・入力16ch・仮想／物理経路の限界条件は基本実行表と分け、未実施条件を検証済みにしない。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えて単独実行する入口も維持する。
 
 ### Spectrogramの追加手動確認
 

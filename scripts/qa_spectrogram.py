@@ -1,4 +1,4 @@
-"""Compare Spectrogram Live/stress on explicitly selected input routes, serially."""
+"""Compare Spectrogram/Cepstrogram Live/stress on selected routes, serially."""
 
 import argparse
 import hashlib
@@ -14,6 +14,7 @@ import time
 
 ROOT = Path(__file__).resolve().parent.parent
 PREFIX = "MEASURELAB_PROFILE_"
+STFT_SIZES = (1024, 2048, 4096, 8192, 16384, 32768)
 
 # Interaction gates, fixed before measuring. The intentional one-second UI
 # suspension is included in max interval, but never treated as an ordinary lag.
@@ -61,6 +62,40 @@ def routes(devices, basic=False):
         )
 
 
+def profile_cases(selected, analysis, sizes=(), sample_rate=None):
+    """Keep each Live baseline adjacent to stress, with identical mode conditions."""
+    analyses = ("spectrogram", "cepstrogram") if analysis == "both" else (analysis,)
+    for route, options, app_args in selected:
+        for size in sizes or (None,):
+            pair = route + (f"-n{size}" if size is not None else "")
+            for kind in analyses:
+                name = f"{pair}-{kind}" if analysis == "both" else pair
+                for mode in ("live", "stress"):
+                    case_options = {
+                        "SPECTROGRAM": mode,
+                        "SPECTRUM_MODE": "continuous",
+                        "UI_STALL": "1",
+                        "KEEP_AWAKE": "1",
+                        "FOREGROUND": "1",
+                    } | options
+                    if sample_rate is not None:
+                        case_options["SAMPLE_RATE"] = str(sample_rate)
+                    case_options["FFT_SIZE"] = "32768" if case_options.get("SAMPLE_RATE") == "192000" else "8192"
+                    if size is not None:
+                        case_options["STFT_SIZE"] = str(size)
+                    if kind == "cepstrogram":
+                        case_options["CEPSTROGRAM"] = "1"
+                    yield {
+                        "name": f"{name}-{mode}",
+                        "analysis": kind,
+                        "mode": mode,
+                        "comparison_key": f"{pair}-{mode}",
+                        "baseline_key": name,
+                        "environment": case_options,
+                        "app_args": app_args,
+                    }
+
+
 def metrics(log):
     def number(pattern):
         match = re.search(pattern, log)
@@ -74,15 +109,30 @@ def metrics(log):
         "ui_seconds": number(r"UI profile: .*?over ([\d.]+) s"),
         "ui_max_interval_ms": number(r"UI profile: .*?max ([\d.]+) ms"),
         "response_p95_ms": number(r"Spectrogram response: .*?p95 ([\d.]+) ms"),
+        "response_max_ms": number(r"Spectrogram response: .*?max ([\d.]+) ms"),
         "responses": number(r"Spectrogram response: (\d+) applied"),
         "display_steps": number(r"Spectrogram (?:live|stress) QA OK: (\d+) display steps"),
         "gpu_uploaded_bytes": number(r"Spectrogram GPU payload: .*?, (\d+) uploaded bytes"),
         "peak_frame_mib": number(r"MiB retained / ([\d.]+) MiB peak frames"),
         "screenshots": len(re.findall(r"UI screenshot: dist/ui-smoke\.png", log)),
+        "input_dropped": number(r"UI profile: .*?input dropped (\d+)"),
+        "stft_rows": number(r"STFT profile: .*?rows (\d+)"),
+        "stft_input_dropped": number(r"STFT profile: .*?input dropped (\d+)"),
+        "stft_result_dropped": number(r"STFT profile: .*?result dropped (\d+)"),
+        "storage_dropped": number(r"STFT history profile: .*?, (\d+) storage dropped"),
+        "stft_cpu_ms": number(r"STFT profile: .*?worker CPU ([\d.]+) ms total"),
+        "cepstrum_cpu_ms": number(r"Cepstrum extra log/inverse CPU: ([\d.]+) ms total"),
+        "collector_cpu_ms": number(r"STFT history profile: .*?collector CPU ([\d.]+) ms total"),
+        "preparation_mean_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms mean"),
+        "preparation_max_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms max"),
+        "sample_rate": number(r"STFT profile: (\d+) Hz"),
+        "stft_size": number(r"STFT profile: .*?, (\d+)-point"),
+        "channel": number(r"STFT profile: .*?CH (\d+)"),
+        "hop": number(r"(?:Spectrogram|Cepstrogram) numerical QA OK: .*?hop (\d+)"),
     }
 
 
-def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis="spectrogram"):
+def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis="spectrogram", environment=None):
     if analysis not in ("spectrogram", "cepstrogram"):
         raise ValueError(f"Unknown analysis: {analysis}")
     numerical_marker = "Cepstrogram numerical QA OK:" if analysis == "cepstrogram" else "Spectrogram numerical QA OK:"
@@ -109,6 +159,12 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis
         and values["ui_frames"] >= seconds * LIMITS["minimum_ui_frames_per_second"]
         and values["response_p95_ms"] <= RESPONSE_P95_MS
         and values["responses"] >= max(1, values["display_steps"] // 20)
+        and values["stft_rows"] >= 3
+        and all(
+            values[key] == 0
+            for key in ("input_dropped", "stft_input_dropped", "stft_result_dropped", "storage_dropped")
+        )
+        and (analysis == "cepstrogram" or values["cepstrum_cpu_ms"] == 0)
     )
     if mode == "stress":
         passed = (
@@ -119,7 +175,70 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis
         )
     if screenshots:
         passed = passed and values["screenshots"] >= seconds // 2
+    if environment is not None:
+        size = int(environment.get("STFT_SIZE", min(int(environment.get("FFT_SIZE", "8192")), 32768)))
+        hop = size // {"50": 2, "75": 4, "87.5": 8}[environment.get("STFT_OVERLAP", "75")]
+        passed = passed and (
+            values["sample_rate"] == int(environment.get("SAMPLE_RATE", "48000"))
+            and values["stft_size"] == size
+            and values["channel"] == int(environment.get("CHANNEL", "1"))
+            and values["hop"] == hop
+        )
     return passed, values
+
+
+def comparisons(cases):
+    """Report paired costs; passing one analysis never accepts the other."""
+    groups = {}
+    for case in cases:
+        if "comparison_key" in case:
+            groups.setdefault(case["comparison_key"], {})[case["analysis"]] = case
+    result = []
+    for name, pair in groups.items():
+        if set(pair) != {"spectrogram", "cepstrogram"}:
+            continue
+        a, b = (pair[kind] for kind in ("spectrogram", "cepstrogram"))
+        delta = {}
+        if a["metrics"] and b["metrics"] and a["metrics"]["stft_rows"] > 0 and b["metrics"]["stft_rows"] > 0:
+            for key in (
+                "ui_p95_ms",
+                "ui_max_interval_ms",
+                "response_p95_ms",
+                "response_max_ms",
+                "peak_frame_mib",
+                "preparation_mean_ms",
+                "preparation_max_ms",
+                "peak_rss_mib",
+            ):
+                if key in a["metrics"] and key in b["metrics"]:
+                    delta[key] = b["metrics"][key] - a["metrics"][key]
+            for key in ("stft_cpu_ms", "cepstrum_cpu_ms", "collector_cpu_ms"):
+                delta[key.removesuffix("_ms") + "_ms_per_row"] = (
+                    b["metrics"][key] / b["metrics"]["stft_rows"] - a["metrics"][key] / a["metrics"]["stft_rows"]
+                )
+        result.append(
+            {
+                "name": name,
+                "spectrogram": a["name"],
+                "cepstrogram": b["name"],
+                "passed": a["passed"] and b["passed"],
+                "cepstrogram_minus_spectrogram": delta,
+            }
+        )
+    return result
+
+
+def peak_rss(path):
+    """The sampler reports KiB; keep missing or corrupt measurements visible."""
+    if not path.is_file():
+        raise ValueError(f"Missing RSS samples: {path}")
+    try:
+        samples = [float(line.split(",")[1]) for line in path.read_text().splitlines()[1:] if line.strip()]
+    except (IndexError, ValueError) as error:
+        raise ValueError(f"Invalid RSS samples: {path}") from error
+    if not samples or any(not (0 < value < float("inf")) for value in samples):
+        raise ValueError(f"Invalid RSS samples: {path}")
+    return max(samples) / 1024.0
 
 
 def audit_manifest(path):
@@ -142,8 +261,12 @@ def audit_manifest(path):
                 case["returncode"],
                 baselines.get(route),
                 original.get("repeated_screenshots", False),
-                analysis=original.get("analysis", "spectrogram"),
+                analysis=case.get("analysis", original.get("analysis", "spectrogram")),
+                environment=case.get("environment"),
             )
+            rss_value = peak_rss(path.parent / f"{case['name']}-rss.csv")
+            if values:
+                values["peak_rss_mib"] = rss_value
             error = None
         except ValueError as exception:
             passed, values, error = False, {}, str(exception)
@@ -154,8 +277,14 @@ def audit_manifest(path):
         )
         print(f"{'PASS' if passed else 'FAIL'} {case['name']}: {values}")
     target = path.with_stem(path.stem + "-audited")
+    document["comparisons"] = comparisons(document["cases"])
     target.write_text(json.dumps(document, indent=2) + "\n")
-    return all(case["passed"] for case in document["cases"])
+    return (
+        bool(document["cases"])
+        and len(document["cases"]) == document["planned_cases"]
+        and document["acceptance_duration"]
+        and all(case["passed"] for case in document["cases"])
+    )
 
 
 def run_profile(command, env, timeout):
@@ -184,7 +313,11 @@ def run_profile(command, env, timeout):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--analysis", choices=["spectrogram", "cepstrogram"], default="spectrogram")
+    parser.add_argument("--analysis", choices=["spectrogram", "cepstrogram", "both"], default="spectrogram")
+    parser.add_argument("--stft-size", type=int, action="append", choices=STFT_SIZES, help="Repeat for a size matrix")
+    parser.add_argument(
+        "--sample-rate", type=int, choices=[44100, 48000, 96000, 192000], help="Override every route's Fs"
+    )
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/spectrogram-s6")
     parser.add_argument(
@@ -227,7 +360,10 @@ def main():
     if args.route and set(args.route) - {route[0] for route in selected}:
         parser.error("Unknown route (devices must also be explicitly selected with --device)")
     output = args.output.resolve()
+    if (output / "manifest.json").exists():
+        parser.error("Output already contains a manifest; choose a new directory to preserve previous results")
     output.mkdir(parents=True, exist_ok=True)
+    planned = list(profile_cases(selected, args.analysis, tuple(dict.fromkeys(args.stft_size or ())), args.sample_rate))
     patch = subprocess.check_output([git, "diff", "--binary", "HEAD"], cwd=ROOT)  # noqa: S603 - resolved Git, fixed arguments
     untracked = subprocess.check_output(  # noqa: S603 - resolved Git, fixed arguments
         [git, "ls-files", "--others", "--exclude-standard", "-z"], cwd=ROOT
@@ -261,75 +397,79 @@ def main():
         "acceptance_duration": args.seconds >= (20 if args.basic else 120),
         "physical_connection": args.physical_connection,
         "limits": LIMITS,
-        "planned_cases": len(selected) * 2,
+        "planned_cases": len(planned),
+        "comparisons": [],
         "scope": "Automated input/FFT/history/display comparison; manual normal-build operations and native monitor DPI remain separate.",
         "cases": [],
     }
     env = {key: value for key, value in os.environ.items() if not key.startswith("MEASURELAB_")}
     failures = []
-    for route, options, app_args in selected:
-        baseline = None
-        for mode in ("live", "stress"):
-            name = f"{route}-{mode}"
-            case_options = {
-                "SECONDS": str(args.seconds),
-                "SPECTROGRAM": mode,
-                "SPECTRUM_MODE": "continuous",
-                "UI_STALL": "1",
-                "KEEP_AWAKE": "1",
-                "FOREGROUND": "1",
-                "FFT_SIZE": "32768" if options.get("SAMPLE_RATE") == "192000" else "8192",
-            } | options
-            if args.analysis == "cepstrogram":
-                case_options["CEPSTROGRAM"] = "1"
-            if args.screenshots:
-                case_options["SCREENSHOT"] = "repeat"
-            case_env = env | {PREFIX + key: value for key, value in case_options.items()}
-            started = time.monotonic()
-            command = [str(ROOT / "scripts/profile-stage2.sh"), name, *app_args]
-            case_env["MEASURELAB_QA_BINARY"] = str(binary)
-            oracles = (
-                [ROOT / f"dist/stage4-macos-qa/physical-gui-oracle{suffix}.json" for suffix in ("", ".failure")]
-                if "PHYSICAL_OUTPUT" in options
-                else []
+    baselines = {}
+    for case in planned:
+        name, mode = case["name"], case["mode"]
+        case_options = case["environment"] | {"SECONDS": str(args.seconds)}
+        if args.screenshots:
+            case_options["SCREENSHOT"] = "repeat"
+        case_env = env | {PREFIX + key: value for key, value in case_options.items()}
+        started = time.monotonic()
+        command = [str(ROOT / "scripts/profile-stage2.sh"), name, *case["app_args"]]
+        case_env["MEASURELAB_QA_BINARY"] = str(binary)
+        oracles = (
+            [ROOT / f"dist/stage4-macos-qa/physical-gui-oracle{suffix}.json" for suffix in ("", ".failure")]
+            if "PHYSICAL_OUTPUT" in case_options
+            else []
+        )
+        for oracle in oracles:
+            oracle.unlink(missing_ok=True)
+        try:
+            result = run_profile(command, case_env, args.seconds + 90)
+            log = result.stdout
+            passed, values = assess(
+                log,
+                mode,
+                args.seconds,
+                result.returncode,
+                baselines.get(case["baseline_key"]),
+                args.screenshots,
+                analysis=case["analysis"],
+                environment=case_options,
             )
-            for oracle in oracles:
-                oracle.unlink(missing_ok=True)
-            try:
-                result = run_profile(command, case_env, args.seconds + 90)
-                log = result.stdout
-                passed, values = assess(
-                    log, mode, args.seconds, result.returncode, baseline, args.screenshots, analysis=args.analysis
-                )
-                if mode == "live":
-                    baseline = values if passed else None
-                returncode = result.returncode
-            except ValueError as error:
-                log += f"\n{error}\n"
-                values, passed, returncode = {}, False, result.returncode
-            (output / f"{name}.log").write_text(log, encoding="utf-8")
             rss = ROOT / f"dist/stage2-qa/{name}-rss.csv"
-            if rss.is_file():
-                shutil.copy2(rss, output / rss.name)
-            for oracle in oracles:
-                if oracle.is_file():
-                    shutil.copy2(oracle, output / f"{name}-{oracle.name}")
-            manifest["cases"].append(
-                {
-                    "name": name,
-                    "environment": case_options,
-                    "command": command,
-                    "seconds": round(time.monotonic() - started, 3),
-                    "returncode": returncode,
-                    "passed": passed,
-                    "metrics": values,
-                    "log": f"{name}.log",
-                }
-            )
-            (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
-            print(f"{'PASS' if passed else 'FAIL'} {name}: {values}", flush=True)
-            if not passed:
-                failures.append(name)
+            rss_value = peak_rss(rss)
+            if values:
+                values["peak_rss_mib"] = rss_value
+            if mode == "live":
+                baselines[case["baseline_key"]] = values if passed else None
+            returncode = result.returncode
+        except ValueError as error:
+            log += f"\n{error}\n"
+            values, passed, returncode = {}, False, result.returncode
+        (output / f"{name}.log").write_text(log, encoding="utf-8")
+        rss = ROOT / f"dist/stage2-qa/{name}-rss.csv"
+        if rss.is_file():
+            shutil.copy2(rss, output / rss.name)
+        for oracle in oracles:
+            if oracle.is_file():
+                shutil.copy2(oracle, output / f"{name}-{oracle.name}")
+        manifest["cases"].append(
+            {
+                "name": name,
+                "analysis": case["analysis"],
+                "comparison_key": case["comparison_key"],
+                "environment": case_options,
+                "command": command,
+                "seconds": round(time.monotonic() - started, 3),
+                "returncode": returncode,
+                "passed": passed,
+                "metrics": values,
+                "log": f"{name}.log",
+            }
+        )
+        manifest["comparisons"] = comparisons(manifest["cases"])
+        (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+        print(f"{'PASS' if passed else 'FAIL'} {name}: {values}", flush=True)
+        if not passed:
+            failures.append(name)
     if failures:
         raise SystemExit(f"Spectrogram QA failed: {', '.join(failures)}; see {output}")
     print(f"Spectrogram comparison complete: {output}")
