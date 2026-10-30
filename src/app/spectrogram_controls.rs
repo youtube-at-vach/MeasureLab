@@ -17,13 +17,28 @@ pub(super) struct PendingClick {
 }
 
 #[cfg(feature = "qa")]
-#[derive(Default)]
 pub(super) struct HistoryProfile {
     conditions: Option<(u64, u64, stft::Config)>,
     tick: u64,
     operations: u64,
     selected: Option<(u64, u64)>,
     response: crate::qa::Distribution,
+}
+
+#[cfg(feature = "qa")]
+impl Default for HistoryProfile {
+    fn default() -> Self {
+        Self {
+            conditions: None,
+            tick: 0,
+            operations: 0,
+            selected: None,
+            // Cover 2 seconds at 0.1 ms resolution without growing the fixed
+            // histogram. A 200 ms overflow bucket cannot resolve the 500 ms
+            // response gate in the presence of the deliberate 1 second stall.
+            response: crate::qa::Distribution::with_bucket_ms(0.1),
+        }
+    }
 }
 
 impl ScopeApp {
