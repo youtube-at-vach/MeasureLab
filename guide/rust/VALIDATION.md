@@ -177,6 +177,32 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`eb8c5d27`上のI6b差分の画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/instrument-menus-ja-final/manifest.json`を参照する。対象メニューと説明の文字欠けは見つからず、入力停止・解析OFF・出力停止、Undoの無効表示を読み取れた。`shell.arrange_view`の未翻訳による英語フォールバックは全8翻訳にあり、[PLAN](PLAN.md)の独立差分翻訳へ残す。狭幅検索の編集継続と選択後の終了は修正後の実ウィジェットQAで確認した。
 
+### Scopeの状態と専用ツールチップの視覚レビュー（I6c）
+
+```sh
+./scripts/cargo.sh build --profile dev-fast --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale ja --case scope-review \
+    --output dist/i18n-visual-review/scope-ja-final
+```
+
+`scope-review`は通常幅と狭幅（表示倍率125%）で次の範囲を撮影する。個別ケースは`--case scope-review-error-compact`などで指定する。専用の詳細欄は狭幅のDetails画面を含み、下部の操作へ実ホイールイベントでスクロールする。
+
+| 対象 | 確認する表示 |
+| --- | --- |
+| 取得・保持 | 取得中、入力だけ停止して出力継続、入出力とも停止。Singleのトリガー待ち・取得完了・途中停止で完全波形なし |
+| エラー・無効値 | 捕捉済み／未捕捉での模擬入力エラー、校正演算のオーバーフローによる無効値、2ch入力のCH3／CH4範囲外。保持波形・有効数値と未取得・無効理由を区別 |
+| 測定面の専用説明 | Autoset、A／B配置対象、消去範囲、配置済み状態、振幅軸、時間軸、時間倍率、Tマーカーの取得済み／設定位置とプロット上端／右端、サンプルとカーソルの生FS・校正値、CHカードの有効／範囲外／無効値、波形表示ON／OFF |
+| 詳細欄 | Auto／Normal／Single、Single開始、スライダーの共通編集方法、Tマーカー、マーカー表示モード、独立／共通縦軸のFit、FS／Fs／divの説明。トリガーのエッジ・ソース・表示モードの選択肢も開いて確認 |
+
+通常Generatorの内部接続を明示的に構成し、実入力開始／停止ウィジェットと測定ワーカーで各状態へ進める。Singleは実トリガーで完了させ、未捕捉状態は到達しないレベルで待機する。エラーは`fail_input`への模擬通知、無効値は明示した試験用の校正係数で作り、物理ストリームは開かない。出力停止は独立した実ボタンで行う。
+
+撮影操作で測定条件・表示構成・カーソル・入力世代・出力コマンドが変わらないことを検査する。保持中は入力条件・Scopeのf64生サンプル・統計・欠落を比較し、取得中は入力フレームとFFT窓、出力継続中は出力サンプルの進行を確認する。ツールチップは実際のTooltip層の文字全体がclip・画面内へ収まることを検査し、ログへ文字領域とpixel倍率も残す。画像・manifestと`--assertions-only`の扱いはI6aと同じ。
+
+画像の訳語・欠け・操作名の判定は自動assertionと分ける。他言語の画像、通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れへ広げない。既存の未翻訳・古い訳は英語フォールバックを維持し、[PLAN](PLAN.md)のI6eへ言語・グループ別に渡す。
+
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`de5a5a6d`上のI6c差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/scope-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持波形・数値、Single・未捕捉・無効値・模擬エラーと次の操作を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからず、訳文・翻訳元ハッシュは変更していない。未翻訳キーの英語表示はPLANのI6eへ残す。
+
 ### G4に残る手動受け入れ
 
 操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。

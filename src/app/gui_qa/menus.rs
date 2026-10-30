@@ -3,12 +3,14 @@ use super::*;
 use std::collections::VecDeque;
 
 mod instruments;
+mod scope;
 
 enum Step {
     Click(String),
     TypeText(String),
     HoverText(String),
     HoverControl(egui::Id),
+    ScrollTo(String),
 }
 
 struct Case {
@@ -22,6 +24,11 @@ struct Case {
 pub(in crate::app) struct Review {
     target: String,
     header: bool,
+    scope: bool,
+    running: bool,
+    output_running: bool,
+    held: Option<export::Document>,
+    progress: (u64, u64, u64),
     case: Case,
     step: usize,
     events: VecDeque<Vec<egui::Event>>,
@@ -36,18 +43,27 @@ pub(in crate::app) struct Review {
     locale: i18n::Locale,
     generation: u64,
     command: (u64, u64),
+    cursor_times: [Option<cursor::TimeCursor>; 2],
+    active_cursor: usize,
 }
 
 impl Review {
     pub(in crate::app) fn from_env(app: &mut ScopeApp) -> Result<Option<Self>, String> {
-        let (target, header) = match (
-            std::env::var("MEASURELAB_UI_SMOKE_HEADER_MENU"),
-            std::env::var("MEASURELAB_UI_SMOKE_INSTRUMENT_REVIEW"),
-        ) {
-            (Ok(_), Ok(_)) => return Err("Choose only one menu review".into()),
-            (Ok(target), _) => (target, true),
-            (_, Ok(target)) => (target, false),
-            _ => return Ok(None),
+        let header_target = std::env::var("MEASURELAB_UI_SMOKE_HEADER_MENU").ok();
+        let instrument_target = std::env::var("MEASURELAB_UI_SMOKE_INSTRUMENT_REVIEW").ok();
+        let scope_target = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_REVIEW").ok();
+        if [&header_target, &instrument_target, &scope_target]
+            .iter()
+            .filter(|target| target.is_some())
+            .count()
+            > 1
+        {
+            return Err("Choose only one visual review".into());
+        }
+        let header = header_target.is_some();
+        let scope = scope_target.is_some();
+        let Some(target) = header_target.or(instrument_target).or(scope_target) else {
+            return Ok(None);
         };
         let case = if header {
             let path = match target.as_str() {
@@ -70,12 +86,23 @@ impl Review {
                 navigation: false,
                 search: None,
             }
+        } else if scope {
+            scope::case(app, &target)?
         } else {
             instruments::case(app, &target)?
         };
         Ok(Some(Self {
             target,
             header,
+            scope,
+            running: app.running(),
+            output_running: !app.generator.stopped(),
+            held: if scope && !app.running() && !app.scope_range.is_empty() {
+                Some(app.capture_scope_results()?)
+            } else {
+                None
+            },
+            progress: scope::progress(app),
             case,
             step: 0,
             events: VecDeque::new(),
@@ -90,6 +117,8 @@ impl Review {
             locale: i18n::locale(),
             generation: app.input_generation,
             command: app.generator.command_marker(),
+            cursor_times: app.cursors.times,
+            active_cursor: app.active_cursor,
         }))
     }
 
@@ -131,9 +160,9 @@ impl Review {
             self.step,
             self.case.steps.len()
         );
-        // These cases only inspect stopped input. Opening menus must not issue
-        // transport, settings, file-dialog or navigation actions.
-        assert!(!app.running() && app.generator.stopped());
+        // Opening/hovering must not issue transport or measurement commands.
+        assert_eq!(app.running(), self.running);
+        assert_eq!(!app.generator.stopped(), self.output_running);
         assert!(!app.workspace_pending && app.settings_task.is_none());
         assert_eq!(app.generator.settings, self.generator);
         assert_eq!(app.generator.target, self.generator_target);
@@ -141,6 +170,8 @@ impl Review {
         assert_eq!(i18n::locale(), self.locale);
         assert_eq!(app.input_generation, self.generation);
         assert_eq!(app.generator.command_marker(), self.command);
+        assert_eq!(app.cursors.times, self.cursor_times);
+        assert_eq!(app.active_cursor, self.active_cursor);
         let config = app.core_config();
         if let Some(before) = &self.conditions {
             assert_eq!(config.scope, before.scope);
@@ -182,7 +213,7 @@ impl Review {
                         .insert(0, Step::Click(i18n::text("shell.menu").into()));
                     self.case.popup = true;
                 }
-                if !self.header {
+                if !self.header && !self.scope {
                     instruments::compact(&mut self.case, &self.target, app);
                 }
             } else if !painted_text(ctx, i18n::text("common.file")).is_empty() {
@@ -200,6 +231,30 @@ impl Review {
             return;
         }
         if let Some(step) = self.case.steps.get(self.step) {
+            if let Step::ScrollTo(label) = step {
+                if text_visible(ctx, label) {
+                    self.step += 1;
+                } else {
+                    // Scroll the actual inspector, including the narrow Details page.
+                    let pos = pos2(
+                        ctx.content_rect().right() - 80.0,
+                        ctx.content_rect().center().y,
+                    );
+                    self.pointer = Some(pos);
+                    self.events.push_back(vec![
+                        egui::Event::PointerMoved(pos),
+                        egui::Event::MouseWheel {
+                            unit: egui::MouseWheelUnit::Point,
+                            phase: egui::TouchPhase::Move,
+                            source: egui::MouseWheelSource::Unknown,
+                            delta: vec2(0.0, -160.0),
+                            modifiers: egui::Modifiers::NONE,
+                        },
+                    ]);
+                    self.events.extend((0..8).map(|_| vec![]));
+                }
+                return;
+            }
             if let Step::TypeText(text) = step {
                 self.events.push_back(vec![egui::Event::Text(text.clone())]);
                 self.pointer = None;
@@ -227,7 +282,7 @@ impl Review {
                     assert!(ctx.content_rect().contains_rect(rect));
                     rect.center()
                 }
-                Step::TypeText(_) => unreachable!(),
+                Step::TypeText(_) | Step::ScrollTo(_) => unreachable!(),
             };
             self.pointer = Some(pos);
             self.events.push_back(vec![egui::Event::PointerMoved(pos)]);
@@ -281,9 +336,37 @@ impl Review {
             if self.case.popup {
                 assert!(egui::Popup::is_any_open(ctx));
             }
+            if self.scope
+                && !scope::verify(
+                    app,
+                    ctx,
+                    &self.target,
+                    self.running,
+                    self.output_running,
+                    self.progress,
+                    self.held.as_ref(),
+                )
+            {
+                return;
+            }
             if !self.ready {
+                if let Some(label) = self.case.labels.last() {
+                    for (_, bounds, _) in painted_text_on(ctx, label, Some(egui::Order::Tooltip)) {
+                        println!(
+                            "Review tooltip bounds: {}",
+                            serde_json::json!([
+                                bounds.left(),
+                                bounds.top(),
+                                bounds.right(),
+                                bounds.bottom(),
+                                ctx.pixels_per_point()
+                            ])
+                        );
+                    }
+                }
                 println!(
-                    "Instrument review UI OK: {}; locale={}; text within clip and viewport; measurement, workspace and output unchanged",
+                    "{} review UI OK: {}; locale={}; text within clip and viewport; measurement, workspace and output unchanged",
+                    if self.scope { "Scope" } else { "Instrument" },
                     self.target,
                     i18n::locale().id()
                 );

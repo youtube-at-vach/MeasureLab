@@ -280,6 +280,13 @@ impl ScopeApp {
                             ui.scope_id().with(("scope_select", index)),
                             egui::Sense::click(),
                         );
+                        #[cfg(feature = "qa")]
+                        ui.ctx().data_mut(|data| {
+                            data.insert_temp(
+                                egui::Id::unique(("qa_scope_channel", index)),
+                                response.rect,
+                            );
+                        });
                         if response.clicked() {
                             self.scope_selected = index;
                             self.dirty = true;
@@ -337,6 +344,10 @@ impl ScopeApp {
                             rect.right_top() + vec2(-23.0, 3.0),
                             vec2(20.0, 20.0),
                         );
+                        #[cfg(feature = "qa")]
+                        ui.ctx().data_mut(|data| {
+                            data.insert_temp(egui::Id::unique(("qa_scope_toggle", index)), toggle);
+                        });
                         let toggle_help = i18n::format(
                             "oscilloscope.show_ch_waveform_keeps_selection_and_measurements",
                             &[("index", &(index + 1).to_string())],
@@ -612,15 +623,20 @@ impl ScopeApp {
                     egui::FontId::monospace(11.0),
                     TRIGGER,
                 );
-                ui.interact(
-                    egui::Rect::from_min_max(
-                        pos2(tx - 12.0, rect.top()),
-                        pos2(tx + 12.0, rect.top() + 32.0),
-                    ),
-                    ui.scope_id().with("trigger_time_marker"),
-                    egui::Sense::hover(),
-                )
-                .on_hover_text(self.scope_trigger_marker_help());
+                let _response = ui
+                    .interact(
+                        egui::Rect::from_min_max(
+                            pos2(tx - 12.0, rect.top()),
+                            pos2(tx + 12.0, rect.top() + 32.0),
+                        ),
+                        ui.scope_id().with("trigger_time_marker"),
+                        egui::Sense::hover(),
+                    )
+                    .on_hover_text(self.scope_trigger_marker_help());
+                #[cfg(feature = "qa")]
+                ui.ctx().data_mut(|data| {
+                    data.insert_temp(egui::Id::unique("qa_scope_trigger_top"), _response.rect);
+                });
             }
             let ty = level_y(trigger);
             if rect.y_range().contains(ty) {
@@ -641,15 +657,20 @@ impl ScopeApp {
                     egui::FontId::monospace(10.0),
                     TRIGGER,
                 );
-                ui.interact(
-                    egui::Rect::from_min_max(
-                        pos2(rect.right(), ty - 8.0),
-                        pos2(rect.right() + 26.0, ty + 8.0),
-                    ),
-                    ui.scope_id().with("trigger_level_marker"),
-                    egui::Sense::hover(),
-                )
-                .on_hover_text(self.scope_trigger_marker_help());
+                let _response = ui
+                    .interact(
+                        egui::Rect::from_min_max(
+                            pos2(rect.right(), ty - 8.0),
+                            pos2(rect.right() + 26.0, ty + 8.0),
+                        ),
+                        ui.scope_id().with("trigger_level_marker"),
+                        egui::Sense::hover(),
+                    )
+                    .on_hover_text(self.scope_trigger_marker_help());
+                #[cfg(feature = "qa")]
+                ui.ctx().data_mut(|data| {
+                    data.insert_temp(egui::Id::unique("qa_scope_trigger_level"), _response.rect);
+                });
             }
         }
     }
