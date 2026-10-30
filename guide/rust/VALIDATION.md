@@ -233,6 +233,8 @@ GUI QAは実モード選択・停止中の予約・f64適用とf32設定保持�
 
 C4の実時間比較は`qa_spectrogram.py --analysis both`で、同一バイナリ・入力・Fs・窓長・OverlapのSpectrogram／Cepstrogramを直列に動かす。各モードのLiveを独立した基準にし、stressでHold・時間選択・パン・ズーム・色・時間幅・Liveを反復する。両方で1秒のUI停止中の解析継続と有限Stop後の独立数値照合を行う。Spectrogramは追加の対数／逆FFT時間が0であることも判定する。
 
+要求からUI適用までの応答時間は、約2秒までを0.1 ms刻みの有界ヒストグラムで集計する。意図的な1秒のUI停止も最大値と分布へ残し、通常の200 ms超の応答と区別してp95を求める。他のUI時間集計の分解能や、応答時間の合否基準は変更しない。
+
 代表48 kHz・選択1ch・全窓長／Overlapの基本実行表は次の72条件とする。最適化済みバイナリは実時間の欠落と表示応答を測るために必要で、同じRustソース・機能構成の検証済みバイナリがあれば再利用する。測定中はビルド・ベンチ・別の音声QAを並行実行しない。
 
 ```sh
@@ -250,8 +252,13 @@ C4の実時間比較は`qa_spectrogram.py --analysis both`で、同一バイナ�
 ```sh
 ./.venv/bin/python scripts/qa_spectrogram.py --analysis both --seconds 120 \
     --route software --route blackhole-16ch --device "BlackHole 16ch" \
-    --stft-size 1024 --output dist/cepstrogram-c4-routes
-./.venv/bin/python scripts/qa_spectrogram.py --audit dist/cepstrogram-c4-routes/manifest.json
+    --stft-size 1024 --output dist/cepstrogram-c4-response-routes
+./.venv/bin/python scripts/qa_spectrogram.py --audit dist/cepstrogram-c4-response-routes/manifest.json
+./.venv/bin/python scripts/qa_spectrogram.py --analysis both --seconds 120 \
+    --route zoom-uac-232 --device "ZOOM UAC-232" --sample-rate 48000 --stft-size 1024 \
+    --physical-connection "L-L TRS / R-R XLR with -20 dB attenuator" \
+    --output dist/cepstrogram-c4-response-uac48
+./.venv/bin/python scripts/qa_spectrogram.py --audit dist/cepstrogram-c4-response-uac48/manifest.json
 ```
 
 CPU競合・高Fs・入力16chは[コア解析の負荷耐性QA](#コア解析の負荷耐性qa)でも両モードを比較する。コア試験にはGUI・GPU・音声callbackを含まないため、表示応答と仮想／物理経路の長時間評価は別に行う。限界条件は基本実行表と分け、未実施条件を検証済みにしない。既存のSpectrogram profileへ`MEASURELAB_PROFILE_CEPSTROGRAM=1`を加えて単独実行する入口も維持する。
@@ -405,7 +412,7 @@ Intel Iris Pro Graphics 6200（BDW GT3）／Vulkanで同じ配布実行ファイ
 
 | 対象・基点／条件 | 確認した範囲と制限 |
 | --- | --- |
-| Cepstrogram C4の入力経路QA、`ff490409`／既存release QAをソース・バイナリ一致で再利用、Software Loopback・192 kHz・CH 2・1,024点・87.5% Overlap | SpectrogramのLive／反復操作を各120秒実行し、取得・STFT入力／結果／履歴保存の欠落0、独立DFT・UI停止中の継続・有限Stopを確認。ただしMacのロックでMetalが`Occluded`となり、両条件とも表示不合格。残りのCepstrogram／BlackHole 16chを含む実行表は中断し、受け入れ未完了。ログ・再監査・中断理由は`dist/cepstrogram-c4-routes/`、バイナリ一致の記録は`dist/cepstrogram-route-common/binary-reuse.json`。ロック解除後の全予定条件の再実行と物理経路の長時間比較を次回に残す |
+| Cepstrogram C4、`278c160c`＋QA応答集計差分／release・desktop + qa・Metal、Software Loopback CH 2／BlackHole 16ch CH 16の192 kHz、UAC-232 CH 1の48 kHz、1,024点・87.5% Overlap | 両モードのLive／反復操作を各120秒実行し、全代表経路の連続比較を完了。独立数値照合、UI停止中の継続、取得・STFT入力／結果／履歴保存の欠落0、ウォームアップ後の画面取得省略0、有限Stopを確認。UI間隔p95は最大28.95 ms、要求からUI適用までの応答p95は最大249.0 ms。UAC-232はL-L TRS／R-R XLR（−20 dB）で、接続待機区間の出力通知は0〜1件、測定区間は0件、解放後監査も通過。証拠と再監査は`dist/cepstrogram-c4-response-routes/`・`dist/cepstrogram-c4-response-uac48/`、ソース／バイナリ識別と集計は`dist/cepstrogram-display-common/`。撮影を反復する負荷、他Fs・機器、qaなし配布物、GPU scanoutはこの結果の対象外 |
 | Spectrogram S6、`514ff17a`＋S6差分／release QA・内蔵5K・native scale 2.0 | MVP基本受け入れを完了。内部デモ3 Overlap、Software Loopback・通常Generator内部入力・BlackHole 16chの192 kHz、BlackHole 2ch・UAC-232の48 kHzでLive／反復操作・UI停止中の継続・独立数値照合を確認。UAC-232はL-L TRS、R-Rは−20 dBアッテネーター付きXLR。証拠は`dist/spectrogram-s6-basic/manifest.json`の内部／BlackHoleと`dist/spectrogram-s6-basic-uac48/manifest.json`。単独／Pair・通常幅／狭幅の画像とイベントは`dist/spectrogram-s6-ui/`・`dist/spectrogram-s6-ui-measurement/`。通常ビルドの包括的手動操作・実モニター間DPIは未確認 |
 | 同S6で観測した制限／高負荷・物理192 kHz | 撮影操作が重なった長時間評価でGUI更新の長い停止、STFT転送とGenerator内部入力の欠落を観測。失敗・中断は`dist/spectrogram-s6/manifest-audited.json`等に保存。UAC-232の192 kHz起動時のSTFT転送欠落は`dist/spectrogram-s6-basic/`・`dist/spectrogram-s6-basic-uac-recheck/`で不合格。下記の修正後も物理192 kHzは再確認が必要で、48 kHzや仮想入力の成功で置き換えない |
 | Spectrogram負荷修正、`f06d68946`＋修正差分／release QA・Metal Intel Iris Pro 6200・native scale 2.0 | BlackHole 16ch・192 kHzの入力専用起動でSTFT転送欠落を再現し、修正後は同条件で欠落なし。Software Loopback・通常Generator内部入力・BlackHole 16chの192 kHzで反復撮影を含むLive／表示操作、Generatorでは各120秒、独立DFT・UI停止中の継続・有限Stopを確認。I/O統合操作・単独／Pair表示・Generator操作・GPU読み戻しも確認。証拠は`dist/spectrogram-stall-fix/`の`baseline.json`、`repeat-basic/manifest.json`、`generator-120/manifest.json`、`gui/manifest.json`。UAC-232は接続できず未実施。過去の長いGUI停止・Generator入力欠落は今回再現せず、他負荷・物理系を含む解決判定は残る |

@@ -161,26 +161,32 @@ const BUCKETS: usize = 20_001;
 
 pub(crate) struct Distribution {
     bins: Vec<u64>,
+    bucket_ms: f64,
     pub(crate) count: u64,
     pub(crate) max: f64,
 }
 
 impl Default for Distribution {
     fn default() -> Self {
-        Self {
-            bins: vec![0; BUCKETS],
-            count: 0,
-            max: 0.0,
-        }
+        Self::with_bucket_ms(BUCKET_MS)
     }
 }
 
 impl Distribution {
+    pub(crate) fn with_bucket_ms(bucket_ms: f64) -> Self {
+        assert!(bucket_ms.is_finite() && bucket_ms > 0.0);
+        Self {
+            bins: vec![0; BUCKETS],
+            bucket_ms,
+            count: 0,
+            max: 0.0,
+        }
+    }
     pub(crate) fn record(&mut self, milliseconds: f64) {
         if !milliseconds.is_finite() || milliseconds < 0.0 {
             return;
         }
-        let bucket = (milliseconds / BUCKET_MS).ceil() as usize;
+        let bucket = (milliseconds / self.bucket_ms).ceil() as usize;
         self.bins[bucket.min(BUCKETS - 1)] += 1;
         self.count += 1;
         self.max = self.max.max(milliseconds);
@@ -199,7 +205,7 @@ impl Distribution {
                 return Some(if index == BUCKETS - 1 {
                     self.max
                 } else {
-                    index as f64 * BUCKET_MS
+                    index as f64 * self.bucket_ms
                 });
             }
         }
@@ -679,6 +685,24 @@ pub fn multichannel_smoke_test() -> Result<(), Box<dyn std::error::Error>> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn response_histogram_separates_regular_latency_from_the_intentional_ui_stall() {
+        let mut response = super::Distribution::with_bucket_ms(0.1);
+        let capacity = response.bins.capacity();
+        for _ in 0..95 {
+            response.record(250.001);
+        }
+        for _ in 0..4 {
+            response.record(300.05);
+        }
+        response.record(1000.0);
+        assert!((response.p95().unwrap() - 250.1).abs() < 1e-12);
+        assert_eq!(response.max, 1000.0);
+        assert_eq!(response.count, 100);
+        assert_eq!(response.bins.capacity(), capacity);
+        assert_eq!(capacity, super::Distribution::default().bins.capacity());
+    }
+
     #[test]
     fn profile_keeps_late_frames_and_bounded_storage() {
         let mut distribution = super::Distribution::default();
