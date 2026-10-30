@@ -6,6 +6,7 @@ use crate::generator;
 mod cepstrogram;
 mod language;
 mod measurement_ux;
+pub(super) mod menus;
 mod scope;
 mod sidebar;
 

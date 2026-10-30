@@ -363,6 +363,8 @@ pub struct ScopeApp {
     dropped: u64,
     smoke: bool,
     #[cfg(feature = "qa")]
+    header_menu_review: Option<gui_qa::menus::Review>,
+    #[cfg(feature = "qa")]
     created: Instant,
     #[cfg(feature = "qa")]
     screenshot_requested: bool,
@@ -667,6 +669,8 @@ impl ScopeApp {
             created: Instant::now(),
             #[cfg(feature = "qa")]
             screenshot_requested: false,
+            #[cfg(feature = "qa")]
+            header_menu_review: None,
             #[cfg(feature = "qa")]
             smoke_focused: false,
             #[cfg(feature = "qa")]
@@ -1254,6 +1258,7 @@ impl ScopeApp {
                 i18n::set_locale(&cc.egui_ctx, &locale);
             }
             app.qa_previous_presentation = None;
+            app.header_menu_review = gui_qa::menus::Review::from_env(&app)?;
         }
         Ok(app)
     }
@@ -5878,6 +5883,10 @@ impl eframe::App for ScopeApp {
 
     #[cfg(feature = "qa")]
     fn raw_input_hook(&mut self, ctx: &egui::Context, input: &mut egui::RawInput) {
+        if let Some(review) = &mut self.header_menu_review {
+            review.input(input);
+            return;
+        }
         if self.smoke
             && let Ok(pointer) = std::env::var("MEASURELAB_UI_SMOKE_POINTER")
             && let Some(rect) =
@@ -6762,6 +6771,16 @@ impl eframe::App for ScopeApp {
             ctx.request_repaint();
         }
         if self.smoke {
+            #[cfg(feature = "qa")]
+            if let Some(mut review) = self.header_menu_review.take() {
+                review.observe(self, &ctx);
+                let ready = review.ready();
+                self.header_menu_review = Some(review);
+                if !ready {
+                    ctx.request_repaint();
+                    return;
+                }
+            }
             #[cfg(feature = "qa")]
             if std::env::var_os("MEASURELAB_UI_SMOKE_ASSERTIONS_ONLY").is_some() {
                 println!(

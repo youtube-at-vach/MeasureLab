@@ -140,6 +140,19 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 通常desktop（qaなし）のAPIテスト・releaseビルドと`--gpu-smoke`も共通検証に含める。現在のIntel Macの手動操作・実モニター間DPIは既存方針により対象外。今後の翻訳は1言語・1グループの訳文・変数・用語・対象差分と共通検証を各PRで確認し、I5を翻訳ごとの手動受け入れ待ちへ戻さない。未翻訳は英語へ戻す。I5は基盤の受け入れであり、翻訳本文の網羅と訳語・レイアウトの視覚レビューはPLANのI4／I6で別に扱う。
 
+### 共通ヘッダーメニューの視覚レビュー（I6a）
+
+```sh
+./scripts/cargo.sh build --profile dev-fast --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale ja --case header-menus \
+    --output dist/i18n-visual-review/header-menus-ja
+```
+
+`header-menus`は入力停止中のFile／View／Audio I/O／Analysis status、表示倍率・言語のサブメニューを通常幅・狭幅で、狭幅のMenuも含めて実イベントから開く。狭幅では表示倍率125%を使う。各メニューの主要項目の文字全体がclip・画面内へ収まることと、測定設定・配置・入力世代・Generator設定の不変性をQAで検査する。`--case header-menu-file-wide`などで個別に実行でき、`--locale`で別言語も指定できる。`--assertions-only`は撮影しないため視覚レビューの完了には使わない。
+
+画像・ログ・ソース／カタログ／バイナリ識別は指定した出力先へ保存する。自動assertionの成功と画像の訳語・読み取りやすさの確認は別に判定する。取得中／保持／模擬エラー、計器固有メニュー・ツールチップと他言語全画面の確認はI6の後続とし、通常版の手動操作・実モニター間DPIの受け入れへ代用しない。
+
 ### G4に残る手動受け入れ
 
 操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。
