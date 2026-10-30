@@ -1,10 +1,28 @@
-//! I6: open common header menus using painted labels, then retain the real GPU image.
+//! I6: open menus and hover real controls, then retain the GPU image.
 use super::*;
 use std::collections::VecDeque;
 
+mod instruments;
+
+enum Step {
+    Click(String),
+    TypeText(String),
+    HoverText(String),
+    HoverControl(egui::Id),
+}
+
+struct Case {
+    steps: Vec<Step>,
+    labels: Vec<String>,
+    popup: bool,
+    navigation: bool,
+    search: Option<String>,
+}
+
 pub(in crate::app) struct Review {
     target: String,
-    path: Vec<&'static str>,
+    header: bool,
+    case: Case,
     step: usize,
     events: VecDeque<Vec<egui::Event>>,
     pointer: Option<egui::Pos2>,
@@ -17,26 +35,48 @@ pub(in crate::app) struct Review {
     generator_rate: u32,
     locale: i18n::Locale,
     generation: u64,
+    command: (u64, u64),
 }
 
 impl Review {
-    pub(in crate::app) fn from_env(app: &ScopeApp) -> Result<Option<Self>, String> {
-        let Ok(target) = std::env::var("MEASURELAB_UI_SMOKE_HEADER_MENU") else {
-            return Ok(None);
+    pub(in crate::app) fn from_env(app: &mut ScopeApp) -> Result<Option<Self>, String> {
+        let (target, header) = match (
+            std::env::var("MEASURELAB_UI_SMOKE_HEADER_MENU"),
+            std::env::var("MEASURELAB_UI_SMOKE_INSTRUMENT_REVIEW"),
+        ) {
+            (Ok(_), Ok(_)) => return Err("Choose only one menu review".into()),
+            (Ok(target), _) => (target, true),
+            (_, Ok(target)) => (target, false),
+            _ => return Ok(None),
         };
-        let path = match target.as_str() {
-            "root" => vec![],
-            "file" => vec![i18n::text("common.file")],
-            "view" => vec![i18n::text("shell.view")],
-            "audio" => vec![i18n::text("shell.audio_i_o")],
-            "analysis" => vec![i18n::text("shell.analysis_status")],
-            "scale" => vec![i18n::text("shell.view"), i18n::text("shell.display_scale")],
-            "language" => vec![i18n::text("shell.view"), i18n::text("shell.language")],
-            _ => return Err(format!("Unknown header menu review: {target}")),
+        let case = if header {
+            let path = match target.as_str() {
+                "root" => vec![],
+                "file" => vec![i18n::text("common.file")],
+                "view" => vec![i18n::text("shell.view")],
+                "audio" => vec![i18n::text("shell.audio_i_o")],
+                "analysis" => vec![i18n::text("shell.analysis_status")],
+                "scale" => vec![i18n::text("shell.view"), i18n::text("shell.display_scale")],
+                "language" => vec![i18n::text("shell.view"), i18n::text("shell.language")],
+                _ => return Err(format!("Unknown header menu review: {target}")),
+            };
+            Case {
+                steps: path
+                    .into_iter()
+                    .map(|text| Step::Click(text.into()))
+                    .collect(),
+                labels: vec![],
+                popup: true,
+                navigation: false,
+                search: None,
+            }
+        } else {
+            instruments::case(app, &target)?
         };
         Ok(Some(Self {
             target,
-            path,
+            header,
+            case,
             step: 0,
             events: VecDeque::new(),
             pointer: None,
@@ -49,6 +89,7 @@ impl Review {
             generator_rate: app.generator.rate,
             locale: i18n::locale(),
             generation: app.input_generation,
+            command: app.generator.command_marker(),
         }))
     }
 
@@ -57,11 +98,12 @@ impl Review {
         input.events.clear();
         if let Some(events) = self.events.pop_front() {
             input.events = events;
-        } else if let Some(pos) = self.pointer {
-            input.events.push(egui::Event::PointerMoved(pos));
-        } else {
+        } else if self.pointer.is_none() {
             input.events.push(egui::Event::PointerGone);
         }
+        // Keep the last pointer position without synthesizing more movement:
+        // egui restarts its hover delay on every PointerMoved, even at the
+        // same coordinate. Native events remain isolated above.
         input
             .events
             .insert(0, egui::Event::ModifiersChanged(egui::Modifiers::NONE));
@@ -73,12 +115,21 @@ impl Review {
 
     pub(in crate::app) fn observe(&mut self, app: &ScopeApp, ctx: &egui::Context) {
         self.frames += 1;
+        if self.frames == 1 {
+            ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
+        }
+        if self.frames == 300 && !self.ready {
+            eprintln!(
+                "Menu review waiting: {}; search={:?}; expected={:?}",
+                self.target, app.shell.search, self.case.labels
+            );
+        }
         assert!(
-            self.ready || self.frames < 180,
-            "Header menu did not settle: {}; step {}/{}",
+            self.ready || self.frames < 360,
+            "Menu review did not settle: {}; step {}/{}",
             self.target,
             self.step,
-            self.path.len()
+            self.case.steps.len()
         );
         // These cases only inspect stopped input. Opening menus must not issue
         // transport, settings, file-dialog or navigation actions.
@@ -89,6 +140,7 @@ impl Review {
         assert_eq!(app.generator.rate, self.generator_rate);
         assert_eq!(i18n::locale(), self.locale);
         assert_eq!(app.input_generation, self.generation);
+        assert_eq!(app.generator.command_marker(), self.command);
         let config = app.core_config();
         if let Some(before) = &self.conditions {
             assert_eq!(config.scope, before.scope);
@@ -112,9 +164,32 @@ impl Review {
                 return;
             }
             if !painted_text(ctx, i18n::text("shell.menu")).is_empty() {
-                self.path.insert(0, i18n::text("shell.menu"));
+                if self.header {
+                    self.case
+                        .steps
+                        .insert(0, Step::Click(i18n::text("shell.menu").into()));
+                } else if self.case.navigation {
+                    let title = app.presentation.selected().map_or_else(
+                        || i18n::text("shell.multi_instrument_view").to_owned(),
+                        |i| {
+                            i18n::format("shell.instrument", &[("name", i.display_name())])
+                                .to_string()
+                        },
+                    );
+                    self.case.steps.insert(0, Step::Click(title));
+                    self.case
+                        .steps
+                        .insert(0, Step::Click(i18n::text("shell.menu").into()));
+                    self.case.popup = true;
+                }
+                if !self.header {
+                    instruments::compact(&mut self.case, &self.target, app);
+                }
             } else if !painted_text(ctx, i18n::text("common.file")).is_empty() {
-                assert_ne!(self.target, "root", "Root menu requires compact layout");
+                assert!(
+                    !self.header || self.target != "root",
+                    "Root menu requires compact layout"
+                );
             } else {
                 return;
             }
@@ -124,18 +199,42 @@ impl Review {
         if !self.events.is_empty() {
             return;
         }
-        if let Some(key) = self.path.get(self.step) {
+        if let Some(step) = self.case.steps.get(self.step) {
+            if let Step::TypeText(text) = step {
+                self.events.push_back(vec![egui::Event::Text(text.clone())]);
+                self.pointer = None;
+                self.events.push_back(vec![egui::Event::PointerGone]);
+                self.events.extend((0..8).map(|_| vec![]));
+                self.step += 1;
+                return;
+            }
             // View and the inspector's Display label share a translation in
             // Japanese. The header/popup entry is above the inspector label.
-            let Some((pos, _, _)) = painted_text(ctx, key)
-                .into_iter()
-                .min_by(|a, b| a.0.y.total_cmp(&b.0.y))
-            else {
-                return;
+            let pos = match step {
+                Step::Click(key) | Step::HoverText(key) => {
+                    let Some((pos, _, _)) = painted_text(ctx, key)
+                        .into_iter()
+                        .min_by(|a, b| a.0.y.total_cmp(&b.0.y).then(a.0.x.total_cmp(&b.0.x)))
+                    else {
+                        return;
+                    };
+                    pos
+                }
+                Step::HoverControl(id) => {
+                    let Some(rect) = ctx.data(|data| data.get_temp::<egui::Rect>(*id)) else {
+                        return;
+                    };
+                    assert!(ctx.content_rect().contains_rect(rect));
+                    rect.center()
+                }
+                Step::TypeText(_) => unreachable!(),
             };
             self.pointer = Some(pos);
             self.events.push_back(vec![egui::Event::PointerMoved(pos)]);
-            for pressed in [true, false] {
+            for pressed in [true, false]
+                .into_iter()
+                .filter(|_| matches!(step, Step::Click(_)))
+            {
                 self.events.push_back(vec![
                     egui::Event::PointerMoved(pos),
                     egui::Event::PointerButton {
@@ -150,6 +249,46 @@ impl Review {
             self.events
                 .extend((0..8).map(|_| vec![egui::Event::PointerMoved(pos)]));
             self.step += 1;
+            return;
+        }
+        if !self.header {
+            if let Some(query) = &self.case.search {
+                assert_eq!(
+                    &app.shell.search, query,
+                    "Search editor did not receive text"
+                );
+            }
+            // Hover delay and tooltip placement run in the desktop event loop.
+            // Wait for the expected tooltip itself, never accept its source label.
+            let hover = self
+                .case
+                .steps
+                .last()
+                .is_some_and(|step| matches!(step, Step::HoverText(_) | Step::HoverControl(_)));
+            if self.case.labels.iter().enumerate().any(|(index, label)| {
+                if hover && index + 1 == self.case.labels.len() {
+                    !painted_text_on(ctx, label, Some(egui::Order::Tooltip))
+                        .into_iter()
+                        .any(|(_, bounds, clip)| {
+                            clip.contains_rect(bounds) && ctx.content_rect().contains_rect(bounds)
+                        })
+                } else {
+                    !text_visible(ctx, label)
+                }
+            }) {
+                return;
+            }
+            if self.case.popup {
+                assert!(egui::Popup::is_any_open(ctx));
+            }
+            if !self.ready {
+                println!(
+                    "Instrument review UI OK: {}; locale={}; text within clip and viewport; measurement, workspace and output unchanged",
+                    self.target,
+                    i18n::locale().id()
+                );
+                self.ready = true;
+            }
             return;
         }
         assert!(egui::Popup::is_any_open(ctx));
@@ -220,20 +359,33 @@ impl Review {
 
 fn assert_visible(ctx: &egui::Context, label: &str) {
     assert!(
-        painted_text(ctx, label)
-            .into_iter()
-            .any(|(_, bounds, clip)| {
-                clip.contains_rect(bounds) && ctx.content_rect().contains_rect(bounds)
-            }),
-        "Header menu text clipped or missing: {label}"
+        text_visible(ctx, label),
+        "Menu review text clipped or missing: {label}"
     );
 }
 
+fn text_visible(ctx: &egui::Context, label: &str) -> bool {
+    painted_text(ctx, label)
+        .into_iter()
+        .any(|(_, bounds, clip)| {
+            clip.contains_rect(bounds) && ctx.content_rect().contains_rect(bounds)
+        })
+}
+
 fn painted_text(ctx: &egui::Context, label: &str) -> Vec<(egui::Pos2, egui::Rect, egui::Rect)> {
+    painted_text_on(ctx, label, None)
+}
+
+fn painted_text_on(
+    ctx: &egui::Context,
+    label: &str,
+    order: Option<egui::Order>,
+) -> Vec<(egui::Pos2, egui::Rect, egui::Rect)> {
     let layers: Vec<_> = ctx.memory(|memory| memory.layer_ids().collect());
     ctx.graphics(|graphics| {
         layers
             .into_iter()
+            .filter(|layer| order.is_none_or(|order| layer.order == order))
             .filter_map(|layer| graphics.get(layer))
             .flat_map(|list| list.all_entries())
             .filter_map(|shape| {

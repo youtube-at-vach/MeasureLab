@@ -371,7 +371,14 @@ impl ScopeApp {
                     i18n::format("shell.instrument", &[("name", (i.display_name()))]).to_string()
                 })
         };
-        ui.menu_button(title, |ui| self.instrument_list(ui, true));
+        // The search editor must keep this compact-header submenu open.
+        // Instrument selection closes it explicitly in instrument_list.
+        egui::containers::menu::SubMenuButton::new(title)
+            .config(
+                egui::containers::menu::MenuConfig::new()
+                    .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside),
+            )
+            .ui(ui, |ui| self.instrument_list(ui, true));
     }
 
     fn instrument_list(&mut self, ui: &mut egui::Ui, close_menu: bool) {
