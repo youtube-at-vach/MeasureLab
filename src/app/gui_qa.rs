@@ -1832,6 +1832,15 @@ impl ScopeApp {
                     .is_empty()
             );
         }
+        // Editing the compact-header search must keep the submenu open;
+        // choosing the filtered instrument must still close the whole menu.
+        driver.click(self, i18n::text("shell.find_an_instrument"))?;
+        assert!(driver.ctx.any_popup_open());
+        let query = Instrument::Generator.display_name();
+        driver.frame(self, vec![egui::Event::Text(query.into())]);
+        driver.frame(self, vec![]);
+        assert_eq!(self.shell.search, query);
+        assert!(driver.ctx.any_popup_open());
         driver.click(self, i18n::text("shell.instrument_names.generator"))?;
         assert_eq!(
             self.presentation.screen,
@@ -1839,6 +1848,7 @@ impl ScopeApp {
         );
         driver.frame(self, vec![]);
         assert!(!driver.ctx.any_popup_open());
+        self.shell.search.clear();
         for (instrument, key) in Instrument::ALL.into_iter().zip([
             egui::Key::Num1,
             egui::Key::Num2,

@@ -31,6 +31,52 @@ def cases(devices=()):
                 compact,
                 {"HEADER_MENU": menu, "VIEW": "scope", "IDLE": "1"} | ({"ZOOM": "1.25"} if compact else {}),
             )
+    for review, view in (
+        ("selection-single", "scope"),
+        ("selection-console", "pair"),
+        ("selection-filter", "scope"),
+        ("selection-empty", "scope"),
+        ("split", "scope"),
+        ("split-replace", "pair"),
+        ("add", "pair"),
+        ("arrange", "pair"),
+        ("arrange-undo", "pair"),
+        ("pane", "pair"),
+        ("layout", "pair"),
+        ("empty", "empty"),
+        ("tooltip-remove", "pair"),
+        ("tooltip-input-group", "scope"),
+        ("tooltip-input", "scope"),
+        ("tooltip-start", "scope"),
+        ("tooltip-output", "scope"),
+        *(
+            (f"tooltip-nav-{name}", "pair")
+            for name in ("scope", "spectrum", "spectrogram", "xy", "lockin", "comparison", "generator", "console")
+        ),
+    ):
+        for compact in (False, True):
+            yield (
+                f"instrument-review-{review}-{'compact' if compact else 'wide'}",
+                compact,
+                {
+                    "INSTRUMENT_REVIEW": "selection" if review in ("selection-single", "selection-console") else review,
+                    "VIEW": view,
+                    "IDLE": "1",
+                }
+                | ({"ZOOM": "1.25"} if compact else {}),
+            )
+    for sidebar in ("expanded", "compact"):
+        yield (
+            f"instrument-review-tooltip-sidebar-{sidebar}",
+            False,
+            {"INSTRUMENT_REVIEW": "tooltip-sidebar", "VIEW": "scope", "IDLE": "1", "SIDEBAR": sidebar},
+        )
+    for name in ("scope", "spectrum", "spectrogram", "xy", "lockin", "comparison", "generator", "console"):
+        yield (
+            f"instrument-review-tooltip-nav-{name}-rail",
+            False,
+            {"INSTRUMENT_REVIEW": f"tooltip-nav-{name}", "VIEW": "pair", "IDLE": "1", "SIDEBAR": "compact"},
+        )
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
     yield "sidebar-compact", False, {"VIEW": "scope", "IDLE": "1", "SIDEBAR": "compact"}
     yield "sidebar-compact-held", False, {"SCOPE_FLOW": "held", "SIDEBAR": "compact", "IDLE": "1"}
@@ -99,7 +145,9 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/gui-redesign-qa")
-    parser.add_argument("--case", action="append", help="Run a named case or the header-menus group (repeatable)")
+    parser.add_argument(
+        "--case", action="append", help="Run a named case, header-menus or instrument-menus (repeatable)"
+    )
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
         "--assertions-only",
@@ -121,6 +169,9 @@ def main():
     if "header-menus" in requested:
         requested.remove("header-menus")
         requested.update(name for name, _, _ in available if name.startswith("header-menu-"))
+    if "instrument-menus" in requested:
+        requested.remove("instrument-menus")
+        requested.update(name for name, _, _ in available if name.startswith("instrument-review-"))
     selected = [case for case in available if args.case is None or case[0] in requested]
     if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
@@ -184,6 +235,8 @@ def main():
                 passed = passed and "Language UI OK: nine locales" in log
             if "HEADER_MENU" in options:
                 passed = passed and f"Header menu UI OK: {options['HEADER_MENU']};" in log
+            if "INSTRUMENT_REVIEW" in options:
+                passed = passed and f"Instrument review UI OK: {options['INSTRUMENT_REVIEW']};" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:

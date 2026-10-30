@@ -153,6 +153,30 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 画像・ログ・ソース／カタログ／バイナリ識別は指定した出力先へ保存する。自動assertionの成功と画像の訳語・読み取りやすさの確認は別に判定する。取得中／保持／模擬エラー、計器固有メニュー・ツールチップと他言語全画面の確認はI6の後続とし、通常版の手動操作・実モニター間DPIの受け入れへ代用しない。
 
+### 計器選択・配置と共通ツールチップの視覚レビュー（I6b）
+
+```sh
+./scripts/cargo.sh build --profile dev-fast --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale ja --case instrument-menus \
+    --output dist/i18n-visual-review/instrument-menus-ja
+```
+
+`instrument-menus`は入力・出力停止中の次の範囲を通常幅と狭幅（表示倍率125%）で撮影する。サイドバーの展開／アイコン表示は通常幅で確認する。個別ケースは`--case instrument-review-split-replace-compact`などで指定できる。
+
+| 対象 | 確認する表示 |
+| --- | --- |
+| 計器選択 | 単独／コンソールの7計器と複数計器表示、検索での絞り込み／該当なし。狭幅はMenu内の計器メニュー |
+| 併置 | 保存構成がない場合の選択肢、保存構成がある場合の置換・Undo案内 |
+| コンソール | 計器追加、配置4種、置き換えを元に戻す操作の有効／無効、区画の単独表示／削除、空構成の案内。View内の配置・分割比率も確認 |
+| 共通枠のツールチップ | 7計器と複数計器表示のナビゲーション（展開・狭幅メニュー・アイコン）、サイドバー展開／縮小、共通入力のグループ・ヘッダー状態・開始操作、出力ヘッダー状態、区画削除後も解析・出力が続く説明 |
+
+ポップアップ・検索・ホバーは実イベントから操作する。復元可能な置換前構成は表示用fixtureで用意し、置換／Undoそのものの状態遷移は共通のnavigation QAで別に検査する。操作中は測定設定・表示構成・入力世代・Generator設定と出力コマンドが変わらないことを確認する。文字全体がclip・画面内に収まり、ツールチップは実際のTooltip層に描画されることを検査する。静止中に移動イベントを繰り返さず、通常のホバー待ち時間を使う。
+
+画像・ログ・manifestの保存と`--assertions-only`の制限はI6aと同じ。画像での訳語・冗長さ・読み取りやすさの判定を自動assertionと分ける。計器内のカーソル・軸・測定状態などの専用説明、取得中／保持／模擬エラー、他言語の画面はI6c以降へ分け、通常配布物・実モニター間DPI・物理入出力の受け入れへ広げない。
+
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`eb8c5d27`上のI6b差分の画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/instrument-menus-ja-final/manifest.json`を参照する。対象メニューと説明の文字欠けは見つからず、入力停止・解析OFF・出力停止、Undoの無効表示を読み取れた。`shell.arrange_view`の未翻訳による英語フォールバックは全8翻訳にあり、[PLAN](PLAN.md)の独立差分翻訳へ残す。狭幅検索の編集継続と選択後の終了は修正後の実ウィジェットQAで確認した。
+
 ### G4に残る手動受け入れ
 
 操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。
