@@ -77,6 +77,54 @@ def cases(devices=()):
             False,
             {"INSTRUMENT_REVIEW": f"tooltip-nav-{name}", "VIEW": "pair", "IDLE": "1", "SIDEBAR": "compact"},
         )
+    for review in (
+        "live",
+        "held",
+        "stopped",
+        "waiting",
+        "single",
+        "incomplete",
+        "error",
+        "error-empty",
+        "invalid",
+        "tooltip-autoset",
+        "tooltip-cursor-a",
+        "tooltip-cursor-b",
+        "tooltip-clear",
+        "tooltip-placed",
+        "tooltip-axis",
+        "tooltip-time",
+        "tooltip-trigger",
+        "tooltip-trigger-settings",
+        "tooltip-timebase",
+        "tooltip-sample",
+        "tooltip-cursor-values",
+        "tooltip-trigger-top",
+        "tooltip-trigger-level",
+        "tooltip-channel",
+        "tooltip-unavailable",
+        "tooltip-invalid",
+        "tooltip-toggle",
+        "tooltip-auto",
+        "tooltip-normal",
+        "tooltip-single",
+        "tooltip-start-single",
+        "tooltip-slider",
+        "tooltip-display",
+        "tooltip-fit",
+        "tooltip-fit-common",
+        "tooltip-units",
+        "tooltip-marker-details",
+        "menu-edge",
+        "menu-source",
+        "menu-display",
+    ):
+        for compact in (False, True):
+            yield (
+                f"scope-review-{review}-{'compact' if compact else 'wide'}",
+                compact,
+                {"SCOPE_REVIEW": review, "VIEW": "scope", "IDLE": "1"} | ({"ZOOM": "1.25"} if compact else {}),
+            )
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
     yield "sidebar-compact", False, {"VIEW": "scope", "IDLE": "1", "SIDEBAR": "compact"}
     yield "sidebar-compact-held", False, {"SCOPE_FLOW": "held", "SIDEBAR": "compact", "IDLE": "1"}
@@ -146,7 +194,7 @@ def main():
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/gui-redesign-qa")
     parser.add_argument(
-        "--case", action="append", help="Run a named case, header-menus or instrument-menus (repeatable)"
+        "--case", action="append", help="Run a named case, header-menus, instrument-menus or scope-review (repeatable)"
     )
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
@@ -172,6 +220,9 @@ def main():
     if "instrument-menus" in requested:
         requested.remove("instrument-menus")
         requested.update(name for name, _, _ in available if name.startswith("instrument-review-"))
+    if "scope-review" in requested:
+        requested.remove("scope-review")
+        requested.update(name for name, _, _ in available if name.startswith("scope-review-"))
     selected = [case for case in available if args.case is None or case[0] in requested]
     if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
@@ -237,6 +288,8 @@ def main():
                 passed = passed and f"Header menu UI OK: {options['HEADER_MENU']};" in log
             if "INSTRUMENT_REVIEW" in options:
                 passed = passed and f"Instrument review UI OK: {options['INSTRUMENT_REVIEW']};" in log
+            if "SCOPE_REVIEW" in options:
+                passed = passed and f"Scope review UI OK: {options['SCOPE_REVIEW']};" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:
