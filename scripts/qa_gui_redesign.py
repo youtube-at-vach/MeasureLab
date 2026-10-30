@@ -22,6 +22,15 @@ def cases(devices=()):
     yield "language-demo-controls", False, {"LANGUAGE": "1", "VIEW": "scope"}
     yield "language-ja-wide", False, {"VIEW": "scope", "IDLE": "1", "LOCALE": "ja"}
     yield "language-ja-compact", True, {"SETTINGS": "io", "IDLE": "1", "ZOOM": "1.25", "LOCALE": "ja"}
+    for menu in ("root", "file", "view", "audio", "analysis", "scale", "language"):
+        for compact in (False, True):
+            if menu == "root" and not compact:
+                continue
+            yield (
+                f"header-menu-{menu}-{'compact' if compact else 'wide'}",
+                compact,
+                {"HEADER_MENU": menu, "VIEW": "scope", "IDLE": "1"} | ({"ZOOM": "1.25"} if compact else {}),
+            )
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
     yield "sidebar-compact", False, {"VIEW": "scope", "IDLE": "1", "SIDEBAR": "compact"}
     yield "sidebar-compact-held", False, {"SCOPE_FLOW": "held", "SIDEBAR": "compact", "IDLE": "1"}
@@ -90,7 +99,7 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/gui-redesign-qa")
-    parser.add_argument("--case", action="append", help="Run only the named case (repeatable)")
+    parser.add_argument("--case", action="append", help="Run a named case or the header-menus group (repeatable)")
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
         "--assertions-only",
@@ -107,8 +116,13 @@ def main():
     args = parser.parse_args()
     binary = args.binary.resolve()
     output = args.output.resolve()
-    selected = [case for case in cases(dict.fromkeys(args.device)) if args.case is None or case[0] in args.case]
-    if args.case and set(args.case) - {case[0] for case in selected}:
+    available = list(cases(dict.fromkeys(args.device)))
+    requested = set(args.case or [])
+    if "header-menus" in requested:
+        requested.remove("header-menus")
+        requested.update(name for name, _, _ in available if name.startswith("header-menu-"))
+    selected = [case for case in available if args.case is None or case[0] in requested]
+    if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
     if args.locale:
         selected = [(name, compact, options | {"LOCALE": args.locale}) for name, compact, options in selected]
@@ -168,6 +182,8 @@ def main():
             passed = result.returncode == 0 and display_ok and "GUI navigation OK:" in log
             if "LANGUAGE" in options:
                 passed = passed and "Language UI OK: nine locales" in log
+            if "HEADER_MENU" in options:
+                passed = passed and f"Header menu UI OK: {options['HEADER_MENU']};" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:
