@@ -6,6 +6,7 @@ mod instruments;
 mod scope;
 mod spectrogram;
 mod spectrum;
+mod xy;
 
 enum Step {
     Click(String),
@@ -32,11 +33,13 @@ pub(in crate::app) struct Review {
     scope: bool,
     spectrum: bool,
     spectrogram: bool,
+    xy: bool,
     running: bool,
     output_running: bool,
     held: Option<export::Document>,
     retained_spectrum: Option<spectrum::Retained>,
     retained_spectrogram: Option<spectrogram::Retained>,
+    retained_xy: Option<xy::Retained>,
     progress: (u64, u64, u64),
     case: Case,
     step: usize,
@@ -65,12 +68,14 @@ impl Review {
         let scope_target = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_REVIEW").ok();
         let spectrum_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTRUM_REVIEW").ok();
         let spectrogram_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTROGRAM_REVIEW").ok();
+        let xy_target = std::env::var("MEASURELAB_UI_SMOKE_XY_REVIEW").ok();
         if [
             &header_target,
             &instrument_target,
             &scope_target,
             &spectrum_target,
             &spectrogram_target,
+            &xy_target,
         ]
         .iter()
         .filter(|target| target.is_some())
@@ -83,11 +88,13 @@ impl Review {
         let scope = scope_target.is_some();
         let spectrum = spectrum_target.is_some();
         let spectrogram = spectrogram_target.is_some();
+        let xy = xy_target.is_some();
         let Some(target) = header_target
             .or(instrument_target)
             .or(scope_target)
             .or(spectrum_target)
             .or(spectrogram_target)
+            .or(xy_target)
         else {
             return Ok(None);
         };
@@ -118,6 +125,8 @@ impl Review {
             spectrum::case(app, &target)?
         } else if spectrogram {
             spectrogram::case(app, &target)?
+        } else if xy {
+            xy::case(app, &target)?
         } else {
             instruments::case(app, &target)?
         };
@@ -127,10 +136,12 @@ impl Review {
             scope,
             spectrum,
             spectrogram,
+            xy,
             running: app.running(),
             output_running: !app.generator.stopped(),
             retained_spectrum: spectrum.then(|| spectrum::Retained::new(app)).transpose()?,
             retained_spectrogram: spectrogram.then(|| spectrogram::Retained::new(app)),
+            retained_xy: xy.then(|| xy::Retained::new(app)),
             held: if scope && !app.running() && !app.scope_range.is_empty() {
                 Some(app.capture_scope_results()?)
             } else {
@@ -270,7 +281,7 @@ impl Review {
                         .insert(0, Step::Click(i18n::text("shell.menu").into()));
                     self.case.popup = true;
                 }
-                if !self.header && !self.scope && !self.spectrum && !self.spectrogram {
+                if !self.header && !self.scope && !self.spectrum && !self.spectrogram && !self.xy {
                     instruments::compact(&mut self.case, &self.target, app);
                 }
             } else if !painted_text(ctx, i18n::text("common.file")).is_empty() {
@@ -435,7 +446,10 @@ impl Review {
             }
             if self.case.labels.iter().enumerate().any(|(index, label)| {
                 if hover
-                    && (self.spectrum || self.spectrogram || index + 1 == self.case.labels.len())
+                    && (self.spectrum
+                        || self.spectrogram
+                        || self.xy
+                        || index + 1 == self.case.labels.len())
                 {
                     !painted_text_on(ctx, label, Some(egui::Order::Tooltip))
                         .into_iter()
@@ -486,6 +500,17 @@ impl Review {
             {
                 return;
             }
+            if self.xy
+                && !xy::verify(
+                    app,
+                    ctx,
+                    &self.target,
+                    self.progress,
+                    self.retained_xy.as_ref().unwrap(),
+                )
+            {
+                return;
+            }
             if !self.ready {
                 let bounds = self
                     .case
@@ -514,6 +539,8 @@ impl Review {
                         "Spectrum"
                     } else if self.spectrogram {
                         "Spectrogram"
+                    } else if self.xy {
+                        "XY"
                     } else {
                         "Instrument"
                     },

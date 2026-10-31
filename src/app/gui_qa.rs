@@ -2094,6 +2094,12 @@ impl ScopeApp {
         driver.click(self, i18n::text("xy.trace_snap"))?;
         assert_eq!(self.xy_cursor_mode, xy::CursorMode::TraceSnap);
         assert_eq!(self.cursors.xy_points, points);
+        assert!(
+            driver
+                .text_positions(i18n::text("oscilloscope.t_markers_top_ms_right_level"))
+                .is_empty(),
+            "XY shares trigger controls but must not describe Scope's top/right markers"
+        );
         self.trigger.level = 0.125;
         driver.frame(self, vec![]);
         driver.click(self, i18n::text("oscilloscope.zero_level"))?;

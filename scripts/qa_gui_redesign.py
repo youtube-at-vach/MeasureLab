@@ -17,6 +17,53 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 
 
 def cases(devices=()):
+    for review in (
+        "empty",
+        "live",
+        "held",
+        "stopped",
+        "error",
+        "error-empty",
+        "trace",
+        "auto",
+        "free-run",
+        "free-outside",
+        "trace-outside",
+        "source-pending",
+        "mono",
+        "missing",
+        "gap",
+        "invalid",
+        "limit",
+        "waiting",
+        "details",
+        "details-trace",
+        "details-trigger",
+        "details-footer",
+        "menu-x",
+        "menu-y",
+        "menu-edge",
+        "menu-trigger-source",
+        "tooltip-free",
+        "tooltip-trace",
+        "tooltip-plot-free",
+        "tooltip-plot-trace",
+        "tooltip-coordinate",
+        "tooltip-cursor-a",
+        "tooltip-cursor-b",
+        "tooltip-clear",
+        "tooltip-placed",
+        "tooltip-window",
+        "tooltip-x-scale",
+        "tooltip-y-scale",
+        "tooltip-trigger-level",
+    ):
+        for compact in (False, True):
+            yield (
+                f"xy-review-{review}-{'compact' if compact else 'wide'}",
+                compact,
+                {"XY_REVIEW": review, "VIEW": "xy", "IDLE": "1"} | ({"ZOOM": "1.25"} if compact else {}),
+            )
     yield "startup-preferences", False, {"STARTUP_PREFERENCES": "1", "IDLE": "1"}
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
     yield "cepstrogram-widget-interactions", False, {"CEPSTROGRAM": "1", "IDLE": "1", "VIEW": "spectrogram"}
@@ -311,7 +358,7 @@ def main():
     parser.add_argument(
         "--case",
         action="append",
-        help="Run a named case, header-menus, instrument-menus, scope-review, spectrum-review or spectrogram-review (repeatable)",
+        help="Run a named case, header-menus, instrument-menus, scope-review, spectrum-review, spectrogram-review or xy-review (repeatable)",
     )
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
@@ -346,6 +393,9 @@ def main():
     if "spectrogram-review" in requested:
         requested.remove("spectrogram-review")
         requested.update(name for name, _, _ in available if name.startswith("spectrogram-review-"))
+    if "xy-review" in requested:
+        requested.remove("xy-review")
+        requested.update(name for name, _, _ in available if name.startswith("xy-review-"))
     selected = [case for case in available if args.case is None or case[0] in requested]
     if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
@@ -417,6 +467,8 @@ def main():
                 passed = passed and f"Spectrum review UI OK: {options['SPECTRUM_REVIEW']};" in log
             if "SPECTROGRAM_REVIEW" in options:
                 passed = passed and f"Spectrogram review UI OK: {options['SPECTROGRAM_REVIEW']};" in log
+            if "XY_REVIEW" in options:
+                passed = passed and f"XY review UI OK: {options['XY_REVIEW']};" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:

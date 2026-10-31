@@ -254,6 +254,35 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`57a198d8`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/spectrogram-ja-final/manifest.json`を参照する。入力停止後のライブ表記、Cepstrogramの周波数操作案内、カーソル注記・ケフレンシー差分の重なり、狭幅詳細末尾の文字欠けを修正し、再撮影した。既存訳に改訂を要する問題は見つからなかった。Cepstrogram関連の既存19キーは日本語を含む全8翻訳で未翻訳のため、[PLAN](PLAN.md)のI6eへ残す。訳文・翻訳元ハッシュは変更していない。
 
+### XYの状態と専用ツールチップの視覚レビュー（I6d）
+
+```sh
+./scripts/cargo.sh build --profile dev-fast --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale ja --case xy-review \
+    --output dist/i18n-visual-review/xy-ja-final
+```
+
+`xy-review`は通常幅と狭幅（表示倍率125%）で次の範囲を撮影する。個別ケースは`--case xy-review-tooltip-plot-trace-compact`などで指定する。詳細欄の下部・共有トリガー・末尾の説明へは実ホイールイベントでスクロールする。
+
+| 対象 | 確認する表示 |
+| --- | --- |
+| 入力・出力の状態 | 未取得、取得中、入力停止／出力継続、入出力停止、捕捉済み／未捕捉の模擬エラー |
+| カーソルと観測区間 | FreeのA／BとΔX／ΔY・プロット外、Trace Snapの実サンプル・トリガー成立／交差なし／Free run・観測範囲外、停止中の次回CH予約と取得時CHの区別 |
+| 利用不可・履歴 | モノラル、割当CH不足、欠落、非有限入力で有効対がない状態、サンプル対待機、実点数上限 |
+| 全専用ツールチップ | カーソルA／Bの配置・消去範囲・配置済み、Free／Trace Snapの説明、プロット座標と両モードの操作案内、観測時間・X／Y振幅・共有トリガーレベルの編集 |
+| メニュー・詳細 | X／Yの入力CH、共有トリガーのエッジ・入力CH、観測・両軸・カーソル・共有トリガーと末尾の点数制限の説明 |
+
+通常Generatorの内部2chを実測定ワーカーで取得し、実ウィジェットから入力開始／有限Stop・独立した出力停止を行う。既知の直交正弦波を元のf64サンプル対から照合し、取得中の入力フレーム・FFT窓・出力サンプルの進行を検査する。停止後はf64対・欠落の有効性・整数サンプル区間・CH・Fs・入力世代・損失情報・カーソル・条件を維持し、メニューや説明を開いても構成・出力コマンドが変わらないことを確認する。
+
+モノラル・欠落・NaN・待機・点数上限は、有限Stop後に測定ワーカーを解放して用意する明示した合成履歴であり、その取得継続の証拠にはしない。点数上限は別の合成Fsで確認し、保持入力の識別にも合成履歴と記す。物理ストリームは開かず、独立した内部出力の継続だけを確認する。
+
+文字全体のclip・画面内への収まり、A／B／差分の非重複と実Tooltip層を検査し、画像・ログ・ソース／カタログ／バイナリ識別は指定出力先のmanifestへ保存する。`--assertions-only`は画像確認の代用にしない。通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れとは分ける。
+
+Scope専用の上端／右端Tマーカーの説明は、共有トリガーの編集部品からScopeの詳細欄へ分離した。`widget-interactions`ではXYへの混入を検査し、`scope-review-tooltip-marker-details-wide`／`scope-review-tooltip-marker-details-compact`でScope側の説明も撮影できる。`widget-interactions`に含む言語切替の性能検査は、他のビルド・実時間QAと並行せず単独で実行する。
+
+macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`84271754`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/xy-ja-final/manifest.json`と同ディレクトリの`review-summary.json`を参照する。言語切替の性能検査は並行コンパイル中に一度失敗し、終了後の同一バイナリの単独再実行で成功した。元の失敗と再実行は`widget-retry/manifest.json`を含めて保持する。入力停止と独立した出力、Free／Trace Snapと範囲外の読値、保持CHと次回CH予約、利用不可の理由を読み分けられた。Scope専用の説明の混入を修正し、再撮影した。既存訳に改訂を要する問題は見つからず、訳文・翻訳元ハッシュは変更していない。
+
 ### G4に残る手動受け入れ
 
 操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。

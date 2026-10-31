@@ -53,6 +53,10 @@ impl ScopeApp {
 
         control_group(ui, i18n::text("oscilloscope.trigger"), TRIGGER, |ui| {
             self.trigger_controls(ui);
+            ui.add(
+                egui::Label::new(i18n::text("oscilloscope.t_markers_top_ms_right_level")).wrap(),
+            )
+            .on_hover_text(self.scope_trigger_marker_help());
             ui.horizontal(|ui| {
                 ui.label(i18n::text("oscilloscope.display"));
                 egui::ComboBox::from_id_salt("scope_trigger_display")
@@ -293,8 +297,6 @@ impl ScopeApp {
             // A stopped input need not otherwise repaint after the edit ends.
             ui.ctx().request_repaint();
         }
-        ui.add(egui::Label::new(i18n::text("oscilloscope.t_markers_top_ms_right_level")).wrap())
-            .on_hover_text(self.scope_trigger_marker_help());
     }
 }
 
@@ -331,7 +333,7 @@ pub(super) fn control_slider(
     (response.changed(), reset_clicked)
 }
 
-fn control_slider_response(
+pub(super) fn control_slider_response(
     ui: &mut egui::Ui,
     label: &str,
     slider: egui::Slider<'_>,
