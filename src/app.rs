@@ -4516,6 +4516,12 @@ impl ScopeApp {
                 );
                 let side = bounds.width().min(bounds.height()).max(1.0);
                 let rect = egui::Rect::from_center_size(bounds.center(), vec2(side, side));
+                #[cfg(feature = "qa")]
+                if self.smoke {
+                    ui.ctx().data_mut(|data| {
+                        data.insert_temp(egui::Id::unique("qa_xy_plot"), rect);
+                    });
+                }
                 let painter = ui.painter();
                 painter.rect_filled(rect, 0.0, Color32::from_rgb(7, 14, 19));
                 for division in 0..=8 {
@@ -7000,7 +7006,7 @@ fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut ChannelId, channel
     } else {
         ui.available_width()
     };
-    egui::ComboBox::from_id_salt(id)
+    let response = egui::ComboBox::from_id_salt(id)
         .width(width)
         .selected_text(if channel::available(*selected, channels as usize) {
             channel::name(*selected)
@@ -7016,6 +7022,15 @@ fn channel_select(ui: &mut egui::Ui, id: &str, selected: &mut ChannelId, channel
                 ui.selectable_value(selected, channel, channel::name(channel));
             }
         });
+    #[cfg(feature = "qa")]
+    ui.ctx().data_mut(|data| {
+        data.insert_temp(
+            egui::Id::unique(("qa_channel_select", id)),
+            response.response.rect,
+        );
+    });
+    #[cfg(not(feature = "qa"))]
+    let _ = response;
 }
 
 fn frequency_label(hz: f32) -> String {

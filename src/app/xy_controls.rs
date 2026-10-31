@@ -1,12 +1,12 @@
 //! XY settings share the selected-instrument sidebar with Scope.
-use super::scope_controls::{control_group, control_slider};
+use super::scope_controls::{control_group, control_slider_response};
 use super::*;
 
 impl ScopeApp {
     pub(super) fn xy_controls(&mut self, ui: &mut egui::Ui) {
         let before = self.xy_settings;
         control_group(ui, i18n::text("xy.observation"), BLUE, |ui| {
-            control_slider(
+            let (response, _) = control_slider_response(
                 ui,
                 i18n::text("xy.observation_window"),
                 egui::Slider::new(&mut self.xy_settings.milliseconds, 0.5..=200.0)
@@ -16,6 +16,12 @@ impl ScopeApp {
                     .drag_value_speed(0.5),
                 None,
             );
+            #[cfg(feature = "qa")]
+            ui.ctx().data_mut(|data| {
+                data.insert_temp(egui::Id::unique("qa_xy_window"), response.rect);
+            });
+            #[cfg(not(feature = "qa"))]
+            let _ = response;
             if ui.button(i18n::text("xy.reset_xy_scales")).clicked() {
                 self.xy_settings = xy::Settings {
                     channels: self.xy_settings.channels,
@@ -43,7 +49,7 @@ impl ScopeApp {
                         channels,
                     );
                 });
-                control_slider(
+                let (response, _) = control_slider_response(
                     ui,
                     i18n::text("xy.amplitude_range"),
                     egui::Slider::new(
@@ -60,6 +66,19 @@ impl ScopeApp {
                     .drag_value_speed(0.001),
                     None,
                 );
+                #[cfg(feature = "qa")]
+                ui.ctx().data_mut(|data| {
+                    data.insert_temp(
+                        egui::Id::unique(if index == 0 {
+                            "qa_xy_x_scale"
+                        } else {
+                            "qa_xy_y_scale"
+                        }),
+                        response.rect,
+                    );
+                });
+                #[cfg(not(feature = "qa"))]
+                let _ = response;
             });
         }
         if self.xy_settings.channels != before.channels
