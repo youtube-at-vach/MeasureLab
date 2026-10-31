@@ -6,6 +6,43 @@ pub(super) fn gestures() -> &'static str {
     i18n::text("spectrogram.gestures")
 }
 
+/// Stack wrapped history readouts using their actual height, including invalid
+/// and outside-range reasons and the optional quefrency difference.
+pub(super) fn cursor_note(
+    ui: &egui::Ui,
+    rect: egui::Rect,
+    top: &mut f32,
+    index: usize,
+    text: &str,
+    color: Color32,
+) {
+    let painter = ui.painter().with_clip_rect(rect.intersect(ui.clip_rect()));
+    let galley = painter.layout(
+        text.into(),
+        egui::FontId::monospace(10.0),
+        color,
+        (rect.width() - 8.0).max(1.0),
+    );
+    let position = pos2(rect.right() - galley.size().x - 4.0, *top);
+    let bounds = egui::Rect::from_min_size(position, galley.size());
+    painter.rect_filled(
+        bounds.expand2(vec2(2.0, 1.0)),
+        2.0,
+        Color32::from_rgba_unmultiplied(7, 14, 19, 220),
+    );
+    painter.galley(position, galley, color);
+    *top = bounds.bottom() + 6.0;
+    #[cfg(feature = "qa")]
+    ui.ctx().data_mut(|data| {
+        data.insert_temp(
+            egui::Id::unique(("qa_spectrogram_note", index)),
+            (bounds, text.to_owned()),
+        )
+    });
+    #[cfg(not(feature = "qa"))]
+    let _ = index;
+}
+
 pub(super) struct PendingClick {
     pub snapshot: Arc<spectrogram::history::Snapshot>,
     pub anchor: u64,
@@ -207,6 +244,8 @@ impl ScopeApp {
             .id_salt("Analysis")
             .default_open(true)
             .show(ui, |ui| self.spectrogram_analysis_controls(ui));
+        // Leave room for CJK glyph extents at the end of a scrolled inspector.
+        ui.add_space(4.0);
     }
 
     fn spectrogram_display_controls(&mut self, ui: &mut egui::Ui) {

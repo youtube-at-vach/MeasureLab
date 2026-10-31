@@ -3345,7 +3345,7 @@ impl ScopeApp {
                                 &[
                                     (
                                         "live",
-                                        (if self.spectrogram_hold.is_some() {
+                                        (if self.spectrogram_hold.is_some() || !self.running() {
                                             if self.running() {
                                                 i18n::text("spectrogram.hold_input_running")
                                             } else {
@@ -3415,6 +3415,10 @@ impl ScopeApp {
                     outer.min + vec2(42.0, 16.0),
                     outer.max - vec2(70.0, 18.0),
                 );
+                #[cfg(feature = "qa")]
+                ui.ctx().data_mut(|data| {
+                    data.insert_temp(egui::Id::unique("qa_spectrogram_plot"), rect);
+                });
                 self.spectrogram_interaction(ui, &response, rect);
                 let ready = self.request_spectrogram_view(rect, ui.ctx().pixels_per_point());
                 if !ready {
@@ -3552,9 +3556,14 @@ impl ScopeApp {
                         i18n::text("spectrogram.no_stft_data_at_this_time_gap_or_unavailable")
                             .into()
                     };
+                    let gestures = if self.cepstrogram_applied() {
+                        i18n::text("spectrogram.cepstral_gestures")
+                    } else {
+                        spectrogram_controls::gestures()
+                    };
                     response
                         .clone()
-                        .on_hover_text(format!("{text}\n{}", spectrogram_controls::gestures()));
+                        .on_hover_text(format!("{text}\n{gestures}"));
                 }
                 drop(history);
                 ui.horizontal(|ui| {
@@ -3935,6 +3944,16 @@ impl ScopeApp {
         rect: egui::Rect,
         view: View,
     ) {
+        let mut note_top = rect.top() + 4.0;
+        #[cfg(feature = "qa")]
+        ui.ctx().data_mut(|data| {
+            for index in 0..3usize {
+                data.remove::<(egui::Rect, String)>(egui::Id::unique((
+                    "qa_spectrogram_note",
+                    index,
+                )));
+            }
+        });
         if response.double_clicked() || response.drag_started() {
             self.spectrogram_pending_click = None;
         }
@@ -4021,9 +4040,10 @@ impl ScopeApp {
         }
         for (index, sample) in samples.into_iter().enumerate() {
             if self.spectrogram_unavailable_selection[index] {
-                cursor_note(
+                spectrogram_controls::cursor_note(
                     ui,
                     rect,
+                    &mut note_top,
                     index,
                     i18n::format(
                         "spectrogram.no_stft_row_before_input_began",
@@ -4142,7 +4162,14 @@ impl ScopeApp {
             if !(0.0..=self.spectrogram_seconds).contains(&age) {
                 text.push_str(i18n::text("spectrogram.outside_visible_time_range"));
             }
-            cursor_note(ui, rect, index, &text, cursor_color(index));
+            spectrogram_controls::cursor_note(
+                ui,
+                rect,
+                &mut note_top,
+                index,
+                &text,
+                cursor_color(index),
+            );
         }
         if self.cepstrogram_applied()
             && let [Some(a), Some(b)] = self.cursors.quefrency_seconds
@@ -4152,14 +4179,15 @@ impl ScopeApp {
                 crate::cepstrum::nearest_quefrency(a, config.size, config.sample_rate).unwrap();
             let qb =
                 crate::cepstrum::nearest_quefrency(b, config.size, config.sample_rate).unwrap();
-            ui.painter().text(
-                rect.right_top(),
-                egui::Align2::RIGHT_TOP,
-                format!(
+            spectrogram_controls::cursor_note(
+                ui,
+                rect,
+                &mut note_top,
+                2,
+                &format!(
                     "Δτ {:.6} ms",
                     (qb as f64 - qa as f64) / config.sample_rate as f64 * 1000.0
                 ),
-                egui::FontId::monospace(10.0),
                 MUTED,
             );
         }

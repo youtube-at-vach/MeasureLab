@@ -96,7 +96,7 @@ I6の残りは次のPR単位で進める。各PRで対象の画像を読み、�
 | I6a（完了） | 日本語・入力停止中の共通ヘッダーメニュー。File／View／Audio I/O／Analysis status、表示倍率・言語のサブメニュー、狭幅のMenu | 通常幅・狭幅／倍率変更で各メニューを実イベントから開いて撮影し、文字の欠け・操作名・説明を画像で確認する。開くだけで測定条件・配置・入力世代・出力設定が変わらないことをQAで検査する |
 | I6b（完了） | 日本語の計器選択・併置・配置メニューと共通ツールチップ | 単独／コンソール・通常幅／狭幅で撮影し、操作名・条件・無効理由を確認する |
 | I6c（完了） | 日本語のScope取得中／保持／模擬エラーと専用ツールチップ | 状態と次の操作を画像で確認し、入力停止・出力停止、保持値・無効値を区別する |
-| I6d（Spectrum完了、1計器1PR） | 日本語の計器専用メニュー・ツールチップ・状態。残る対象はSpectrogram／XY／Generator／Lock-in／同期2ch比較 | 計器ごとに確認対象を列挙し、全ツールチップと取得中／保持／模擬エラーの適用対象を確認する |
+| I6d（Spectrum／Spectrogram完了、1計器1PR） | 日本語の計器専用メニュー・ツールチップ・状態。残る対象はXY／Generator／Lock-in／同期2ch比較 | 計器ごとに確認対象を列挙し、全ツールチップと取得中／保持／模擬エラーの適用対象を確認する |
 | I6e（1言語・1グループ1PR） | 他言語の画面・メニュー・ツールチップ・状態の独立レビュー | 言語・画面・状態ごとの確認範囲を明示し、問題の言語・グループだけを改訂して再撮影する |
 
 I6aの日本語画像では対象メニューの文字欠け・操作名・説明に改訂を要する問題は見つからず、訳文は変更していない。I6bでは計器一覧・検索結果／該当なし、併置の置換案内、追加・配置・Undoの有効／無効、区画メニューと共通枠のツールチップを画像で確認した。狭幅の計器検索欄をクリックするとサブメニューが閉じる不具合を修正し、編集を続けられることと選択後のメニュー終了を実ウィジェットQAにした。
@@ -106,6 +106,7 @@ I6aの日本語画像では対象メニューの文字欠け・操作名・説�
 * `shell`グループ：`shell.arrange_view`。訳文適用後に配置メニューを再撮影する。
 * `oscilloscope`グループ：`oscilloscope.per_channel_scale`、`oscilloscope.common_scale`、`oscilloscope.amplitude_axis_ch`、`oscilloscope.fit_visible_channels`、`oscilloscope.held_time_scale_next_start`。訳文適用後に測定面・共通縦軸Fitの説明・Single保持を再撮影する。
 * `spectrum`グループ：`spectrum.reset_requires_running_input`、`spectrum.time_cursor_inside_fft_window`、`spectrum.time_cursor_outside_fft_window`、`spectrum.dc_removed`、`spectrum.dc_retained`。訳文適用後に停止中のリセット説明・時間カーソルのFFT窓内外・履歴のDC状態を再撮影する。英語から削除した旧キー`spectrum.window`の訳文整理も同じグループの独立翻訳へ渡す。
+* `spectrogram`グループ：Cepstrogram関連の既存19キー（`cepstral_*`、`cepstrogram`、`captured_cepstral`、`f64_required`、`log_floor`、`no_signal`、`non_finite`、`quefrency_*`、`search_terms`、`time_quefrency_cursor`）。訳文適用後に解析モード・詳細・ケフレンシー読値・無信号／無効状態・履歴Spectrumの無効理由を再撮影する。
 
 既存の訳文・翻訳元ハッシュは変更していない。RMS／P-Pなどの測定略語は用途に応じて維持する。
 
@@ -113,7 +114,9 @@ I6cでは日本語Scopeの取得中・入力停止／出力継続・入出力停
 
 I6dのSpectrumでは、通常幅・狭幅で取得中／保持／模擬エラー、完全窓の収集中・無効窓・CH範囲外・全CH表示OFF、PSD／ESD、専用メニュー・全専用ツールチップと履歴表示を画像照合した。停止中のリセットに無効理由を追加し、時間カーソルの窓内外と履歴のDC状態の埋め込み英語を共通APIへ移した。保持中の全トレースのf64電力・ピーク保持・区間・平均条件と、履歴閲覧中の独立した通常FFT／出力の継続を実ウィジェットQAにした。既存訳に改訂を要する文字欠け・操作名の問題は見つからず、新しい英語キーの翻訳は上記のI6eへ残す。
 
-確認はIntel Macのdev-fast／qa版の自動イベント・撮影と内部Generator接続に限る。次はI6dのSpectrogramのレビューへ進み、他言語全体・通常配布物・物理入出力の受け入れは完了扱いにしない。再実行は [共通ヘッダーメニュー](VALIDATION.md#共通ヘッダーメニューの視覚レビューi6a)、[計器選択・配置と共通ツールチップ](VALIDATION.md#計器選択配置と共通ツールチップの視覚レビューi6b)、[Scopeの状態と専用ツールチップ](VALIDATION.md#scopeの状態と専用ツールチップの視覚レビューi6c)、[Spectrumの状態と専用ツールチップ](VALIDATION.md#spectrumの状態と専用ツールチップの視覚レビューi6d) を参照する。
+I6dのSpectrogramでは、通常幅・狭幅で取得中、表示Hold中の入力継続、入力停止／出力継続、入出力停止、捕捉済み／未捕捉の模擬エラー、専用メニュー・全専用ツールチップ、時間A／B・履歴の利用不可／無効状態を画像照合した。同計器のCepstrogramも符号付き読値・無信号／無効・詳細・履歴Spectrumの無効理由を確認した。入力停止後の履歴のライブ表記、Cepstrogramの周波数操作案内、複数行カーソル注記とケフレンシー差分の重なり、狭幅詳細の末尾の文字欠けを修正した。保持したf64フレーム・選択・条件・欠落情報の不変性と、Hold中の入力・FFT・STFT・独立出力の継続を実ウィジェットQAにした。既存訳に改訂を要する問題は見つからず、上記19キーは英語フォールバックを維持する。
+
+確認はIntel Macのdev-fast／qa版の自動イベント・撮影と内部Generator接続に限る。次はI6dのXYのレビューへ進み、他言語全体・通常配布物・物理入出力の受け入れは完了扱いにしない。再実行は [共通ヘッダーメニュー](VALIDATION.md#共通ヘッダーメニューの視覚レビューi6a)、[計器選択・配置と共通ツールチップ](VALIDATION.md#計器選択配置と共通ツールチップの視覚レビューi6b)、[Scopeの状態と専用ツールチップ](VALIDATION.md#scopeの状態と専用ツールチップの視覚レビューi6c)、[Spectrumの状態と専用ツールチップ](VALIDATION.md#spectrumの状態と専用ツールチップの視覚レビューi6d)、[Spectrogramの状態と専用ツールチップ](VALIDATION.md#spectrogramの状態と専用ツールチップの視覚レビューi6d) を参照する。
 
 Rust変更時は [Tool Usage Guide](../../.agents/workflows/tool_usage.md) の共通検証を行う。性能の条件・許容差・合否はテスト／QAコードを正本とし、公開マニュアル変更時はMkDocsビルドも行う。測定・出力中のUSB抜去試験は行わない。
 

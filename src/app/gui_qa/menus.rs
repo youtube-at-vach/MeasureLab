@@ -4,13 +4,16 @@ use std::collections::VecDeque;
 
 mod instruments;
 mod scope;
+mod spectrogram;
 mod spectrum;
 
 enum Step {
     Click(String),
+    ClickControl(egui::Id),
     TypeText(String),
     HoverText(String),
     HoverControl(egui::Id),
+    HoverAt(egui::Id, egui::Vec2),
     ScrollTo(String),
     ScrollMenuTo(String),
 }
@@ -28,15 +31,18 @@ pub(in crate::app) struct Review {
     header: bool,
     scope: bool,
     spectrum: bool,
+    spectrogram: bool,
     running: bool,
     output_running: bool,
     held: Option<export::Document>,
     retained_spectrum: Option<spectrum::Retained>,
+    retained_spectrogram: Option<spectrogram::Retained>,
     progress: (u64, u64, u64),
     case: Case,
     step: usize,
     events: VecDeque<Vec<egui::Event>>,
     pointer: Option<egui::Pos2>,
+    scroll_position: Option<(egui::Pos2, usize)>,
     frames: usize,
     ready: bool,
     conditions: Option<measurement::Config>,
@@ -58,11 +64,13 @@ impl Review {
         let instrument_target = std::env::var("MEASURELAB_UI_SMOKE_INSTRUMENT_REVIEW").ok();
         let scope_target = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_REVIEW").ok();
         let spectrum_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTRUM_REVIEW").ok();
+        let spectrogram_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTROGRAM_REVIEW").ok();
         if [
             &header_target,
             &instrument_target,
             &scope_target,
             &spectrum_target,
+            &spectrogram_target,
         ]
         .iter()
         .filter(|target| target.is_some())
@@ -74,10 +82,12 @@ impl Review {
         let header = header_target.is_some();
         let scope = scope_target.is_some();
         let spectrum = spectrum_target.is_some();
+        let spectrogram = spectrogram_target.is_some();
         let Some(target) = header_target
             .or(instrument_target)
             .or(scope_target)
             .or(spectrum_target)
+            .or(spectrogram_target)
         else {
             return Ok(None);
         };
@@ -106,6 +116,8 @@ impl Review {
             scope::case(app, &target)?
         } else if spectrum {
             spectrum::case(app, &target)?
+        } else if spectrogram {
+            spectrogram::case(app, &target)?
         } else {
             instruments::case(app, &target)?
         };
@@ -114,9 +126,11 @@ impl Review {
             header,
             scope,
             spectrum,
+            spectrogram,
             running: app.running(),
             output_running: !app.generator.stopped(),
             retained_spectrum: spectrum.then(|| spectrum::Retained::new(app)).transpose()?,
+            retained_spectrogram: spectrogram.then(|| spectrogram::Retained::new(app)),
             held: if scope && !app.running() && !app.scope_range.is_empty() {
                 Some(app.capture_scope_results()?)
             } else {
@@ -127,6 +141,7 @@ impl Review {
             step: 0,
             events: VecDeque::new(),
             pointer: None,
+            scroll_position: None,
             frames: 0,
             ready: false,
             conditions: None,
@@ -173,6 +188,26 @@ impl Review {
                 "Menu review waiting: {}; search={:?}; expected={:?}",
                 self.target, app.shell.search, self.case.labels
             );
+            for label in &self.case.labels {
+                eprintln!("Review pending text bounds: {:?}", painted_text(ctx, label));
+            }
+            if self.spectrogram {
+                eprintln!(
+                    "Review raster pending: prepared={} requested={} rows={} completed={} hold_anchor={:?} displayed_anchor={} latest={:?} input={} stft={}",
+                    app.spectrogram_prepared_id,
+                    app.spectrogram_view_worker.current_id(),
+                    app.spectrogram_history.lock().unwrap().len(),
+                    app.spectrogram_view_worker
+                        .metrics
+                        .completed
+                        .load(Ordering::Relaxed),
+                    app.spectrogram_hold_anchor,
+                    app.spectrogram_anchor,
+                    app.spectrogram_snapshot.latest().map(|f| f.info),
+                    app.input_generation,
+                    app.stft_generation
+                );
+            }
         }
         assert!(
             self.ready || self.frames < 360,
@@ -235,7 +270,7 @@ impl Review {
                         .insert(0, Step::Click(i18n::text("shell.menu").into()));
                     self.case.popup = true;
                 }
-                if !self.header && !self.scope && !self.spectrum {
+                if !self.header && !self.scope && !self.spectrum && !self.spectrogram {
                     instruments::compact(&mut self.case, &self.target, app);
                 }
             } else if !painted_text(ctx, i18n::text("common.file")).is_empty() {
@@ -255,8 +290,30 @@ impl Review {
         if let Some(step) = self.case.steps.get(self.step) {
             if let Step::ScrollTo(label) | Step::ScrollMenuTo(label) = step {
                 if text_visible(ctx, label) {
-                    self.step += 1;
+                    // Smooth scrolling can keep moving a newly visible target
+                    // between pointer-down and pointer-up. Locate it only after
+                    // several stable frames, including on the narrow Details page.
+                    let viewport = ctx.content_rect();
+                    let (position, _, _) = painted_text(ctx, label)
+                        .into_iter()
+                        .find(|(_, bounds, clip)| {
+                            clip.contains_rect(*bounds) && viewport.contains_rect(*bounds)
+                        })
+                        .expect("visible scroll target");
+                    let stable = self.scroll_position.map_or(1, |(old, count)| {
+                        if old.distance(position) <= 0.25 {
+                            count + 1
+                        } else {
+                            1
+                        }
+                    });
+                    self.scroll_position = Some((position, stable));
+                    if stable >= 4 {
+                        self.step += 1;
+                        self.scroll_position = None;
+                    }
                 } else {
+                    self.scroll_position = None;
                     // Scroll the actual inspector, including the narrow Details page.
                     let pos = if matches!(step, Step::ScrollMenuTo(_)) {
                         self.pointer.expect("Open the popup before scrolling") + vec2(0.0, 40.0)
@@ -300,12 +357,16 @@ impl Review {
                     };
                     pos
                 }
-                Step::HoverControl(id) => {
+                Step::ClickControl(id) | Step::HoverControl(id) | Step::HoverAt(id, _) => {
                     let Some(rect) = ctx.data(|data| data.get_temp::<egui::Rect>(*id)) else {
                         return;
                     };
                     assert!(ctx.content_rect().contains_rect(rect));
-                    rect.center()
+                    if let Step::HoverAt(_, fraction) = step {
+                        rect.min + rect.size() * *fraction
+                    } else {
+                        rect.center()
+                    }
                 }
                 Step::TypeText(_) | Step::ScrollTo(_) | Step::ScrollMenuTo(_) => unreachable!(),
             };
@@ -313,7 +374,7 @@ impl Review {
             self.events.push_back(vec![egui::Event::PointerMoved(pos)]);
             for pressed in [true, false]
                 .into_iter()
-                .filter(|_| matches!(step, Step::Click(_)))
+                .filter(|_| matches!(step, Step::Click(_) | Step::ClickControl(_)))
             {
                 self.events.push_back(vec![
                     egui::Event::PointerMoved(pos),
@@ -340,11 +401,12 @@ impl Review {
             }
             // Hover delay and tooltip placement run in the desktop event loop.
             // Wait for the expected tooltip itself, never accept its source label.
-            let hover = self
-                .case
-                .steps
-                .last()
-                .is_some_and(|step| matches!(step, Step::HoverText(_) | Step::HoverControl(_)));
+            let hover = self.case.steps.last().is_some_and(|step| {
+                matches!(
+                    step,
+                    Step::HoverText(_) | Step::HoverControl(_) | Step::HoverAt(_, _)
+                )
+            });
             // Smooth scrolling can move a target after its text first becomes
             // visible. Follow that real movement, then leave the pointer still
             // so egui's normal tooltip delay can expire.
@@ -357,6 +419,9 @@ impl Review {
                     Step::HoverControl(id) => ctx
                         .data(|data| data.get_temp::<egui::Rect>(*id))
                         .map(|rect| rect.center()),
+                    Step::HoverAt(id, fraction) => ctx
+                        .data(|data| data.get_temp::<egui::Rect>(*id))
+                        .map(|rect| rect.min + rect.size() * *fraction),
                     _ => unreachable!(),
                 };
                 if let Some(position) = position
@@ -369,7 +434,9 @@ impl Review {
                 }
             }
             if self.case.labels.iter().enumerate().any(|(index, label)| {
-                if hover && (self.spectrum || index + 1 == self.case.labels.len()) {
+                if hover
+                    && (self.spectrum || self.spectrogram || index + 1 == self.case.labels.len())
+                {
                     !painted_text_on(ctx, label, Some(egui::Order::Tooltip))
                         .into_iter()
                         .any(|(_, bounds, clip)| {
@@ -408,6 +475,17 @@ impl Review {
             {
                 return;
             }
+            if self.spectrogram
+                && !spectrogram::verify(
+                    app,
+                    ctx,
+                    &self.target,
+                    self.progress,
+                    self.retained_spectrogram.as_ref().unwrap(),
+                )
+            {
+                return;
+            }
             if !self.ready {
                 let bounds = self
                     .case
@@ -434,6 +512,8 @@ impl Review {
                         "Scope"
                     } else if self.spectrum {
                         "Spectrum"
+                    } else if self.spectrogram {
+                        "Spectrogram"
                     } else {
                         "Instrument"
                     },
