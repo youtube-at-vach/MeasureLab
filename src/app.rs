@@ -3852,23 +3852,18 @@ impl ScopeApp {
                 let mut times = String::new();
                 for (index, sample) in self.cursor_samples().into_iter().enumerate() {
                     if let Some(sample) = sample {
-                        times.push_str(
+                        let status = if (window.start..window.end).contains(&sample) {
                             i18n::format(
-                                "spectrum.window",
-                                &[
-                                    ("index", (cursor_name(index))),
-                                    (
-                                        "outside",
-                                        (if (window.start..window.end).contains(&sample) {
-                                            "in"
-                                        } else {
-                                            "outside"
-                                        }),
-                                    ),
-                                ],
+                                "spectrum.time_cursor_inside_fft_window",
+                                &[("index", cursor_name(index))],
                             )
-                            .as_ref(),
-                        );
+                        } else {
+                            i18n::format(
+                                "spectrum.time_cursor_outside_fft_window",
+                                &[("index", cursor_name(index))],
+                            )
+                        };
+                        times.push_str(&status);
                     }
                 }
                 response.clone().on_hover_text(
@@ -5400,19 +5395,31 @@ impl ScopeApp {
                 if self.shown_selected_spectrum().settings().quantity == Quantity::Psd {
                     if let Some(band) = &self.spectrum_band {
                         ui.label(RichText::new(i18n::format("spectrum.band_rms", &[("rms", &(display::number(Some(band.rms))).to_string()), ("unit", (self.shown_selected_spectrum().unit()))]).as_ref()).monospace().size(18.0).color(color));
-                        ui.label(RichText::new(i18n::format("spectrum.hz_power", &[("first_hz", &format!("{:.1}", band.first_hz)), ("last_hz", &format!("{:.1}", band.last_hz)), ("power", &(display::number(Some(band.power))).to_string()), ("power_unit", &(self.shown_selected_spectrum().power_unit()).to_string())]).as_ref()).small().color(MUTED))
+                        let _response = ui.label(RichText::new(i18n::format("spectrum.hz_power", &[("first_hz", &format!("{:.1}", band.first_hz)), ("last_hz", &format!("{:.1}", band.last_hz)), ("power", &(display::number(Some(band.power))).to_string()), ("power_unit", &(self.shown_selected_spectrum().power_unit()).to_string())]).as_ref()).small().color(MUTED))
                         .on_hover_text(i18n::format("spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64", &[("requested_hz", &(band.requested_hz[0]).to_string()), ("requested_hz_2", &(band.requested_hz[1]).to_string()), ("first_bin", &(band.first_bin).to_string()), ("last_bin", &(band.last_bin).to_string()), ("channel", &(band.window.channel + 1).to_string()), ("input_generation", &(self.input_generation).to_string()), ("updates", &(band.average.updates).to_string()), ("start", &(band.average.start).to_string()), ("end", &(band.average.end).to_string()), ("dropped", &(self.dropped).to_string()), ("missing_windows", &(self.spectrum_info.missing_windows).to_string())]).as_ref());
+                        #[cfg(feature = "qa")]
+                        ui.ctx().data_mut(|data| {
+                            data.insert_temp(egui::Id::unique("qa_spectrum_band"), _response.rect);
+                        });
                     } else {
                         ui.label(RichText::new(i18n::text("spectrum.band_power_unavailable_invalid_window_range_or_nonfinite_sum")).small().color(MUTED));
                     }
                 }
                 if self.shown_selected_spectrum().settings().quantity == Quantity::Esd {
-                    ui.label(RichText::new(i18n::format("spectrum.window_energy_s", &[("spectrum_energy", &(display::number(self.spectrum_energy)).to_string()), ("power_unit", &(self.shown_selected_spectrum().power_unit()).to_string())]).as_ref()).monospace().size(18.0).color(color))
+                    let _response = ui.label(RichText::new(i18n::format("spectrum.window_energy_s", &[("spectrum_energy", &(display::number(self.spectrum_energy)).to_string()), ("power_unit", &(self.shown_selected_spectrum().power_unit()).to_string())]).as_ref()).monospace().size(18.0).color(color))
                         .on_hover_text(i18n::text("spectrum.sum_of_f64_esd_f_over_all_bins_including"));
+                        #[cfg(feature = "qa")]
+                        ui.ctx().data_mut(|data| {
+                            data.insert_temp(egui::Id::unique("qa_spectrum_energy"), _response.rect);
+                        });
                 }
                 if let Some(c) = self.shown_selected_spectrum().calibration() {
-                    ui.label(RichText::new(i18n::format("spectrum.calibration_rev", &[("id", (c.id())), ("revision", &(c.revision()).to_string())]).as_ref()).small().color(MUTED))
+                    let _response = ui.label(RichText::new(i18n::format("spectrum.calibration_rev", &[("id", (c.id())), ("revision", &(c.revision()).to_string())]).as_ref()).small().color(MUTED))
                         .on_hover_text(spectrum_calibration_description(Some(c)));
+                        #[cfg(feature = "qa")]
+                        ui.ctx().data_mut(|data| {
+                            data.insert_temp(egui::Id::unique("qa_spectrum_calibration"), _response.rect);
+                        });
                 }
                 self.spectrum_plot(ui, view);
                 if self.spectrum_history.linked { self.history_spectrum_bar(ui); } else { self.spectrum_channel_bar(ui); }
@@ -5426,6 +5433,10 @@ impl ScopeApp {
         );
         let rect =
             egui::Rect::from_min_max(outer.min + vec2(32.0, 4.0), outer.max - vec2(14.0, 18.0));
+        #[cfg(feature = "qa")]
+        ui.ctx().data_mut(|data| {
+            data.insert_temp(egui::Id::unique("qa_spectrum_plot"), rect);
+        });
         let painter = ui.painter();
         painter.rect_filled(rect, 0.0, Color32::from_rgb(7, 14, 19));
         let label_step = (((view.ceiling_db - view.floor_db) * 14.0 / rect.height()) / 20.0)

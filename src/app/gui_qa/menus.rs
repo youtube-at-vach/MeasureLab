@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 
 mod instruments;
 mod scope;
+mod spectrum;
 
 enum Step {
     Click(String),
@@ -11,6 +12,7 @@ enum Step {
     HoverText(String),
     HoverControl(egui::Id),
     ScrollTo(String),
+    ScrollMenuTo(String),
 }
 
 struct Case {
@@ -25,9 +27,11 @@ pub(in crate::app) struct Review {
     target: String,
     header: bool,
     scope: bool,
+    spectrum: bool,
     running: bool,
     output_running: bool,
     held: Option<export::Document>,
+    retained_spectrum: Option<spectrum::Retained>,
     progress: (u64, u64, u64),
     case: Case,
     step: usize,
@@ -45,6 +49,7 @@ pub(in crate::app) struct Review {
     command: (u64, u64),
     cursor_times: [Option<cursor::TimeCursor>; 2],
     active_cursor: usize,
+    frequencies: [Option<f64>; 2],
 }
 
 impl Review {
@@ -52,17 +57,28 @@ impl Review {
         let header_target = std::env::var("MEASURELAB_UI_SMOKE_HEADER_MENU").ok();
         let instrument_target = std::env::var("MEASURELAB_UI_SMOKE_INSTRUMENT_REVIEW").ok();
         let scope_target = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_REVIEW").ok();
-        if [&header_target, &instrument_target, &scope_target]
-            .iter()
-            .filter(|target| target.is_some())
-            .count()
+        let spectrum_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTRUM_REVIEW").ok();
+        if [
+            &header_target,
+            &instrument_target,
+            &scope_target,
+            &spectrum_target,
+        ]
+        .iter()
+        .filter(|target| target.is_some())
+        .count()
             > 1
         {
             return Err("Choose only one visual review".into());
         }
         let header = header_target.is_some();
         let scope = scope_target.is_some();
-        let Some(target) = header_target.or(instrument_target).or(scope_target) else {
+        let spectrum = spectrum_target.is_some();
+        let Some(target) = header_target
+            .or(instrument_target)
+            .or(scope_target)
+            .or(spectrum_target)
+        else {
             return Ok(None);
         };
         let case = if header {
@@ -88,6 +104,8 @@ impl Review {
             }
         } else if scope {
             scope::case(app, &target)?
+        } else if spectrum {
+            spectrum::case(app, &target)?
         } else {
             instruments::case(app, &target)?
         };
@@ -95,8 +113,10 @@ impl Review {
             target,
             header,
             scope,
+            spectrum,
             running: app.running(),
             output_running: !app.generator.stopped(),
+            retained_spectrum: spectrum.then(|| spectrum::Retained::new(app)).transpose()?,
             held: if scope && !app.running() && !app.scope_range.is_empty() {
                 Some(app.capture_scope_results()?)
             } else {
@@ -119,6 +139,7 @@ impl Review {
             command: app.generator.command_marker(),
             cursor_times: app.cursors.times,
             active_cursor: app.active_cursor,
+            frequencies: app.cursors.spectrum_frequencies_hz,
         }))
     }
 
@@ -172,6 +193,7 @@ impl Review {
         assert_eq!(app.generator.command_marker(), self.command);
         assert_eq!(app.cursors.times, self.cursor_times);
         assert_eq!(app.active_cursor, self.active_cursor);
+        assert_eq!(app.cursors.spectrum_frequencies_hz, self.frequencies);
         let config = app.core_config();
         if let Some(before) = &self.conditions {
             assert_eq!(config.scope, before.scope);
@@ -213,7 +235,7 @@ impl Review {
                         .insert(0, Step::Click(i18n::text("shell.menu").into()));
                     self.case.popup = true;
                 }
-                if !self.header && !self.scope {
+                if !self.header && !self.scope && !self.spectrum {
                     instruments::compact(&mut self.case, &self.target, app);
                 }
             } else if !painted_text(ctx, i18n::text("common.file")).is_empty() {
@@ -231,16 +253,19 @@ impl Review {
             return;
         }
         if let Some(step) = self.case.steps.get(self.step) {
-            if let Step::ScrollTo(label) = step {
+            if let Step::ScrollTo(label) | Step::ScrollMenuTo(label) = step {
                 if text_visible(ctx, label) {
                     self.step += 1;
                 } else {
                     // Scroll the actual inspector, including the narrow Details page.
-                    let pos = pos2(
-                        ctx.content_rect().right() - 80.0,
-                        ctx.content_rect().center().y,
-                    );
-                    self.pointer = Some(pos);
+                    let pos = if matches!(step, Step::ScrollMenuTo(_)) {
+                        self.pointer.expect("Open the popup before scrolling") + vec2(0.0, 40.0)
+                    } else {
+                        pos2(
+                            ctx.content_rect().right() - 80.0,
+                            ctx.content_rect().center().y,
+                        )
+                    };
                     self.events.push_back(vec![
                         egui::Event::PointerMoved(pos),
                         egui::Event::MouseWheel {
@@ -282,7 +307,7 @@ impl Review {
                     assert!(ctx.content_rect().contains_rect(rect));
                     rect.center()
                 }
-                Step::TypeText(_) | Step::ScrollTo(_) => unreachable!(),
+                Step::TypeText(_) | Step::ScrollTo(_) | Step::ScrollMenuTo(_) => unreachable!(),
             };
             self.pointer = Some(pos);
             self.events.push_back(vec![egui::Event::PointerMoved(pos)]);
@@ -320,8 +345,31 @@ impl Review {
                 .steps
                 .last()
                 .is_some_and(|step| matches!(step, Step::HoverText(_) | Step::HoverControl(_)));
+            // Smooth scrolling can move a target after its text first becomes
+            // visible. Follow that real movement, then leave the pointer still
+            // so egui's normal tooltip delay can expire.
+            if hover {
+                let position = match self.case.steps.last().unwrap() {
+                    Step::HoverText(label) => painted_text(ctx, label)
+                        .into_iter()
+                        .min_by(|a, b| a.0.y.total_cmp(&b.0.y).then(a.0.x.total_cmp(&b.0.x)))
+                        .map(|text| text.0),
+                    Step::HoverControl(id) => ctx
+                        .data(|data| data.get_temp::<egui::Rect>(*id))
+                        .map(|rect| rect.center()),
+                    _ => unreachable!(),
+                };
+                if let Some(position) = position
+                    && self.pointer.is_some_and(|old| old.distance(position) > 0.5)
+                {
+                    self.pointer = Some(position);
+                    self.events
+                        .push_back(vec![egui::Event::PointerMoved(position)]);
+                    return;
+                }
+            }
             if self.case.labels.iter().enumerate().any(|(index, label)| {
-                if hover && index + 1 == self.case.labels.len() {
+                if hover && (self.spectrum || index + 1 == self.case.labels.len()) {
                     !painted_text_on(ctx, label, Some(egui::Order::Tooltip))
                         .into_iter()
                         .any(|(_, bounds, clip)| {
@@ -349,24 +397,46 @@ impl Review {
             {
                 return;
             }
+            if self.spectrum
+                && !spectrum::verify(
+                    app,
+                    ctx,
+                    &self.target,
+                    self.progress,
+                    self.retained_spectrum.as_ref().unwrap(),
+                )
+            {
+                return;
+            }
             if !self.ready {
-                if let Some(label) = self.case.labels.last() {
-                    for (_, bounds, _) in painted_text_on(ctx, label, Some(egui::Order::Tooltip)) {
-                        println!(
-                            "Review tooltip bounds: {}",
-                            serde_json::json!([
-                                bounds.left(),
-                                bounds.top(),
-                                bounds.right(),
-                                bounds.bottom(),
-                                ctx.pixels_per_point()
-                            ])
-                        );
-                    }
+                let bounds = self
+                    .case
+                    .labels
+                    .iter()
+                    .flat_map(|label| painted_text_on(ctx, label, Some(egui::Order::Tooltip)))
+                    .map(|(_, bounds, _)| bounds)
+                    .reduce(|a, b| a.union(b));
+                if let Some(bounds) = bounds {
+                    println!(
+                        "Review tooltip bounds: {}",
+                        serde_json::json!([
+                            bounds.left(),
+                            bounds.top(),
+                            bounds.right(),
+                            bounds.bottom(),
+                            ctx.pixels_per_point()
+                        ])
+                    );
                 }
                 println!(
                     "{} review UI OK: {}; locale={}; text within clip and viewport; measurement, workspace and output unchanged",
-                    if self.scope { "Scope" } else { "Instrument" },
+                    if self.scope {
+                        "Scope"
+                    } else if self.spectrum {
+                        "Spectrum"
+                    } else {
+                        "Instrument"
+                    },
                     self.target,
                     i18n::locale().id()
                 );

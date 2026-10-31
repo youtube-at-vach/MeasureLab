@@ -186,11 +186,11 @@ impl ScopeApp {
                         ("name_2", (w.settings.precision.display_name())),
                         (
                             "retained",
-                            (if w.settings.remove_dc {
-                                "removed"
+                            if w.settings.remove_dc {
+                                i18n::text("spectrum.dc_removed")
                             } else {
-                                "retained"
-                            }),
+                                i18n::text("spectrum.dc_retained")
+                            },
                         ),
                     ],
                 )

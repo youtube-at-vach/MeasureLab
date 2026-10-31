@@ -125,6 +125,64 @@ def cases(devices=()):
                 compact,
                 {"SCOPE_REVIEW": review, "VIEW": "scope", "IDLE": "1"} | ({"ZOOM": "1.25"} if compact else {}),
             )
+    for review in (
+        "live",
+        "held",
+        "stopped",
+        "error",
+        "error-empty",
+        "filling",
+        "invalid",
+        "all-off",
+        "unavailable",
+        "psd",
+        "esd",
+        "esd-window",
+        "tooltip-amplitude",
+        "tooltip-psd",
+        "tooltip-esd",
+        "tooltip-channel",
+        "tooltip-unavailable",
+        "tooltip-toggle",
+        "tooltip-cursor-a",
+        "tooltip-cursor-b",
+        "tooltip-clear",
+        "tooltip-average",
+        "tooltip-reset",
+        "tooltip-reset-disabled",
+        "tooltip-ema",
+        "tooltip-precision",
+        "tooltip-live",
+        "tooltip-latest",
+        "tooltip-dc",
+        "tooltip-interval",
+        "tooltip-band",
+        "tooltip-energy",
+        "tooltip-calibration",
+        "tooltip-cursor",
+        "tooltip-cursor-times",
+        "menu-size",
+        "menu-size-large",
+        "menu-window",
+        "menu-span",
+        "menu-average",
+        "menu-precision",
+        "menu-source",
+        "details-frequency",
+        "details-band",
+        "details-diagnostics",
+        "history-live",
+        "history-held",
+        "history-empty",
+        "history-details",
+        "tooltip-history-cursor",
+    ):
+        for compact in (False, True):
+            yield (
+                f"spectrum-review-{review}-{'compact' if compact else 'wide'}",
+                compact,
+                {"SPECTRUM_REVIEW": review, "VIEW": "spectrum", "IDLE": "1"} | ({"ZOOM": "1.25"} if compact else {}),
+            )
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
     yield "sidebar-compact", False, {"VIEW": "scope", "IDLE": "1", "SIDEBAR": "compact"}
     yield "sidebar-compact-held", False, {"SCOPE_FLOW": "held", "SIDEBAR": "compact", "IDLE": "1"}
@@ -194,7 +252,9 @@ def main():
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/gui-redesign-qa")
     parser.add_argument(
-        "--case", action="append", help="Run a named case, header-menus, instrument-menus or scope-review (repeatable)"
+        "--case",
+        action="append",
+        help="Run a named case, header-menus, instrument-menus, scope-review or spectrum-review (repeatable)",
     )
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
@@ -223,6 +283,9 @@ def main():
     if "scope-review" in requested:
         requested.remove("scope-review")
         requested.update(name for name, _, _ in available if name.startswith("scope-review-"))
+    if "spectrum-review" in requested:
+        requested.remove("spectrum-review")
+        requested.update(name for name, _, _ in available if name.startswith("spectrum-review-"))
     selected = [case for case in available if args.case is None or case[0] in requested]
     if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
@@ -290,6 +353,8 @@ def main():
                 passed = passed and f"Instrument review UI OK: {options['INSTRUMENT_REVIEW']};" in log
             if "SCOPE_REVIEW" in options:
                 passed = passed and f"Scope review UI OK: {options['SCOPE_REVIEW']};" in log
+            if "SPECTRUM_REVIEW" in options:
+                passed = passed and f"Spectrum review UI OK: {options['SPECTRUM_REVIEW']};" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:
