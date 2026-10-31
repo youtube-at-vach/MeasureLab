@@ -203,6 +203,31 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`de5a5a6d`上のI6c差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/scope-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持波形・数値、Single・未捕捉・無効値・模擬エラーと次の操作を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからず、訳文・翻訳元ハッシュは変更していない。未翻訳キーの英語表示はPLANのI6eへ残す。
 
+### Spectrumの状態と専用ツールチップの視覚レビュー（I6d）
+
+```sh
+./scripts/cargo.sh build --profile dev-fast --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale ja --case spectrum-review \
+    --output dist/i18n-visual-review/spectrum-ja-final
+```
+
+`spectrum-review`は次の範囲を通常幅と狭幅（表示倍率125%）で撮影する。個別ケースは`--case spectrum-review-tooltip-band-compact`などで指定する。詳細欄と長いFFTサイズのメニューは実ホイールイベントでスクロールし、サイズ一覧の先頭／末尾を別に撮影する。
+
+| 対象 | 確認する表示 |
+| --- | --- |
+| 取得・保持・無効状態 | 取得中、入力停止／出力継続、入出力停止、捕捉済み／未捕捉の模擬エラー、完全窓の収集中、校正後の電力オーバーフロー、全CH表示OFF、CH範囲外 |
+| 数値と測定面の説明 | ビン振幅／PSD帯域電力／ESD窓エネルギー、校正条件、CH選択／表示ON・OFF、周波数カーソルの最寄りビン・区間・EMA・未校正FS。2chの保持値とピーク保持も比較 |
+| 詳細欄の全専用ツールチップ | 振幅／PSD／ESDの定義、A／B配置、周波数カーソルの消去範囲、電力平均・EMA整定、リセットの有効／無効、FFT精度、Live／Latest、DC除去、Scopeと独立したFFT区間 |
+| 専用メニュー・詳細 | FFTサイズ・窓・表示範囲・平均重み・精度・入力ソース、周波数範囲・PSD帯域、診断欄、ESDの非矩形窓の注意 |
+| 履歴Spectrum | STFT履歴の時間A／Bを表示し、入力継続中／停止中の読み取り専用・未選択・数値・カーソル説明・通常表示への復帰操作とエクスポート制限を確認。通常FFTの取得・解析と独立した保持を検査 |
+
+通常Generatorの内部接続と測定ワーカーで既知の信号を取得し、実ウィジェットから入力開始／有限Stop・出力停止を行う。エラーは模擬通知、電力オーバーフローは明示した試験用の校正係数で作る。物理ストリームは開かない。取得中の入力フレーム・FFT窓と独立した出力サンプルの進行、撮影操作中の測定条件・表示構成・周波数カーソル・入力世代・出力コマンドの維持を検査する。保持中は全4トレースのf64電力・ピーク保持・区間・平均条件と、JSON相当の入力条件・選択Spectrum・Scope・欠落情報を比較する。
+
+文字全体がclip・画面内に収まることと実Tooltip層の表示を検査し、画像・ログ・manifestは指定出力先へ保存する。`--assertions-only`は画像確認の代用にしない。履歴連携では実STFTのf64フレームを選択するが、Spectrogram自体の専用説明・状態とCepstrogramの履歴連携不可の説明は同計器のI6dへ残す。通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れとは分ける。
+
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`12523bfb`上のI6d差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/spectrum-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持値・無効窓・未取得、PSD帯域電力・ESD窓エネルギー、履歴の読み取り専用と操作対象を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからなかった。停止中のリセットと時間カーソルの窓内外・履歴のDC状態の新しい英語キーは英語フォールバックを維持し、各言語の訳文と旧キーの整理は[PLAN](PLAN.md)のI6eへ残す。訳文・翻訳元ハッシュは変更していない。
+
 ### G4に残る手動受け入れ
 
 操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。

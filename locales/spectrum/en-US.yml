@@ -1,4 +1,5 @@
 _version: 1
+spectrum.reset_requires_running_input: Start input to reset averaging and peak hold. Held results remain unchanged.
 spectrum.advanced_analysis_diagnostics: "Advanced analysis / diagnostics"
 spectrum.amplitude: "Amplitude"
 spectrum.analysis_changes_apply_when_input_restarts_the_captured_spectrum: "Analysis changes apply when input restarts. The captured spectrum stays held."
@@ -105,7 +106,6 @@ spectrum.top: "Top"
 spectrum.update_mode: "UPDATE MODE"
 spectrum.weight: "Weight %{count}"
 spectrum.weight_2: "Weight %{average_weight}"
-spectrum.window: " · %{index} %{outside} window"
 spectrum.window_duration_available_after_input_starts: "Window duration available after input starts"
 spectrum.window_energy_s: "Window energy %{spectrum_energy} %{power_unit}·s"
 spectrum.quantity.amplitude: "Bin amplitude"
@@ -115,3 +115,7 @@ spectrum.export_reason: "History Spectrum export is unavailable. Scope-only JSON
 spectrum.mode_names.live: "Live"
 spectrum.mode_names.continuous: "Continuous"
 spectrum.mode_names.latest: "Latest"
+spectrum.time_cursor_inside_fft_window: " · time cursor %{index}: inside FFT window"
+spectrum.time_cursor_outside_fft_window: " · time cursor %{index}: outside FFT window"
+spectrum.dc_removed: removed
+spectrum.dc_retained: retained

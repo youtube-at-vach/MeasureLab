@@ -12,7 +12,7 @@ pub(super) fn progress(app: &ScopeApp) -> (u64, u64, u64) {
     (input.0, input.1, app.generator.status.next_sample)
 }
 
-fn wait(app: &mut ScopeApp, ready: impl Fn(&ScopeApp) -> bool) -> Result<(), String> {
+pub(super) fn wait(app: &mut ScopeApp, ready: impl Fn(&ScopeApp) -> bool) -> Result<(), String> {
     let deadline = Instant::now() + Duration::from_secs(5);
     loop {
         app.poll_audio();

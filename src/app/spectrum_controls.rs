@@ -85,6 +85,10 @@ impl ScopeApp {
                     ui.scope_id().with(("spectrum_select", index)),
                     egui::Sense::click(),
                 );
+                #[cfg(feature = "qa")]
+                ui.ctx().data_mut(|data| {
+                    data.insert_temp(egui::Id::unique(("qa_spectrum_channel", index)), selection);
+                });
                 if response.clicked() {
                     self.spectrum_display.selected = index;
                     self.spectrum_numeric_key = None;
@@ -129,6 +133,10 @@ impl ScopeApp {
                     rect.right_top() + vec2(-23.0, 3.0),
                     vec2(20.0, 20.0),
                 );
+                #[cfg(feature = "qa")]
+                ui.ctx().data_mut(|data| {
+                    data.insert_temp(egui::Id::unique(("qa_spectrum_toggle", index)), toggle);
+                });
                 ui.put(toggle, |ui: &mut egui::Ui| {
                     ui.add_enabled(
                         available && self.pending_stop.is_none(),
@@ -404,13 +412,16 @@ impl ScopeApp {
     fn spectrum_average_controls(&mut self, ui: &mut egui::Ui) {
         let mut enabled = self.spectrum_settings.averages > 1;
         ui.horizontal(|ui| {
-            if ui
+            let response = ui
                 .checkbox(&mut enabled, i18n::text("spectrum.average"))
                 .on_hover_text(i18n::text(
                     "spectrum.exponential_average_of_linear_power_off_uses_the_latest",
-                ))
-                .changed()
-            {
+                ));
+            #[cfg(feature = "qa")]
+            ui.ctx().data_mut(|data| {
+                data.insert_temp(egui::Id::unique("qa_spectrum_average"), response.rect);
+            });
+            if response.changed() {
                 self.spectrum_settings.averages = if enabled {
                     self.spectrum_display.average_weight
                 } else {
@@ -457,6 +468,7 @@ impl ScopeApp {
                 .on_hover_text(i18n::text(
                     "spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces",
                 ))
+                .on_disabled_hover_text(i18n::text("spectrum.reset_requires_running_input"))
                 .clicked()
             {
                 self.reset_analysis();
