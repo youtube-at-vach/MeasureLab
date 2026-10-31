@@ -19,6 +19,7 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 def cases(devices=()):
     yield "startup-preferences", False, {"STARTUP_PREFERENCES": "1", "IDLE": "1"}
     yield "widget-interactions", False, {"INTERACTIONS": "1", "IDLE": "1"}
+    yield "cepstrogram-widget-interactions", False, {"CEPSTROGRAM": "1", "IDLE": "1", "VIEW": "spectrogram"}
     yield "language-demo-controls", False, {"LANGUAGE": "1", "VIEW": "scope"}
     yield "language-ja-wide", False, {"VIEW": "scope", "IDLE": "1", "LOCALE": "ja"}
     yield "language-ja-compact", True, {"SETTINGS": "io", "IDLE": "1", "ZOOM": "1.25", "LOCALE": "ja"}
@@ -183,6 +184,62 @@ def cases(devices=()):
                 compact,
                 {"SPECTRUM_REVIEW": review, "VIEW": "spectrum", "IDLE": "1"} | ({"ZOOM": "1.25"} if compact else {}),
             )
+    for review in (
+        "idle",
+        "live",
+        "hold-live",
+        "held",
+        "stopped",
+        "error",
+        "error-empty",
+        "filling",
+        "cursors",
+        "time-only",
+        "before-input",
+        "outside",
+        "invalid",
+        "gap",
+        "capacity",
+        "source-pending",
+        "cepstral-live",
+        "cepstral-held",
+        "cepstral-silence",
+        "cepstral-details",
+        "cepstral-display",
+        "cepstral-invalid",
+        "tooltip-cursor-a",
+        "tooltip-cursor-b",
+        "tooltip-clear",
+        "tooltip-placed",
+        "tooltip-precision",
+        "tooltip-plot",
+        "tooltip-gap",
+        "tooltip-invalid",
+        "tooltip-cepstral",
+        "tooltip-cepstral-silence",
+        "tooltip-cepstral-invalid",
+        "tooltip-cepstral-link",
+        "menu-source",
+        "menu-color",
+        "menu-color-last",
+        "menu-time",
+        "menu-mode",
+        "menu-precision",
+        "menu-size",
+        "menu-size-large",
+        "menu-overlap",
+        "menu-window",
+        "details-display",
+        "details-analysis",
+        "color-error",
+    ):
+        for compact in (False, True):
+            yield (
+                f"spectrogram-review-{review}-{'compact' if compact else 'wide'}",
+                compact,
+                {"SPECTROGRAM_REVIEW": review, "VIEW": "spectrogram", "IDLE": "1"}
+                | ({"ZOOM": "1.25"} if compact else {}),
+            )
     yield "sidebar-expanded", False, {"VIEW": "scope", "IDLE": "1"}
     yield "sidebar-compact", False, {"VIEW": "scope", "IDLE": "1", "SIDEBAR": "compact"}
     yield "sidebar-compact-held", False, {"SCOPE_FLOW": "held", "SIDEBAR": "compact", "IDLE": "1"}
@@ -254,7 +311,7 @@ def main():
     parser.add_argument(
         "--case",
         action="append",
-        help="Run a named case, header-menus, instrument-menus, scope-review or spectrum-review (repeatable)",
+        help="Run a named case, header-menus, instrument-menus, scope-review, spectrum-review or spectrogram-review (repeatable)",
     )
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
@@ -286,6 +343,9 @@ def main():
     if "spectrum-review" in requested:
         requested.remove("spectrum-review")
         requested.update(name for name, _, _ in available if name.startswith("spectrum-review-"))
+    if "spectrogram-review" in requested:
+        requested.remove("spectrogram-review")
+        requested.update(name for name, _, _ in available if name.startswith("spectrogram-review-"))
     selected = [case for case in available if args.case is None or case[0] in requested]
     if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
@@ -355,10 +415,14 @@ def main():
                 passed = passed and f"Scope review UI OK: {options['SCOPE_REVIEW']};" in log
             if "SPECTRUM_REVIEW" in options:
                 passed = passed and f"Spectrum review UI OK: {options['SPECTRUM_REVIEW']};" in log
+            if "SPECTROGRAM_REVIEW" in options:
+                passed = passed and f"Spectrogram review UI OK: {options['SPECTROGRAM_REVIEW']};" in log
             if "INTERACTIONS" in options:
                 passed = passed and "GUI interactions OK:" in log and "Shared I/O controls OK:" in log
                 if "IDLE" in options:
                     passed = passed and "Input guidance UI OK:" in log and "Analysis guidance UI OK:" in log
+            if "CEPSTROGRAM" in options:
+                passed = passed and "Cepstrogram GUI QA OK:" in log
             if "ESD" in options:
                 passed = passed and "ESD UI OK:" in log
             if "SPECTROGRAM_DISPLAY" in options:
