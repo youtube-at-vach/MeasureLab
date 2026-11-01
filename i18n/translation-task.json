@@ -1,13 +1,13 @@
 {
   "version": 3,
-  "base_revision": "5b29ff6a658a9f032492209dea1102c4da4f92bc",
+  "base_revision": "b8db2ecdb841432fa9390d051e5ddde9a4bfd931",
   "locale": "ko",
   "groups": [
-    "generator"
+    "io"
   ],
   "review_keys": [
-    "generator.loopback_not_selected"
+    "io.dithering_description"
   ],
   "kind": "translation",
-  "entries_hash": "c607e5c82c78cf10072ffcfb6fcc0f046550d8abd10ff6098fb4bbf7ed3afe9b"
+  "entries_hash": "0f8cd85e8990f35948bf4dffa7cd9489ab06db3c1abb2dde28f67c4c87e908b3"
 }

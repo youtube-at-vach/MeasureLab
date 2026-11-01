@@ -39169,7 +39169,7 @@
       "io.dithering_description": {
         "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
         "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
-        "translation_hash": "613d732e3a8ab86cabe0af369817ce170187d81ade439525ba16dd79341373f4"
+        "translation_hash": "d8f2f264143d527c1c48f87dea983d08bfe2ef7d54e948086aaff380398d6c8f"
       },
       "io.enable_dithering_tpdf": {
         "source": "Enable dithering (TPDF)",

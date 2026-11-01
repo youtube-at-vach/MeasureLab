@@ -23,8 +23,8 @@ io.device: 장치
 io.device_default: 장치 기본값
 io.device_default_khz: 장치 기본값 (%{sample_rate} kHz)
 io.dithering_bit_depth: 디더링 비트 깊이
-io.dithering_description: 활성 출력CH에TPDF 잡음을 추가하고 선택한 비트 깊이로 양자화합니다. f32/f64 출력에도 적용됩니다.
-  정지 또는OFF 상태의CH는 무음을 유지합니다.
+io.dithering_description: 활성 출력 CH에 TPDF 잡음을 추가하고 선택한 비트 깊이로 양자화합니다. f32/f64 출력에도
+  적용됩니다. 정지 또는 OFF 상태의 CH는 무음을 유지합니다.
 io.enable_dithering_tpdf: 디더링 활성화(TPDF)
 io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'XY용 동일 진폭, 무잡음 정현파 신호: 동위상,
   직교 위상 또는 반대 위상.'
