@@ -4736,6 +4736,21 @@
         "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
         "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
         "translation_hash": "29314b43eaeadbda018dd58cb5c039d1d415c2608a7380ebf744750af6219118"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "0f94123f6b722d870313bd65682b6267145446d4b76f7d595eb0887d19cee4c0"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "544cffff4dfc20c8ecfb03cabb05d29f8dcc3494a82d27b65b7201587e2c7f7b"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "5bc197744c19a5454772059ccfcbe658dbd4535044b14683d417d32b2e6691c9"
       }
     },
     "fr": {
