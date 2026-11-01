@@ -1,10 +1,10 @@
 {
   "version": 3,
-  "base_revision": "c4e32c41212513050d23ae75aab4d18bb3f72202",
+  "base_revision": "5e88b32eb294e40d4b001d4d762cc6cb4212cd59",
   "locale": "pt",
   "groups": [
-    "spectrogram"
+    "spectrum"
   ],
   "kind": "translation",
-  "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+  "entries_hash": "79426aec86348b904f478687b901ea3cef133cec03be5994b52090a56cd987d8"
 }
