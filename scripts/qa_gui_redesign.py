@@ -19,7 +19,7 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 def cases(devices=()):
     for instrument, targets in {
         "generator": "live held stopped empty error error-empty output-error square triangle noise unassigned collapsed details details-footer menu-waveform menu-routing menu-step tooltip-edit tooltip-applied tooltip-applied-values tooltip-stop tooltip-output details-noise dithering preferences-error",
-        "lockin": "live held stopped empty error error-empty disabled unavailable settling ref-loss ref-unstable missing invalid pending cartesian all details details-footer captured menu-ref menu-sig menu-tau menu-integration tooltip-valid tooltip-invalid",
+        "lockin": "live held stopped empty error error-empty disabled unavailable settling ref-loss ref-unstable missing invalid pending cartesian all details details-footer captured menu-ref menu-sig menu-tau menu-tau-last menu-integration tooltip-valid tooltip-invalid",
         "comparison": "live held stopped empty error error-empty disabled unavailable filling averaging missing invalid ref-loss response-loss incoherent pending details details-footer captured menu-ref menu-sig menu-size menu-window menu-span tooltip-range",
     }.items():
         for review in targets.split():

@@ -259,6 +259,12 @@ fn prepare(app: &mut ScopeApp, instrument: &str, target: &str) -> Result<(), Str
         };
     }
     if target == "dithering" {
+        // A device output cannot feed Generator loopback. Prepare a valid,
+        // stopped software input before the invariance snapshot is taken.
+        app.core = None;
+        app.pending_scope = None;
+        app.source = Source::Software;
+        app.switch_source();
         let config = output::device::Config {
             rate: 48000,
             channels: 2,
@@ -317,6 +323,7 @@ pub(super) fn case(app: &mut ScopeApp, name: &str) -> Result<Case, String> {
             target,
             "menu-step"
                 | "menu-tau"
+                | "menu-tau-last"
                 | "menu-integration"
                 | "menu-size"
                 | "menu-window"
@@ -439,11 +446,25 @@ pub(super) fn case(app: &mut ScopeApp, name: &str) -> Result<Case, String> {
             c.labels = vec![channel::name(0), channel::name(1)];
             c.popup = true;
         }
-        ("lockin", "menu-tau") => {
+        ("generator", "dithering") => {
+            c.steps.push(Step::ScrollTo(
+                i18n::text("io.dithering_description").into(),
+            ));
+            c.labels = vec![
+                i18n::text("io.dithering_bit_depth").into(),
+                i18n::text("io.dithering_description").into(),
+            ];
+        }
+        ("lockin", "menu-tau" | "menu-tau-last") => {
             c.steps.push(Step::Click(
                 i18n::text("lockin.time_constant_presets").into(),
             ));
-            c.labels = vec!["1.0000 ms".into(), "10.000 s".into()];
+            if target == "menu-tau-last" {
+                c.steps.push(Step::ScrollMenuTo("10.000 s".into()));
+                c.labels = vec!["3.0000 s".into(), "10.000 s".into()];
+            } else {
+                c.labels = vec!["1.0000 ms".into(), "3.0000 ms".into(), "10.000 ms".into()];
+            }
             c.popup = true;
         }
         ("lockin", "menu-integration") => {
