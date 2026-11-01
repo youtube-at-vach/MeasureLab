@@ -293,6 +293,13 @@ common.spectrum_linear_values_bin_position: Lineare Spectrum-Werte · Binpositio
 common.spectrum_prep_ms: Spectrum-Vorbereitung %{spectrum_build_ms} ms
 common.spectrum_windows_missing: Spectrum %{mode} · %{updates} Fenster · fehlend %{missing_windows}
 common.start_input_to_begin_acquisition: Eingang starten, um die Erfassung zu beginnen
+common.startup_preferences: STARTEINSTELLUNGEN
+common.startup_preferences_error: Fehler bei den Starteinstellungen
+common.startup_preferences_help: Ein-/Ausgangsauswahl, Messbedingungen und Anzeige
+  werden automatisch gespeichert. Ein- und Ausgang bleiben beim Start gestoppt.
+common.startup_preferences_recovery: Zum Schutz dieser Datei ist das automatische
+  Speichern deaktiviert. MeasureLab schließen, die Datei verschieben und die Anwendung
+  mit neuen Einstellungen erneut starten.
 common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / Hop %{hop} · Samples
   %{start}..%{end}
 common.stft_history_storage_losses_allocated_mib_peak_mib: Verlust von STFT-Verlaufspeicher
