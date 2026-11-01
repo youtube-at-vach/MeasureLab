@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 
 mod instruments;
 mod scope;
+mod signal;
 mod spectrogram;
 mod spectrum;
 mod xy;
@@ -34,6 +35,8 @@ pub(in crate::app) struct Review {
     spectrum: bool,
     spectrogram: bool,
     xy: bool,
+    signal: bool,
+    retained_signal: Option<signal::Retained>,
     running: bool,
     output_running: bool,
     held: Option<export::Document>,
@@ -68,6 +71,7 @@ impl Review {
         let scope_target = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_REVIEW").ok();
         let spectrum_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTRUM_REVIEW").ok();
         let spectrogram_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTROGRAM_REVIEW").ok();
+        let signal_target = std::env::var("MEASURELAB_UI_SMOKE_SIGNAL_REVIEW").ok();
         let xy_target = std::env::var("MEASURELAB_UI_SMOKE_XY_REVIEW").ok();
         if [
             &header_target,
@@ -76,6 +80,7 @@ impl Review {
             &spectrum_target,
             &spectrogram_target,
             &xy_target,
+            &signal_target,
         ]
         .iter()
         .filter(|target| target.is_some())
@@ -89,12 +94,14 @@ impl Review {
         let spectrum = spectrum_target.is_some();
         let spectrogram = spectrogram_target.is_some();
         let xy = xy_target.is_some();
+        let signal = signal_target.is_some();
         let Some(target) = header_target
             .or(instrument_target)
             .or(scope_target)
             .or(spectrum_target)
             .or(spectrogram_target)
             .or(xy_target)
+            .or(signal_target)
         else {
             return Ok(None);
         };
@@ -125,6 +132,8 @@ impl Review {
             spectrum::case(app, &target)?
         } else if spectrogram {
             spectrogram::case(app, &target)?
+        } else if signal {
+            signal::case(app, &target)?
         } else if xy {
             xy::case(app, &target)?
         } else {
@@ -137,6 +146,8 @@ impl Review {
             spectrum,
             spectrogram,
             xy,
+            signal,
+            retained_signal: signal.then(|| signal::Retained::new(app)),
             running: app.running(),
             output_running: !app.generator.stopped(),
             retained_spectrum: spectrum.then(|| spectrum::Retained::new(app)).transpose()?,
@@ -281,7 +292,13 @@ impl Review {
                         .insert(0, Step::Click(i18n::text("shell.menu").into()));
                     self.case.popup = true;
                 }
-                if !self.header && !self.scope && !self.spectrum && !self.spectrogram && !self.xy {
+                if !self.header
+                    && !self.scope
+                    && !self.spectrum
+                    && !self.spectrogram
+                    && !self.xy
+                    && !self.signal
+                {
                     instruments::compact(&mut self.case, &self.target, app);
                 }
             } else if !painted_text(ctx, i18n::text("common.file")).is_empty() {
@@ -449,6 +466,7 @@ impl Review {
                     && (self.spectrum
                         || self.spectrogram
                         || self.xy
+                        || self.signal
                         || index + 1 == self.case.labels.len())
                 {
                     !painted_text_on(ctx, label, Some(egui::Order::Tooltip))
@@ -511,6 +529,11 @@ impl Review {
             {
                 return;
             }
+            if self.signal
+                && !signal::verify(app, self.progress, self.retained_signal.as_ref().unwrap())
+            {
+                return;
+            }
             if !self.ready {
                 let bounds = self
                     .case
@@ -539,6 +562,8 @@ impl Review {
                         "Spectrum"
                     } else if self.spectrogram {
                         "Spectrogram"
+                    } else if self.signal {
+                        "Signal"
                     } else if self.xy {
                         "XY"
                     } else {

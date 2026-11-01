@@ -933,7 +933,7 @@ impl ScopeApp {
         {
             g.stop();
         }
-        ui.label(
+        let status = ui.label(
             RichText::new(format!(
                 "{} · {}",
                 if compact {
@@ -946,8 +946,11 @@ impl ScopeApp {
             .small()
             .monospace()
             .color(g.state_color()),
-        )
-        .on_hover_text(
+        );
+        #[cfg(feature = "qa")]
+        ui.ctx()
+            .data_mut(|data| data.insert_temp(egui::Id::unique("qa_output_status"), status.rect));
+        status.on_hover_text(
             i18n::format(
                 "generator.hz_ch_input_stop_holds_the_measurement_output_continues",
                 &[
