@@ -39220,6 +39220,101 @@
         "source": "Arrange view…",
         "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
         "translation_hash": "84d7feac3cf805d11359951b40a0ddca8526bcf6edacb371fa9391679bac0051"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "2a12b08df58a7e223a98b654e7f00bf5d99896764d56d580bd026576ae187870"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "842894615a246351cf7c4d1948d3102a87391c15ffe95fda8fa132b37e91a9e5"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "814ff869dedc3cacaec55c35d9f2fe94155280259f06f1976946b65be813f5c1"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "1f2051d0893257baa5213ad0b966ba04ea9f439a94a0cb92ee198c3f6f9ff1c9"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "540a9cf0351ca004cee6a03534450a24d91f53838e7f26465830d2b7a5705cc5"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "a04a0d0a5c7078fdaada996e748b04901bbc87958124d93ea8bdc8fbf7b708e1"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "37df614f95761b030cf1861b13107dbb7680bee4c795a1ebc38ea8aea267a7a7"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "f079542e9fcfc0b98852456f7c33b2e5d1969d1548c5fd688fa766dc678d01e0"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "a9ea4850619fcff21607f79711e1f88a08c2f35869de2557a2092cdad63689e9"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "d04c25bbb20273d0a80eb2d11ea673e554c6bc23007bc1892360e82ac25e591f"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "33cebc0055a3e6b26668a62fb92288614cbc500604dbc8ddd6b7920aaee4e50b"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "e562a692514ca4f87e67d59d9e5cbcbe3fce6bbdbc3a3abec08da9716efef5f1"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "db5f68cc34271caebdde2940f46c3744b477ff9f405bf8ced58fdc79d19bce09"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "95154f9634459a5cc522e4795a2307fcb8cc7f4057f0156861d1ba83b33d6f0c"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "42a7d3359c99a7643cd67a5a5f3908b518d866ab5ff2bd940506ab4eb9772f89"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "947489171130e8d2a1fc5d53d5bad9184c6fab8205f3002b3de025ca51dbfb44"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "09b2c635dc56de6660dff72b279bd87c50f5418acfcb734a228bc82ad36dc58d"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "86eddedce6ffec63f853d5aa4181619220ca2444dd8b770408eafc1ee5e610b0"
       }
     }
   }
