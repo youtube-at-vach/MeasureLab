@@ -9713,6 +9713,11 @@
         "source": "RMS",
         "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
         "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "d66c62ae4a9bb7de6902f6a05baaf9dfc320ec05b1f4630adf5bc2b03f375764"
       }
     },
     "de": {
