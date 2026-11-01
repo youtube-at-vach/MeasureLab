@@ -39,6 +39,8 @@ spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: '커서 %{in
   윈도우 %{updates}개, 기여 포락선 %{start_2}..%{end_2} (지수 가중치). 입력 세대 %{input_generation};
   누락 윈도우 %{missing_windows}개.%{times}'
 spectrum.custom_frequency_range: 사용자 지정 주파수 범위
+spectrum.dc_removed: 제거됨
+spectrum.dc_retained: 유지됨
 spectrum.ema: EMA 1/%{averages}
 spectrum.ema_settling: EMA 안정화 중
 spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: 에너지 스펙트럼 밀도
@@ -131,6 +133,7 @@ spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: 요청 %{requested_h
 spectrum.reset: 초기화
 spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: 모든 Spectrum 트레이스의
   평균화 및 피크 유지를 초기화합니다
+spectrum.reset_requires_running_input: 평균과 피크 유지를 초기화하려면 입력을 시작하세요. 유지된 결과는 바뀌지 않습니다.
 spectrum.select_a_time_frame_in_spectrogram: Spectrogram에서 시간 프레임 선택
 spectrum.show_ch_spectrum: CH%{index} Spectrum 표시
 spectrum.span: 범위 %{hz}
@@ -149,6 +152,8 @@ spectrum.sum_of_f64_esd_f_over_all_bins_including: 모든 빈(DC/Nyquist 포함)
 spectrum.time: 시간 %{i}
 spectrum.time_2: 시간 %{i} · %{i_2}
 spectrum.time_a_b_from_spectrogram: Spectrogram의 시간 A/B
+spectrum.time_cursor_inside_fft_window: ' · 시간 커서%{index}: FFT 창 내부'
+spectrum.time_cursor_outside_fft_window: ' · 시간 커서%{index}: FFT 창 외부'
 spectrum.time_end_s_ch_samples_hz_pt_dc: 시간 %{i} · 끝 %{sample_rate} s · CH %{channel}
   · 샘플 %{start}..%{end} · %{sample_rate_2} Hz · %{size} pt · %{name} · %{name_2} ·
   DC %{retained}
@@ -164,7 +169,6 @@ spectrum.top: 위
 spectrum.update_mode: 업데이트 모드
 spectrum.weight: 가중치 %{count}
 spectrum.weight_2: 가중치 %{average_weight}
-spectrum.window: ' · %{index} %{outside} 윈도우'
 spectrum.window_duration_available_after_input_starts: 입력이 시작된 뒤 윈도우 지속 시간을 사용할 수
   있습니다
 spectrum.window_energy_s: 윈도우 에너지 %{spectrum_energy} %{power_unit}·s
