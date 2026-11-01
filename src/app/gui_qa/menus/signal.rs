@@ -204,6 +204,13 @@ fn prepare(app: &mut ScopeApp, instrument: &str, target: &str) -> Result<(), Str
                     "response-loss" => comparison::BinState::ResponseLost,
                     _ => comparison::BinState::Incoherent,
                 };
+                b.coherence = (target == "incoherent").then_some(0.1);
+                if target == "ref-loss" {
+                    b.reference_psd = 0.0;
+                }
+                if target == "response-loss" {
+                    b.response_psd = 0.0;
+                }
                 b.transfer_re = None;
                 b.transfer_im = None;
                 b.gain = None;
