@@ -23,6 +23,11 @@ io.demo_square: Onda quadrada limitada em banda
 io.device: DISPOSITIVO
 io.device_default: Padrão do dispositivo
 io.device_default_khz: Padrão do dispositivo (%{sample_rate} kHz)
+io.dithering_bit_depth: PROFUNDIDADE DE BITS DO DITHER
+io.dithering_description: Adiciona ruído TPDF e quantiza os CH de saída ativos na
+  profundidade escolhida, inclusive na saída f32/f64. CH parados ou em OFF permanecem
+  silenciosos.
+io.enable_dithering_tpdf: Ativar dither (TPDF)
 io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Sinais senoidais sem ruído
   e de amplitude igual para XY: em fase, quadratura ou fase oposta.'
 io.frequency: FREQUÊNCIA
