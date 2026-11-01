@@ -4,9 +4,28 @@ spectrogram.analysis: Análise
 spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: Alterações
   da análise se aplicam quando a entrada reiniciar. A imagem capturada permanece retida.
 spectrogram.auto_color_range: Faixa de cor automática
+spectrogram.captured_cepstral: 'Capturado: %{fs} Hz nominais · N %{n} / passo %{hop}
+  · f64 · piso log %{floor} dB'
 spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 'Capturado: %{sample_rate}
   Hz nominal · janela %{sample_rate_2} s · linha %{sample_rate_3} ms · bin %{size}
   Hz'
+spectrogram.cepstral_channel: CH %{channel} · dB re 1
+spectrogram.cepstral_definition: Cepstro real com sinal; cor = (2c)² em dB re 1. q=0
+  excluído. O piso logarítmico relativo independe da cor. FS não calibrado, Fs nominal;
+  sem garantia de tom ou atraso.
+spectrogram.cepstral_gestures: 'Roda: ampliar quefrência. Arrastar: mover quefrência/tempo.
+  Shift+roda: percorrer o histórico. Clique: reter e selecionar tempo/quefrência A
+  ou B. Live libera as seleções. Clique duplo: redefinir a faixa e a posição temporal.'
+spectrogram.cepstral_link_disabled: O Spectrum do histórico não está disponível para
+  coeficientes do cepstro real.
+spectrogram.cepstral_power: Potência cepstral (dB re 1)
+spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
+
+  CH %{channel} · amostras %{start}..%{end}'
+spectrogram.cepstral_status: '%{status} · piso log %{floor} dB · %{count} bins unilaterais
+  limitados ao piso'
+spectrogram.cepstral_valid: Cepstro real válido
+spectrogram.cepstrogram: Cepstrograma
 spectrogram.ch_dbfs: CH %{channel} · dBFS
 spectrogram.collecting_a_complete_stft_window: Coletando uma janela STFT completa…
 spectrogram.color_map: MAPA DE CORES
@@ -23,6 +42,7 @@ spectrogram.color_range_dbfs: FAIXA DE CORES · dBFS
 spectrogram.display: Exibição
 spectrogram.end_s_s_retained_n_hop: '%{live} · Fim %{sample_rate} s · %{retained_seconds}
   s retidos · N %{size} / salto %{hop}%{else}'
+spectrogram.f64_required: O cepstrograma usa f64. A precisão do espectrograma é mantida.
 spectrogram.fft_length: COMPRIMENTO FFT
 spectrogram.fft_overlap: SOBREPOSIÇÃO FFT
 spectrogram.frequency_hz: Frequência / Hz
@@ -52,16 +72,19 @@ spectrogram.invalid_stft_window_non_finite_input_samples: Janela STFT inválida 
 spectrogram.linear_hz: Hz linear
 spectrogram.live: AO VIVO
 spectrogram.live_action: Ao vivo
+spectrogram.log_floor: Piso logarítmico relativo
 spectrogram.log_hz: Hz logarítmico
 spectrogram.max: Máx.
 spectrogram.min: Mín.
 spectrogram.min_and_max_must_be_finite_with_min_max: Mín. e Máx. devem ser finitos,
   com Mín. < Máx. A faixa anterior é mantida.
+spectrogram.no_signal: Sem sinal após o pré-processamento
 spectrogram.no_stft_data_at_this_time_gap_or_unavailable: Sem dados STFT neste momento
   · lacuna ou indisponível
 spectrogram.no_stft_row_before_input_began: '%{index} Nenhuma linha STFT
 
   Antes do início da entrada'
+spectrogram.non_finite: 'Janela inválida: entrada ou cálculo não finito'
 spectrogram.outside_visible_time_range: '
 
   Fora da faixa de tempo visível'
@@ -73,6 +96,11 @@ spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 'Am
   Em branco: histórico indisponível.'
 spectrogram.points: '%{size} pontos'
 spectrogram.preparing_history_view: Preparando visualização do histórico…
+spectrogram.quefrency_effective: Exibição %{min}…%{max} ms · passo %{step} ms · Fs
+  nominal
+spectrogram.quefrency_invalid: A quefrência exige valores finitos com 0 ≤ Min < Max.
+  A faixa anterior é mantida.
+spectrogram.quefrency_ms: Quefrência (ms)
 spectrogram.remove_dc_offset: Remover offset CC
 spectrogram.s_ch: '%{index} −%{age} s
 
@@ -80,8 +108,10 @@ spectrogram.s_ch: '%{index} −%{age} s
 spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
 
   Nenhuma linha STFT · lacuna ou indisponível'
+spectrogram.search_terms: Cepstrograma cepstro eco harmônico periodicidade quefrência
 spectrogram.spectrogram: Spectrogram
 spectrogram.start_input_to_begin_acquisition: Inicie a entrada para começar a aquisição
+spectrogram.time_quefrency_cursor: Cursor de tempo / quefrência
 spectrogram.time_range: FAIXA DE TEMPO
 spectrogram.to: Até
 spectrogram.to_uses_nyquist_log_excludes_dc: Até = 0 usa Nyquist. Log exclui CC.
