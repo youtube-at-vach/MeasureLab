@@ -16,7 +16,7 @@
     {
       "path": "src/app/gui_qa/menus.rs",
       "before_hash": "39847e056c5ce54eda1094cabca6bb4aa200725f34223d2d1129fd00006a354e",
-      "after_hash": "17a7fe7ab65682f36a66a518876db42f254e51b7e3c6bfc8ccbdbc9019cc82fd"
+      "after_hash": "348de7599cfee1d6c9d9905e009d6dbfc5aae74286187971fdc17d8a7a6bb3dd"
     },
     {
       "path": "src/app/gui_qa/menus/signal.rs",
