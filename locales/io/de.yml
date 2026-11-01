@@ -22,6 +22,11 @@ io.demo_square: Bandbegrenztes Rechteck
 io.device: GERÄT
 io.device_default: Gerätestandard
 io.device_default_khz: Gerätestandard (%{sample_rate} kHz)
+io.dithering_bit_depth: DITHER-BITTIEFE
+io.dithering_description: Fügt TPDF-Rauschen hinzu und quantisiert aktive Ausgangs-CH
+  auf die gewählte Bittiefe, auch bei f32/f64-Ausgabe. Gestoppte und OFF-CH bleiben
+  stumm.
+io.enable_dithering_tpdf: Dithering aktivieren (TPDF)
 io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Sinusförmige Signale gleicher
   Amplitude und ohne Rauschen für XY: gleichphasig, quadraturphasig oder gegenphasig.'
 io.frequency: FREQUENZ
