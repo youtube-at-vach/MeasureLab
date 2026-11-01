@@ -1,6 +1,7 @@
 _version: 1
 oscilloscope.acquiring_post_trigger: Nachtrigger-Erfassung
 oscilloscope.acquisition: ERFASSUNG
+oscilloscope.amplitude_axis_ch: Amplitude [FS] · Achse CH%{channel}
 oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: Ein erfasster
   oder kalibrierter Wert ist nicht endlich; kein gültiger Zahlenwert
 oscilloscope.auto: Automatisch
@@ -8,10 +9,9 @@ oscilloscope.auto_free: Automatisch / frei
 oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: Zeitskala,
   Amplitude und Trigger für ein periodisches Signal automatisch einstellen
 oscilloscope.autoset: Automatische Einstellung
-oscilloscope.autoset_frequency: 'Automatische Einstellung: %{frequency} Hz anhand
-  roher Flanken'
-oscilloscope.autoset_held: Amplitude der gehaltenen Erfassung angepasst; Zeit/Trigger
-  gelten ab dem nächsten Start (%{frequency} Hz)
+oscilloscope.autoset_frequency: 'Letztes Autoset: %{frequency} Hz aus Rohsignal-Durchgängen'
+oscilloscope.autoset_held: 'Letztes Autoset: gehaltene Amplitude angepasst; Zeit/Trigger
+  beim nächsten Start (%{frequency} Hz)'
 oscilloscope.capture_once_on_the_next_trigger_crossing: Beim nächsten Triggerübergang
   einmal erfassen
 oscilloscope.centre_offset: Mittenoffset
@@ -26,6 +26,7 @@ oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{
 
   %{display}'
 oscilloscope.channel_out_of_range: — · Kanal außerhalb des Bereichs
+oscilloscope.common_scale: Gemeinsame Skala
 oscilloscope.cursor: Cursor %{index} · %{join}
 oscilloscope.display: Anzeige
 oscilloscope.drag_the_slider_or_value_to_adjust_double_click: Schieberegler oder Wert
@@ -38,6 +39,8 @@ oscilloscope.falling_edge: Fallende Flanke
 oscilloscope.fit_amplitude: Skala anpassen
 oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Vertikalskala an die
   Rohspitze des gewählten Kanals anpassen und den Offset auf null setzen.
+oscilloscope.fit_visible_channels: Auf den größten Rohsignal-Spitzenwert der sichtbaren
+  CH anpassen und den gemeinsamen Offset zentrieren
 oscilloscope.free_run: Dauerbetrieb
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -47,6 +50,8 @@ oscilloscope.guides: Hilfslinien
 oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: BEDINGUNGEN
   DER GEHALTENEN ERFASSUNG BEIBEHALTEN · vorgemerkte Messeinstellungen gelten ab dem
   nächsten Start
+oscilloscope.held_time_scale_next_start: 'Gehalten: %{scale} ms/div · Zeit-/Triggeränderungen
+  gelten beim nächsten Start'
 oscilloscope.horizontal: HORIZONTAL
 oscilloscope.input_source: Eingangsquelle
 oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
@@ -65,8 +70,6 @@ oscilloscope.mode_names.auto: Automatisch
 oscilloscope.mode_names.normal: Normal
 oscilloscope.mode_names.single: Einzeln
 oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
-oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · Signalform:
-  rohes FS'
 oscilloscope.no_acquired_samples_for_this_channel_and_interval: Keine erfassten Samples
   für diesen Kanal und dieses Intervall
 oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
@@ -81,10 +84,13 @@ oscilloscope.out_of_range: Außerhalb des Bereichs
 oscilloscope.outside_input_channel_range: ' · außerhalb des Eingangskanalbereichs'
 oscilloscope.outside_input_channel_range_2: '%{channel} · außerhalb des Eingangskanalbereichs'
 oscilloscope.outside_sweep: '%{index} #%{sample} · außerhalb des Sweeps'
+oscilloscope.p_p: P-P
 oscilloscope.partial_missing_samples: Teilweise · %{scope_missing} fehlende Samples
+oscilloscope.per_channel_scale: Skala je CH
 oscilloscope.position: Position
 oscilloscope.reset_time_position: Position zurücksetzen
 oscilloscope.rising_edge: Steigende Flanke
+oscilloscope.rms: RMS
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · Spitze-Spitze %{peak_to_peak}
   %{unit} · Spitze %{peak} %{unit} · %{samples} erfasste Samples
