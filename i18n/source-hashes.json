@@ -21756,14 +21756,14 @@
         "translation_hash": "2da22bde0347476f957c127c4c91f6eca3d1c48f9465b7aa5ee6031b5005576e"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "f8ad4ee32e83e55720ea7eb09d843d8b8ad7afadcac77ab513bbe78ab7943984"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "aaac6a926fb4f0c773c0080436bd21cae24e4d371ad151f62c75aaeccffff7b4"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "0435b41f142cf895eb649d29e4c7703d6ae84da56314b8e03cd8943827088aeb"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "bb7a5ff6681ec9a9a0d9379797c85b5b25c9b3ae46a466571f07da1c46746d7a"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -21929,11 +21929,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "2e99211bf03d97c35b796b64ab14cdb6aede9f821b82742e6e6995ad578b7523"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -24434,6 +24429,41 @@
         "source": "Enable dithering (TPDF)",
         "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
         "translation_hash": "36c9cb71eebcc2ef71f36fb87e5a0c61138405d0d51d2b274e062c6217eb21c3"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "a9ccead843e46829ff5d87cb10a8d21560dab371673d340d9c29679350488dc6"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "6bd93fa62066f3ad0c0ab84d4709961530382b88f9e99e7c965edd3f569d976e"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "686b1f83a531786ed6d5879e8592837b3202d2c8a9e2f107ee196a12587150c9"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "03f8014aa1e0c61dbab076676910694904a14a2f592e9d1855aaf6570b54dadd"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "47c4dbb7365d280df0cb82f461b259c5e9cbaddd30a3443daac03b3bd2737696"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
       }
     },
     "ru": {

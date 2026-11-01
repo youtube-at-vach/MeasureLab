@@ -1,6 +1,7 @@
 _version: 1
 oscilloscope.acquiring_post_trigger: Adquirindo pós-disparo
 oscilloscope.acquisition: AQUISIÇÃO
+oscilloscope.amplitude_axis_ch: Amplitude [FS] · eixo CH%{channel}
 oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: Um valor adquirido
   ou calibrado não é finito; nenhuma leitura numérica válida
 oscilloscope.auto: Automático
@@ -8,10 +9,10 @@ oscilloscope.auto_free: Automático / livre
 oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: Defina automaticamente
   a escala de tempo, a amplitude e o disparo para um sinal periódico
 oscilloscope.autoset: Ajuste automático
-oscilloscope.autoset_frequency: 'Ajuste automático: %{frequency} Hz a partir de cruzamentos
-  brutos'
-oscilloscope.autoset_held: Amplitude da captura retida ajustada; tempo/disparo se
-  aplicam no próximo início (%{frequency} Hz)
+oscilloscope.autoset_frequency: 'Último ajuste automático: %{frequency} Hz a partir
+  dos cruzamentos do sinal bruto'
+oscilloscope.autoset_held: 'Último ajuste automático: amplitude retida ajustada; tempo/disparo
+  no próximo início (%{frequency} Hz)'
 oscilloscope.capture_once_on_the_next_trigger_crossing: Capturar uma vez no próximo
   cruzamento do disparo
 oscilloscope.centre_offset: Offset central
@@ -26,6 +27,7 @@ oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{
 
   %{display}'
 oscilloscope.channel_out_of_range: — · canal fora da faixa
+oscilloscope.common_scale: Escala comum
 oscilloscope.cursor: Cursor %{index} · %{join}
 oscilloscope.display: Exibição
 oscilloscope.drag_the_slider_or_value_to_adjust_double_click: Arraste o controle deslizante
@@ -38,6 +40,8 @@ oscilloscope.falling_edge: Borda descendente
 oscilloscope.fit_amplitude: Ajustar escala
 oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajustar a escala vertical
   ao pico bruto do canal selecionado e zerar o offset.
+oscilloscope.fit_visible_channels: Ajustar ao maior pico bruto dos CH visíveis e centralizar
+  o deslocamento comum
 oscilloscope.free_run: Execução livre
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -47,6 +51,8 @@ oscilloscope.guides: Guias
 oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: CONDIÇÕES
   RETIDAS PRESERVADAS · configurações de medição enfileiradas se aplicam no próximo
   início
+oscilloscope.held_time_scale_next_start: 'Retido: %{scale} ms/div · alterações de
+  tempo/disparo aplicadas no próximo início'
 oscilloscope.horizontal: HORIZONTAL
 oscilloscope.input_source: Fonte de entrada
 oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
@@ -64,8 +70,6 @@ oscilloscope.mode_names.auto: Automático
 oscilloscope.mode_names.normal: Normal
 oscilloscope.mode_names.single: Único
 oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
-oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · forma de
-  onda: FS bruto'
 oscilloscope.no_acquired_samples_for_this_channel_and_interval: Nenhuma amostra adquirida
   para este canal e intervalo
 oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
@@ -81,10 +85,13 @@ oscilloscope.outside_input_channel_range: ' · fora da faixa do canal de entrada
 oscilloscope.outside_input_channel_range_2: '%{channel} · fora da faixa do canal de
   entrada'
 oscilloscope.outside_sweep: '%{index} #%{sample} · fora da varredura'
+oscilloscope.p_p: P-P
 oscilloscope.partial_missing_samples: Parcial · %{scope_missing} amostras ausentes
+oscilloscope.per_channel_scale: Escala por CH
 oscilloscope.position: Posição
 oscilloscope.reset_time_position: Redefinir posição
 oscilloscope.rising_edge: Borda ascendente
+oscilloscope.rms: RMS
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · pico a pico %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · pico a pico %{peak_to_peak}
   %{unit} · pico %{peak} %{unit} · %{samples} amostras adquiridas
