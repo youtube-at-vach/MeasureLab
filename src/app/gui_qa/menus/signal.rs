@@ -180,10 +180,18 @@ fn prepare(app: &mut ScopeApp, instrument: &str, target: &str) -> Result<(), Str
             if target == "pending" {
                 app.lockin_settings.frequency_hz = 1000.0;
             } else {
+                if target == "settling" {
+                    app.lockin_settings.time_constant_seconds = 0.1;
+                }
                 let mut result = lockin::Analyzer::new(app.lockin_settings, app.sample_rate)
                     .result()
                     .clone();
                 result.state = state;
+                if target == "settling" {
+                    result.latest_window = 0..4096;
+                    result.sample_range = 0..4096;
+                    result.processed_windows = 1;
+                }
                 if target == "missing" {
                     result.missing_samples = 64;
                 }
@@ -319,6 +327,9 @@ pub(super) fn case(app: &mut ScopeApp, name: &str) -> Result<Case, String> {
         app.shell.narrow_details = true;
     }
     match (instrument, target) {
+        ("lockin", "settling") => {
+            c.labels.push(i18n::text("lockin.settling").into());
+        }
         ("generator", "menu-waveform") => {
             c.steps.push(Step::Click(
                 i18n::text("generator.waveform_names.sine").into(),
