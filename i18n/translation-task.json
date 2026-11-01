@@ -1,10 +1,10 @@
 {
   "version": 3,
-  "base_revision": "e055ccfb585c90dd5e180c04e9a7a6da2116edfb",
+  "base_revision": "d16f9b6436c8f089d793f0981b64f17516ab8580",
   "locale": "ko",
   "groups": [
-    "common"
+    "generator"
   ],
   "kind": "translation",
-  "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+  "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
 }
