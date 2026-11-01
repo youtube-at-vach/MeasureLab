@@ -50,6 +50,7 @@ pub(in crate::app) struct Review {
     pointer: Option<egui::Pos2>,
     scroll_position: Option<(egui::Pos2, usize)>,
     frames: usize,
+    native_focused: bool,
     ready: bool,
     conditions: Option<measurement::Config>,
     workspace: Option<settings::Workspace>,
@@ -165,6 +166,7 @@ impl Review {
             pointer: None,
             scroll_position: None,
             frames: 0,
+            native_focused: false,
             ready: false,
             conditions: None,
             workspace: None,
@@ -183,7 +185,9 @@ impl Review {
     pub(in crate::app) fn input(&mut self, input: &mut egui::RawInput) {
         // An actual desktop pointer must not close or activate a review popup.
         input.events.clear();
-        if let Some(events) = self.events.pop_front() {
+        if input.focused
+            && let Some(events) = self.events.pop_front()
+        {
             input.events = events;
         } else if self.pointer.is_none() {
             input.events.push(egui::Event::PointerGone);
@@ -202,7 +206,8 @@ impl Review {
 
     pub(in crate::app) fn observe(&mut self, app: &ScopeApp, ctx: &egui::Context) {
         self.frames += 1;
-        if self.frames == 1 {
+        let focused = ctx.input(|input| input.focused);
+        if !focused && (self.frames == 1 || self.frames.is_multiple_of(30)) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
         if self.frames == 300 && !self.ready {
@@ -213,6 +218,22 @@ impl Review {
             for label in &self.case.labels {
                 eprintln!("Review pending text bounds: {:?}", painted_text(ctx, label));
             }
+            eprintln!(
+                "Review pending native state: {:?}",
+                ctx.input(|input| (
+                    input.viewport().clone(),
+                    input.pointer.latest_pos(),
+                    input.pointer.hover_pos()
+                ))
+            );
+            if let Some(Step::HoverText(label)) = self.case.steps.last() {
+                eprintln!(
+                    "Review hover source: {label:?}; bounds={:?}; intended={:?}",
+                    painted_text(ctx, label),
+                    self.pointer
+                );
+            }
+
             if self.spectrogram {
                 eprintln!(
                     "Review raster pending: prepared={} requested={} rows={} completed={} hold_anchor={:?} displayed_anchor={} latest={:?} input={} stft={}",
@@ -233,7 +254,7 @@ impl Review {
         }
         assert!(
             self.ready || self.frames < 360,
-            "Menu review did not settle: {}; step {}/{}",
+            "Menu review did not settle: {}; step {}/{}; native focused={focused} (desktop must be unlocked)",
             self.target,
             self.step,
             self.case.steps.len()
@@ -311,6 +332,19 @@ impl Review {
             }
             self.conditions = Some(config);
             self.workspace = Some(app.capture_workspace());
+        }
+        // Native focus is asynchronous and cannot be acquired on a locked
+        // desktop. Do not consume scripted input before it is acknowledged.
+        if !focused {
+            self.native_focused = false;
+            return;
+        }
+        if !self.native_focused {
+            self.native_focused = true;
+            if let Some(position) = self.pointer {
+                self.events
+                    .push_front(vec![egui::Event::PointerMoved(position)]);
+            }
         }
         if !self.events.is_empty() {
             return;
