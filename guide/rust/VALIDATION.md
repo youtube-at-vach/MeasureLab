@@ -283,6 +283,51 @@ Scope専用の上端／右端Tマーカーの説明は、共有トリガーの�
 
 macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`84271754`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/xy-ja-final/manifest.json`と同ディレクトリの`review-summary.json`を参照する。言語切替の性能検査は並行コンパイル中に一度失敗し、終了後の同一バイナリの単独再実行で成功した。元の失敗と再実行は`widget-retry/manifest.json`を含めて保持する。入力停止と独立した出力、Free／Trace Snapと範囲外の読値、保持CHと次回CH予約、利用不可の理由を読み分けられた。Scope専用の説明の混入を修正し、再撮影した。既存訳に改訂を要する問題は見つからず、訳文・翻訳元ハッシュは変更していない。
 
+### Generator・Lock-in・同期比較の視覚レビュー（I6d）
+
+```sh
+./scripts/cargo.sh build --profile dev-fast --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale ja \
+    --case generator-review --case lockin-review --case comparison-review \
+    --output dist/i18n-visual-review/signal-ja
+```
+
+通常幅と狭幅（表示倍率125%）で、次の対象を実ウィジェットから撮影する。個別ケースは`--case lockin-review-menu-tau-compact`のように指定できる。
+
+| 計器 | 状態・画面 | メニュー・専用ツールチップ |
+| --- | --- | --- |
+| Generator | 入力・出力とも動作中、入力停止／出力継続、入出力停止、未取得／取得後の模擬入力エラー、出力エラー、カードなし・未割当、4波形のプレビュー、折りたたみ、適用値・出力詳細 | 波形・OUT割当（使用中を含む）・編集ステップ。数値編集、適用Fsとプレビューの意味、桁を省略しない適用値、独立Stopと出力状態の全専用説明 |
+| Lock-in | 取得・保持・停止・未取得・模擬入力エラー、無効・CH利用不可・整定・REF消失／不安定・欠落・非有限、次回設定、Polar／Cartesian／4値、保持した測定詳細 | SIG／REF、時定数プリセット、積分窓。数値セルの有効値／無効値の全専用説明 |
+| 同期比較 | 取得・保持・停止・未取得・模擬入力エラー、無効・利用不可・窓収集／平均待ち・欠落・非有限、REF／SIG消失・非コヒーレント、次回設定、保持条件 | REF／SIG、FFTサイズ・窓・表示範囲。表示だけを変更する範囲操作の専用説明 |
+
+通常Generatorの内部2chを、共通の測定・Lock-in・比較ワーカーへ渡す。既知の振幅・相対位相とゲインを照合し、実ウィジェットからの入力開始・有限Stop・独立出力停止を使う。取得中の入力フレーム・FFT窓、入力停止後も独立して進む出力サンプルを確認する。停止後のLock-in／比較のf64結果・整数区間・取得条件・欠落と、メニュー・ホバー中の測定設定・配置・入力世代・出力コマンドの不変性を検査する。数値条件・許容差の正本は[Signal計器QA](../../src/app/gui_qa/menus/signal.rs)とする。
+
+無効な解析状態は、入力・出力を停止してワーカーを解放した後の明示した表示fixtureで、実際のREF消失や欠落の発生試験とは分ける。出力エラーは存在しない試験用IDの開始要求を管理ワーカーが拒否する経路を使い、物理ストリームは開かない。入力エラーは模擬通知で確認し、USB抜去は行わない。
+
+`generator-review-dithering-*`は停止した合成出力能力でf32のTPDF・量子化ビット深度を表示し、出力を開始しない。`generator-review-preferences-error-*`はファイルアクセスを行わない設定エラーfixtureで、自動保存の説明・復旧案内を表示する。通常の利用者設定は読み書きしない。
+
+文字のclip・画面内への収まりと実Tooltip層を検査し、画像の読み取りやすさ・訳語・冗長さは別に画像で判定する。画像・ログ・ソース／カタログ／バイナリ識別のmanifestを保持し、撮影失敗を`--assertions-only`の成功で置き換えない。
+
+### 全9言語の画面レビュー（I6e）
+
+```sh
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale de --case language-review \
+    --output dist/i18n-visual-review/language-de
+```
+
+`--locale`を`en-US`／`ja`／`fr`／`de`／`es`／`pt`／`ru`／`zh`／`ko`ごとに指定し、同じバイナリで直列実行する。対象の正本は[scripts/qa_gui_redesign.py](../../scripts/qa_gui_redesign.py)の`language_review_cases()`である。
+
+| 対象 | 言語ごとに確認する範囲 |
+| --- | --- |
+| 共通画面 | 7計器の通常幅／狭幅、File／View／Audio I/O／解析状態と倍率・言語メニュー、計器一覧・配置、入出力・校正・起動時設定のエラー／復旧説明・ディザリング |
+| Scope／Spectrum | 取得／保持／模擬エラー・Single、共通縦軸Fit。振幅／PSD／ESD、停止中のリセット、時間カーソルのFFT窓内外と履歴のDC状態 |
+| Spectrogram／Cepstrogram／XY | Hold中の取得継続・模擬エラー。解析モード、ケフレンシーの範囲・刻み・符号付き係数、無信号／非有限、操作説明と履歴Spectrumの利用不可。XYのTrace Snap・Freeの操作説明・模擬エラー |
+| Generator／Lock-in／同期比較 | 保持と独立出力、停止・出力エラー、波形・OUT・適用値と数値編集。Lock-inの4値・REF消失・有効／無効セル・積分窓、同期比較の欠落・保持条件・表示範囲と各詳細 |
+
+これは明示した画面・状態のレビューで、全ての値・文字列組合せ、通常配布物、他OS、実モニター間DPI、物理入出力の受け入れとは分ける。問題キーの改訂は[翻訳手順](I18N.md#確認済み訳文の視覚レビュー)で1言語・1グループずつ行い、対象画面を再撮影する。通常開発の英語変更は従来どおり独立した差分翻訳へ渡す。
+
 ### G4に残る手動受け入れ
 
 操作可能な環境で通常ビルドを`target/release/measurelab`から起動し、以下を確認する。現在のIntel Macではこの節の手動操作チェックを実施せず、受け入れ待ちにも残さない。音声デバイスを使わない操作確認は、I/OのSoftware LoopbackまたはGeneratorの内部接続で行える。

@@ -1,10 +1,594 @@
 {
   "version": 3,
-  "base_revision": "d9f8a1260793bc05c145a3e6cfa747c8a866b681",
-  "locale": "ko",
-  "groups": [
-    "spectrum"
+  "kind": "visual_review",
+  "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+  "source_paths": [
+    {
+      "path": "scripts/qa_gui_redesign.py",
+      "before_hash": "c3b763b9bc3250d7e8295a07d807f9a95ee1d98fca6779a3b11a0ff913595c57",
+      "after_hash": "15a65efc2a2ab189961415cbc268ba050a3213701fa632714fd123624593e05e"
+    },
+    {
+      "path": "src/app/generator_panel.rs",
+      "before_hash": "42dfd1cf76d40bb7b1b589dc77327ab6395596d4981b5ff127536edd7db04439",
+      "after_hash": "bedc2e1c3353ea5bf5677b286bed1762b765eee11a0c913f043511b70fcbedb7"
+    },
+    {
+      "path": "src/app/gui_qa/menus.rs",
+      "before_hash": "39847e056c5ce54eda1094cabca6bb4aa200725f34223d2d1129fd00006a354e",
+      "after_hash": "17a7fe7ab65682f36a66a518876db42f254e51b7e3c6bfc8ccbdbc9019cc82fd"
+    },
+    {
+      "path": "src/app/gui_qa/menus/signal.rs",
+      "before_hash": null,
+      "after_hash": "fb5cdd502c5136e8925aa1ac04bf49bb6fca166392c925e84c9effff0df87e9b"
+    },
+    {
+      "path": "src/app/preferences.rs",
+      "before_hash": "23d4ee2191ebe9fd906a3edd1f791283c4f58c0a91f88ee6b76cb28e7f850037",
+      "after_hash": "671fd53aa32a27b3e0a9c2a9fe11457a0f8117e768a42e69a4099686b07e1cfd"
+    }
   ],
-  "kind": "translation",
-  "entries_hash": "6d786c419f48bbfdf7058a07d68e4f77284835ab143c9a2684857936517a68c1"
+  "tasks": [
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ja",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ja",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ja",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ja",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "bb10a6a4fca4df5ff6a51c8ce6673bd09dd5362da73c85a7c16c18c941797092"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ja",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "28812a8c4978b25c04c88e5beff3bf53c6f6e18ca8cc6897aa409f4ffc0b54e9"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ja",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ja",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "fr",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "fr",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "fr",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "fr",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "899436ca8a2361630809361a5b08108c5eda7dfcd1f4bcfa1b486d48ddca1dda"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "fr",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "7de303b5402ff360db8f2ca9c417643e9c51688e14103556d02cd6d73c5758a1"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "fr",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "fr",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "de",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "de",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "de",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "de",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "3ba0080ac5d027a2e213339986b77d196c2b1a76ef55612985d9918ccfd2ea26"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "de",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "a370b6822e5c42629d0c6286a5cdae21c7e2b9fb5ace54f3ff81ca03516e8c0c"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "de",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "de",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "es",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "es",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "es",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "es",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "df9eaa95452dc669626d89be0bd1878fe9bd4f5b2bff93cfd83060387f04b6aa"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "es",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "516c0dc9533996804b57402645e85e00516f61f1947f6c626d2c21d424704d93"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "es",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "es",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "pt",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "pt",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "pt",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "pt",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "4ac069dc13d411b34a427436d154f66ec829c86be8588c3d1a3d6060603609f9"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "pt",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "79426aec86348b904f478687b901ea3cef133cec03be5994b52090a56cd987d8"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "pt",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "pt",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ru",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ru",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ru",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ru",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "ce2de4057fd87abab5a08ff28faf5c297f99205a05816642fbed64d34c7bc2a7"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ru",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "02c8f47d8adb0f642aff38925cdf729aa5323252ba6f79eb39df9ae05bc79324"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ru",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ru",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "zh",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "zh",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "zh",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "zh",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "030cf77259355c4bc4e5b9155008ed5c9e7f23dde1716195264a15433671ecdd"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "zh",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "2f986214e6f73eb5c4b702a9f7dcddfedf20ce4762ef2e29a764c0c7655e1c7c"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "zh",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "zh",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ko",
+      "groups": [
+        "common"
+      ],
+      "kind": "translation",
+      "entries_hash": "3e7a12231da1e3807b632eb68d048379e912ecb07678da69a1b7217549895a69"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ko",
+      "groups": [
+        "shell"
+      ],
+      "kind": "translation",
+      "entries_hash": "f224d141f3904d7c69f922a2da46d12ec051fdcdb01f358cc9dee94576494160"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ko",
+      "groups": [
+        "io"
+      ],
+      "kind": "translation",
+      "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ko",
+      "groups": [
+        "oscilloscope"
+      ],
+      "kind": "translation",
+      "entries_hash": "bf3375bba01715f0717633b7e5a429211741ce380483c973f6ec5080a87c9b1d"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ko",
+      "groups": [
+        "spectrum"
+      ],
+      "kind": "translation",
+      "entries_hash": "6d786c419f48bbfdf7058a07d68e4f77284835ab143c9a2684857936517a68c1"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ko",
+      "groups": [
+        "spectrogram"
+      ],
+      "kind": "translation",
+      "entries_hash": "ceee885e4be7fea3336c29dd7926c942c203050eac53fe328cf9bdaed1e9656a"
+    },
+    {
+      "version": 3,
+      "base_revision": "cf70ef3cc2f15b949495613379b595869f58ceda",
+      "locale": "ko",
+      "groups": [
+        "generator"
+      ],
+      "kind": "translation",
+      "entries_hash": "df8e82d5c457eb0f6914285c4055f7ddf025f8cec4668fdda32e5c30f5d6fb3e"
+    }
+  ]
 }
