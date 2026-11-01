@@ -1,10 +1,10 @@
 {
   "version": 3,
-  "base_revision": "fad2d99e634c09bea21458ff7529bf4f8c03aabc",
+  "base_revision": "a52a5d23bd107d00cfffeaad6a1be69f6003a01b",
   "locale": "ru",
   "groups": [
-    "io"
+    "oscilloscope"
   ],
   "kind": "translation",
-  "entries_hash": "e7b9739a294b860aea9cf9ed08736a8ab7f2098384122c3ee710304f26ad0e60"
+  "entries_hash": "ce2de4057fd87abab5a08ff28faf5c297f99205a05816642fbed64d34c7bc2a7"
 }
