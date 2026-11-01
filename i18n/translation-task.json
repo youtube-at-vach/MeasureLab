@@ -6,7 +6,7 @@
     {
       "path": "scripts/qa_gui_redesign.py",
       "before_hash": "c3b763b9bc3250d7e8295a07d807f9a95ee1d98fca6779a3b11a0ff913595c57",
-      "after_hash": "15a65efc2a2ab189961415cbc268ba050a3213701fa632714fd123624593e05e"
+      "after_hash": "fac464365338d99db127ad0bf132e463abd0187bf32bd78759a2347669cc507d"
     },
     {
       "path": "src/app/generator_panel.rs",
@@ -21,7 +21,7 @@
     {
       "path": "src/app/gui_qa/menus/signal.rs",
       "before_hash": null,
-      "after_hash": "fb5cdd502c5136e8925aa1ac04bf49bb6fca166392c925e84c9effff0df87e9b"
+      "after_hash": "c71edfc20b421ceef1170995f7916f4c569149a7a424ea0b03571319bad98b39"
     },
     {
       "path": "src/app/preferences.rs",
