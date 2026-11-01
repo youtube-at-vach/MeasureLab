@@ -39189,7 +39189,7 @@
       "oscilloscope.fit_visible_channels": {
         "source": "Fit the largest visible channel's raw peak and centre the common offset",
         "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
-        "translation_hash": "77e735616465f578eb1bd663f657796db7b8b3229ffec0da337d0eabbfc861b5"
+        "translation_hash": "30ddf473e9e034cfe803ca313a5717a2a6d22f4086884bde6edecf19d58de8d6"
       },
       "oscilloscope.held_time_scale_next_start": {
         "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",

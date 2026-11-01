@@ -1,13 +1,13 @@
 {
   "version": 3,
-  "base_revision": "b8db2ecdb841432fa9390d051e5ddde9a4bfd931",
+  "base_revision": "b2bf88c86e6c33aa38d0b885b1df0724cd386c60",
   "locale": "ko",
   "groups": [
-    "io"
+    "oscilloscope"
   ],
   "review_keys": [
-    "io.dithering_description"
+    "oscilloscope.fit_visible_channels"
   ],
   "kind": "translation",
-  "entries_hash": "0f8cd85e8990f35948bf4dffa7cd9489ab06db3c1abb2dde28f67c4c87e908b3"
+  "entries_hash": "fe977c87bc01acc3a48008515cc44f03a7194dd6781bc3eb79dcd9bb3d73c437"
 }
