@@ -29336,6 +29336,21 @@
         "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
         "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
         "translation_hash": "96f85d4cd93780897c33d71c2ef953093b99c63bfa0325a1d154a881ff6bf7ad"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "1c18e2a4b9e1a680106856c5b90d3c4d3b1f8e9d33526d19aa94a2d98e59b201"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "64ce2bd183b03a02034a256e43d6d46d70448a0bd0372a968ddafaa99b1a1851"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "6b89642d080f854962916c400a6554019e296f947c62874c0075ba881852073e"
       }
     },
     "zh": {
