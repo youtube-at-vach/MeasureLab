@@ -1,6 +1,7 @@
 _version: 1
 oscilloscope.acquiring_post_trigger: Adquiriendo el posdisparo
 oscilloscope.acquisition: ADQUISICIÓN
+oscilloscope.amplitude_axis_ch: Amplitud [FS] · eje CH%{channel}
 oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: Un valor adquirido
   o calibrado no es finito; no hay una lectura numérica válida
 oscilloscope.auto: Automático
@@ -8,10 +9,10 @@ oscilloscope.auto_free: Automático / libre
 oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: Ajustar automáticamente
   la escala de tiempo, la amplitud y el disparo para una señal periódica
 oscilloscope.autoset: Ajuste automático
-oscilloscope.autoset_frequency: 'Ajuste automático: %{frequency} Hz a partir de cruces
-  sin calibrar'
-oscilloscope.autoset_held: Amplitud de la captura retenida ajustada; tiempo/disparo
-  se aplican en el siguiente inicio (%{frequency} Hz)
+oscilloscope.autoset_frequency: 'Último autoajuste: %{frequency} Hz a partir de cruces
+  de la señal bruta'
+oscilloscope.autoset_held: 'Último autoajuste: amplitud retenida ajustada; tiempo/disparo
+  en el próximo inicio (%{frequency} Hz)'
 oscilloscope.capture_once_on_the_next_trigger_crossing: Capturar una vez en el siguiente
   cruce del disparo
 oscilloscope.centre_offset: Offset
@@ -26,6 +27,7 @@ oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{
 
   %{display}'
 oscilloscope.channel_out_of_range: — · canal fuera de rango
+oscilloscope.common_scale: Escala común
 oscilloscope.cursor: Cursor %{index} · %{join}
 oscilloscope.display: Pantalla
 oscilloscope.drag_the_slider_or_value_to_adjust_double_click: Arrastre el control
@@ -39,6 +41,8 @@ oscilloscope.falling_edge: Flanco descendente
 oscilloscope.fit_amplitude: Ajustar escala
 oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: Ajustar la escala vertical
   al pico sin calibrar del canal seleccionado y poner el desplazamiento a cero.
+oscilloscope.fit_visible_channels: Ajustar al mayor pico bruto de los CH visibles
+  y centrar el desplazamiento común
 oscilloscope.free_run: Ejecución libre
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -48,6 +52,8 @@ oscilloscope.guides: Guías
 oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: CONDICIONES
   RETENIDAS CONSERVADAS · los ajustes de medición en cola se aplican al siguiente
   inicio
+oscilloscope.held_time_scale_next_start: 'Retenido: %{scale} ms/div · los cambios
+  de tiempo/disparo se aplican al próximo inicio'
 oscilloscope.horizontal: HORIZONTAL
 oscilloscope.input_source: Fuente de entrada
 oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
@@ -66,8 +72,6 @@ oscilloscope.mode_names.auto: Automático
 oscilloscope.mode_names.normal: Normal
 oscilloscope.mode_names.single: Único
 oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
-oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · forma de
-  onda: FS sin calibrar'
 oscilloscope.no_acquired_samples_for_this_channel_and_interval: No hay muestras adquiridas
   para este canal e intervalo
 oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
@@ -83,10 +87,13 @@ oscilloscope.outside_input_channel_range: ' · fuera del rango del canal de entr
 oscilloscope.outside_input_channel_range_2: '%{channel} · fuera del rango del canal
   de entrada'
 oscilloscope.outside_sweep: '%{index} #%{sample} · fuera del barrido'
+oscilloscope.p_p: P-P
 oscilloscope.partial_missing_samples: Parcial · faltan %{scope_missing} muestras
+oscilloscope.per_channel_scale: Escala por CH
 oscilloscope.position: Posición
 oscilloscope.reset_time_position: Restablecer posición
 oscilloscope.rising_edge: Flanco ascendente
+oscilloscope.rms: RMS
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · pico a pico %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · pico a pico %{peak_to_peak}
   %{unit} · pico %{peak} %{unit} · %{samples} muestras adquiridas
