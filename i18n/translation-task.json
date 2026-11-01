@@ -1,17 +1,13 @@
 {
   "version": 3,
-  "base_revision": "e19179738dca1ff63eb61fcf3a58a841a5727ef6",
+  "base_revision": "5b29ff6a658a9f032492209dea1102c4da4f92bc",
   "locale": "ko",
   "groups": [
-    "spectrogram"
+    "generator"
   ],
   "review_keys": [
-    "spectrogram.cepstral_definition",
-    "spectrogram.cepstral_gestures",
-    "spectrogram.cepstral_link_disabled",
-    "spectrogram.f64_required",
-    "spectrogram.quefrency_effective"
+    "generator.loopback_not_selected"
   ],
   "kind": "translation",
-  "entries_hash": "87a4208871ed21656a87be9992c428400111b545602c11aabf4f430dbff2122d"
+  "entries_hash": "c607e5c82c78cf10072ffcfb6fcc0f046550d8abd10ff6098fb4bbf7ed3afe9b"
 }
