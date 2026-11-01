@@ -19467,6 +19467,26 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "cb511fb413debfbc8195807d3bf0f0229064599be873becd858ec0d96cdc9b45"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "9117bcb495c4be1d0e72698bcec54c1be08b2bc5bd3121015f34387f2f822c94"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "8bccd95364542780f95ab960a77d81530ac06cfdfb3fc60fcce6b947d6d87656"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "ec58666d95315041aea2e630554f27791f94af3d082e5364efda8587ac5a8fc7"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "4b4a8c6f5c9418dcd3d33f12bbc86fa040551dedcfd7cbbb9ec1ce58d3751388"
       }
     },
     "pt": {

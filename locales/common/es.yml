@@ -299,6 +299,14 @@ common.spectrum_prep_ms: Preparación de Spectrum %{spectrum_build_ms} ms
 common.spectrum_windows_missing: Spectrum %{mode} · %{updates} ventanas · ausentes
   %{missing_windows}
 common.start_input_to_begin_acquisition: Inicie la entrada para comenzar la adquisición
+common.startup_preferences: PREFERENCIAS DE INICIO
+common.startup_preferences_error: Error de preferencias de inicio
+common.startup_preferences_help: La selección de entrada/salida, las condiciones de
+  medida y la visualización se guardan automáticamente. La entrada y la salida permanecen
+  detenidas al iniciar.
+common.startup_preferences_recovery: El guardado automático está desactivado para
+  conservar este archivo. Cierre MeasureLab, mueva el archivo y reinicie para crear
+  preferencias nuevas.
 common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / salto %{hop} · muestras
   %{start}..%{end}
 common.stft_history_storage_losses_allocated_mib_peak_mib: Pérdidas de almacenamiento
