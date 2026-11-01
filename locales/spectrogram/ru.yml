@@ -4,8 +4,27 @@ spectrogram.analysis: Анализ
 spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: Изменения
   анализа применяются после перезапуска входа. Захваченное изображение остаётся удерживаемым.
 spectrogram.auto_color_range: Автодиапазон цвета
+spectrogram.captured_cepstral: 'Захват: номинально %{fs} Hz · N %{n} / шаг %{hop}
+  · f64 · нижний порог логарифма %{floor} dB'
 spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 'Захвачено: номинал %{sample_rate}
   Hz · окно %{sample_rate_2} s · строка %{sample_rate_3} ms · бин %{size} Hz'
+spectrogram.cepstral_channel: CH %{channel} · dB re 1
+spectrogram.cepstral_definition: Вещественный кепстр со знаком; цвет = (2c)² в dB
+  re 1. q=0 исключён. Относительный порог логарифма не зависит от цвета. FS без калибровки,
+  номинальная Fs; точность тона и задержки не гарантируется.
+spectrogram.cepstral_gestures: 'Колесо: масштаб кьюфренси. Перетаскивание: сдвиг кьюфренси/времени.
+  Shift+колесо: прокрутка истории. Щелчок: удержание и выбор времени/кьюфренси A или
+  B. Live снимает выбор. Двойной щелчок: сброс диапазона и положения по времени.'
+spectrogram.cepstral_link_disabled: Spectrum истории недоступен для коэффициентов
+  вещественного кепстра.
+spectrogram.cepstral_power: Кепстральная мощность (dB re 1)
+spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
+
+  CH %{channel} · отсчёты %{start}..%{end}'
+spectrogram.cepstral_status: '%{status} · порог логарифма %{floor} dB · %{count} односторонних
+  бинов ограничено порогом'
+spectrogram.cepstral_valid: Допустимый вещественный кепстр
+spectrogram.cepstrogram: Кепстрограмма
 spectrogram.ch_dbfs: CH %{channel} · dBFS
 spectrogram.collecting_a_complete_stft_window: Сбор полного окна STFT…
 spectrogram.color_map: ЦВЕТОВАЯ КАРТА
@@ -22,6 +41,7 @@ spectrogram.color_range_dbfs: ДИАПАЗОН ЦВЕТА · dBFS
 spectrogram.display: Отображение
 spectrogram.end_s_s_retained_n_hop: '%{live} · Конец %{sample_rate} s · сохранено
   %{retained_seconds} s · N %{size} / шаг %{hop}%{else}'
+spectrogram.f64_required: Кепстрограмма использует f64. Точность спектрограммы сохраняется.
 spectrogram.fft_length: ДЛИНА FFT
 spectrogram.fft_overlap: ПЕРЕКРЫТИЕ FFT
 spectrogram.frequency_hz: Частота / Hz
@@ -51,16 +71,19 @@ spectrogram.invalid_stft_window_non_finite_input_samples: Недопустимо
 spectrogram.linear_hz: Линейная Hz
 spectrogram.live: В РЕАЛЬНОМ ВРЕМЕНИ
 spectrogram.live_action: Активно
+spectrogram.log_floor: Относительный порог логарифма
 spectrogram.log_hz: Логарифмическая Hz
 spectrogram.max: Макс.
 spectrogram.min: Мин.
 spectrogram.min_and_max_must_be_finite_with_min_max: Мин. и Макс. должны быть конечными,
   причём Мин. < Макс. Предыдущий диапазон сохранён.
+spectrogram.no_signal: Нет сигнала после предобработки
 spectrogram.no_stft_data_at_this_time_gap_or_unavailable: Нет данных STFT за это время
   · разрыв или недоступность
 spectrogram.no_stft_row_before_input_began: '%{index} Нет строки STFT
 
   До запуска входа'
+spectrogram.non_finite: 'Недопустимое окно: неконечный вход или результат расчёта'
 spectrogram.outside_visible_time_range: '
 
   За пределами видимого диапазона времени'
@@ -72,6 +95,11 @@ spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 'А
   STFT. Пусто: история недоступна.'
 spectrogram.points: '%{size} точек'
 spectrogram.preparing_history_view: Подготовка вида истории…
+spectrogram.quefrency_effective: Показано %{min}…%{max} ms · шаг %{step} ms · номинальная
+  Fs
+spectrogram.quefrency_invalid: Кьюфренси требует конечных значений 0 ≤ Min < Max.
+  Предыдущий диапазон сохранён.
+spectrogram.quefrency_ms: Кьюфренси (ms)
 spectrogram.remove_dc_offset: Удалить постоянную составляющую
 spectrogram.s_ch: '%{index} −%{age} s
 
@@ -79,8 +107,10 @@ spectrogram.s_ch: '%{index} −%{age} s
 spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
 
   Нет строки STFT · разрыв или недоступность'
+spectrogram.search_terms: Кепстрограмма кепстр эхо гармоника периодичность кьюфренси
 spectrogram.spectrogram: Spectrogram
 spectrogram.start_input_to_begin_acquisition: Запустите вход, чтобы начать захват
+spectrogram.time_quefrency_cursor: Курсор времени / кьюфренси
 spectrogram.time_range: ВРЕМЕННОЙ ДИАПАЗОН
 spectrogram.to: До
 spectrogram.to_uses_nyquist_log_excludes_dc: До = 0 использует частоту Найквиста.
