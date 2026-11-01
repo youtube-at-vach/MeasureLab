@@ -46,6 +46,8 @@ spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: 'Cursor %{in
   (exponentielle Gewichte). Eingangsgeneration %{input_generation}; fehlende Fenster
   %{missing_windows}.%{times}'
 spectrum.custom_frequency_range: Benutzerdefinierter Frequenzbereich
+spectrum.dc_removed: entfernt
+spectrum.dc_retained: beibehalten
 spectrum.ema: EMA 1/%{averages}
 spectrum.ema_settling: EMA-Einschwingzeit
 spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: Energiedichtespektrum
@@ -148,6 +150,8 @@ spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: Angefordert %{reques
 spectrum.reset: Zurücksetzen
 spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: Mittelung und Peak-Hold
   für alle Spectrum-Traces zurücksetzen
+spectrum.reset_requires_running_input: Eingang starten, um Mittelung und Spitzenwertspeicher
+  zurückzusetzen. Gehaltene Ergebnisse bleiben unverändert.
 spectrum.select_a_time_frame_in_spectrogram: Zeit-Frame in Spectrogram auswählen
 spectrum.show_ch_spectrum: Spectrum von CH%{index} anzeigen
 spectrum.span: Bereich %{hz}
@@ -170,6 +174,8 @@ spectrum.sum_of_f64_esd_f_over_all_bins_including: Summe von f64-ESD × Δf übe
 spectrum.time: Zeit %{i}
 spectrum.time_2: Zeit %{i} · %{i_2}
 spectrum.time_a_b_from_spectrogram: Zeit A/B aus Spectrogram
+spectrum.time_cursor_inside_fft_window: ' · Zeitcursor %{index}: innerhalb des FFT-Fensters'
+spectrum.time_cursor_outside_fft_window: ' · Zeitcursor %{index}: außerhalb des FFT-Fensters'
 spectrum.time_end_s_ch_samples_hz_pt_dc: Zeit %{i} · Ende %{sample_rate} s · CH %{channel}
   · Samples %{start}..%{end} · %{sample_rate_2} Hz · %{size} Punkte · %{name} · %{name_2}
   · Gleichanteil %{retained}
@@ -186,7 +192,6 @@ spectrum.top: Oben
 spectrum.update_mode: AKTUALISIERUNGSMODUS
 spectrum.weight: Gewicht %{count}
 spectrum.weight_2: Gewicht %{average_weight}
-spectrum.window: ' · %{index} %{outside} Fenster'
 spectrum.window_duration_available_after_input_starts: Fensterdauer nach dem Start
   des Eingangs verfügbar
 spectrum.window_energy_s: Fensterenergie %{spectrum_energy} %{power_unit}·s

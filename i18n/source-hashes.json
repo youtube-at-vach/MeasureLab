@@ -12876,11 +12876,6 @@
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "4d4b2996bbd6c3467661caf0666a41cfd6ab78638b8c73b7bcc16d0fb4258bbf"
       },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "e187f1dc01cef3ed731728eef44e99ef9b9552ae7fcedbb3e29669137bde0f26"
-      },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
         "source_hash": "abf1a4b971d2174be4f0cd6bfbfd2b9f7212b72a44be7b37a2128b042861582f",
@@ -14730,6 +14725,31 @@
         "source": "Time / quefrency cursor",
         "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
         "translation_hash": "4bc5e0acad71807971389da1a3e20f489a6c682b8fd3e63763a171ab603ced06"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "2975b1bd85a2e88cb032de5e0f71cefae147a2cbaf57807c805bd29e220f1b90"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "3c3533a485c9fa3450c7fcb2cd18b3a3748ce6ff848a38597280fb06f3ba1bac"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "1c02fdf6f58717b8e1bcf44184a5dd5f5eb0fbbade98d1c090414b15484898d1"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "5e15f7faf12bd5e4aa626d6c1eb7f665b6f9420f45f446f5382365ee5814f613"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "b09ed92cf69a174b268c7b6ec1e0384912278692520bc1c92cf26885bdb2a588"
       }
     },
     "es": {
