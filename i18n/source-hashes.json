@@ -39229,17 +39229,17 @@
       "spectrogram.cepstral_definition": {
         "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
         "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
-        "translation_hash": "842894615a246351cf7c4d1948d3102a87391c15ffe95fda8fa132b37e91a9e5"
+        "translation_hash": "9f3110abfe1ab492bcc13e060981849d341056ac8ce1b4ccfcc9dbfdf4b72477"
       },
       "spectrogram.cepstral_gestures": {
         "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
         "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
-        "translation_hash": "814ff869dedc3cacaec55c35d9f2fe94155280259f06f1976946b65be813f5c1"
+        "translation_hash": "22b3d662ee2de453f22d80318778de9c2fe401a2241c82aeeae5351c4d84086f"
       },
       "spectrogram.cepstral_link_disabled": {
         "source": "History Spectrum is unavailable for real cepstrum coefficients.",
         "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
-        "translation_hash": "1f2051d0893257baa5213ad0b966ba04ea9f439a94a0cb92ee198c3f6f9ff1c9"
+        "translation_hash": "c11c75be671744dd2bf63ff802488b5fc49168154a5bb9097592a80ae2519d4e"
       },
       "spectrogram.cepstral_power": {
         "source": "Cepstral power (dB re 1)",
@@ -39269,7 +39269,7 @@
       "spectrogram.f64_required": {
         "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
         "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
-        "translation_hash": "d04c25bbb20273d0a80eb2d11ea673e554c6bc23007bc1892360e82ac25e591f"
+        "translation_hash": "9537c2a27dcf3539bd3ea9afadcb31fbb6db8aeedad2c31ecf22145cbea19cf4"
       },
       "spectrogram.log_floor": {
         "source": "Relative log floor",
@@ -39289,7 +39289,7 @@
       "spectrogram.quefrency_effective": {
         "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
         "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
-        "translation_hash": "95154f9634459a5cc522e4795a2307fcb8cc7f4057f0156861d1ba83b33d6f0c"
+        "translation_hash": "97baf70791712f8532dd88ee6bc650c8245691f307e20147f1b662cf55bd4f3b"
       },
       "spectrogram.quefrency_invalid": {
         "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",

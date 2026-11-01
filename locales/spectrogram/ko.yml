@@ -10,10 +10,10 @@ spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: '캡처됨: 공칭 %{sam
   · 윈도우 %{sample_rate_2} s · 행 %{sample_rate_3} ms · 빈 %{size} Hz'
 spectrogram.cepstral_channel: CH %{channel} · dB re 1
 spectrogram.cepstral_definition: 부호 있는 실수 켑스트럼. 색상 = (2c)²의 dB re 1. q=0 제외. 상대 로그
-  하한은 색상과 독립적입니다. 미교정FS, 공칭Fs이며 피치나 지연 정확도를 보장하지 않습니다.
+  하한은 색상과 독립적입니다. 미교정 FS, 공칭 Fs이며 피치나 지연 정확도를 보장하지 않습니다.
 spectrogram.cepstral_gestures: '휠: 케프렌시 확대/축소. 드래그: 케프렌시/시간 이동. Shift+휠: 기록 탐색. 클릭:
-  유지하고 시간/케프렌시A 또는B 선택. Live는 선택을 해제합니다. 두 번 클릭: 범위와 시간 위치 초기화.'
-spectrogram.cepstral_link_disabled: 실수 켑스트럼 계수에는 기록Spectrum을 사용할 수 없습니다.
+  유지하고 시간/케프렌시 A 또는 B 선택. Live는 선택을 해제합니다. 두 번 클릭: 범위와 시간 위치 초기화.'
+spectrogram.cepstral_link_disabled: 실수 켑스트럼 계수에는 기록 Spectrum을 사용할 수 없습니다.
 spectrogram.cepstral_power: 켑스트럼 파워(dB re 1)
 spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
 
@@ -38,7 +38,7 @@ spectrogram.color_range_dbfs: 색상 범위 · dBFS
 spectrogram.display: 표시
 spectrogram.end_s_s_retained_n_hop: '%{live} · 종료 %{sample_rate} s · 유지 %{retained_seconds}
   s · N %{size} / 홉 %{hop}%{else}'
-spectrogram.f64_required: 켑스트로그램은f64를 사용합니다. Spectrogram의 정밀도 설정은 유지됩니다.
+spectrogram.f64_required: 켑스트로그램은 f64를 사용합니다. Spectrogram의 정밀도 설정은 유지됩니다.
 spectrogram.fft_length: FFT 길이
 spectrogram.fft_overlap: FFT 중첩
 spectrogram.frequency_hz: 주파수 / Hz
@@ -90,7 +90,7 @@ spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: '�
   빈 진폭 · 비보정 FS. 주황색 줄무늬: 누락되었거나 유효하지 않은 STFT. 공백: 사용할 수 없는 이력.'
 spectrogram.points: '%{size}개 포인트'
 spectrogram.preparing_history_view: 이력 보기 준비 중…
-spectrogram.quefrency_effective: 표시 %{min}…%{max} ms · 간격 %{step} ms · 공칭Fs
+spectrogram.quefrency_effective: 표시 %{min}…%{max} ms · 간격 %{step} ms · 공칭 Fs
 spectrogram.quefrency_invalid: 케프렌시는 유한한 값으로 0 ≤ Min < Max를 충족해야 합니다. 이전 범위를 유지합니다.
 spectrogram.quefrency_ms: 케프렌시(ms)
 spectrogram.remove_dc_offset: DC 오프셋 제거
