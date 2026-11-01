@@ -11,6 +11,7 @@ shell.analysis_enabled_waiting_for_input: Analyse aktiviert · wartet auf Eingan
 shell.analysis_on: ANALYSE EIN
 shell.analysis_status: Analysestatus…
 shell.analysis_stopped: Analyse · gestoppt
+shell.arrange_view: Ansichten anordnen…
 shell.audio_i_o: Audio I/O
 shell.audio_i_o_settings: Audio-I/O-Einstellungen
 shell.back_to_instruments: Zurück zu den Instrumenten
