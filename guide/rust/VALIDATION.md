@@ -175,7 +175,7 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 画像・ログ・manifestの保存と`--assertions-only`の制限はI6aと同じ。画像での訳語・冗長さ・読み取りやすさの判定を自動assertionと分ける。計器内のカーソル・軸・測定状態などの専用説明、取得中／保持／模擬エラー、他言語の画面はI6c以降へ分け、通常配布物・実モニター間DPI・物理入出力の受け入れへ広げない。
 
-macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`eb8c5d27`上のI6b差分の画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/instrument-menus-ja-final/manifest.json`を参照する。対象メニューと説明の文字欠けは見つからず、入力停止・解析OFF・出力停止、Undoの無効表示を読み取れた。`shell.arrange_view`の未翻訳による英語フォールバックは全8翻訳にあり、[PLAN](PLAN.md)の独立差分翻訳へ残す。狭幅検索の編集継続と選択後の終了は修正後の実ウィジェットQAで確認した。
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`eb8c5d27`上のI6b差分の画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/instrument-menus-ja-final/manifest.json`を参照する。対象メニューと説明の文字欠けは見つからず、入力停止・解析OFF・出力停止、Undoの無効表示を読み取れた。`shell.arrange_view`の差分翻訳と現在の他言語の確認範囲は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。狭幅検索の編集継続と選択後の終了は修正後の実ウィジェットQAで確認した。
 
 ### Scopeの状態と専用ツールチップの視覚レビュー（I6c）
 
@@ -199,9 +199,9 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 撮影操作で測定条件・表示構成・カーソル・入力世代・出力コマンドが変わらないことを検査する。保持中は入力条件・Scopeのf64生サンプル・統計・欠落を比較し、取得中は入力フレームとFFT窓、出力継続中は出力サンプルの進行を確認する。ツールチップは実際のTooltip層の文字全体がclip・画面内へ収まることを検査し、ログへ文字領域とpixel倍率も残す。画像・manifestと`--assertions-only`の扱いはI6aと同じ。
 
-画像の訳語・欠け・操作名の判定は自動assertionと分ける。他言語の画像、通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れへ広げない。既存の未翻訳・古い訳は英語フォールバックを維持し、[PLAN](PLAN.md)のI6eへ言語・グループ別に渡す。
+画像の訳語・欠け・操作名の判定は自動assertionと分ける。他言語の画像、通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れへ広げない。差分翻訳は言語・グループ別タスクとし、現在の対象画面は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。
 
-macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`de5a5a6d`上のI6c差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/scope-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持波形・数値、Single・未捕捉・無効値・模擬エラーと次の操作を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからず、訳文・翻訳元ハッシュは変更していない。未翻訳キーの英語表示はPLANのI6eへ残す。
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`de5a5a6d`上のI6c差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/scope-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持波形・数値、Single・未捕捉・無効値・模擬エラーと次の操作を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからず、訳文・翻訳元ハッシュは変更していない。現在の差分翻訳と対象画像は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。
 
 ### Spectrumの状態と専用ツールチップの視覚レビュー（I6d）
 
@@ -226,7 +226,7 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 文字全体がclip・画面内に収まることと実Tooltip層の表示を検査し、画像・ログ・manifestは指定出力先へ保存する。`--assertions-only`は画像確認の代用にしない。履歴連携では実STFTのf64フレームを選択する。Spectrogram自体の専用説明・状態とCepstrogramの履歴連携不可の説明は[同計器のI6d](#spectrogramの状態と専用ツールチップの視覚レビューi6d)で確認する。通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れとは分ける。
 
-macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`12523bfb`上のI6d差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/spectrum-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持値・無効窓・未取得、PSD帯域電力・ESD窓エネルギー、履歴の読み取り専用と操作対象を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからなかった。停止中のリセットと時間カーソルの窓内外・履歴のDC状態の新しい英語キーは英語フォールバックを維持し、各言語の訳文と旧キーの整理は[PLAN](PLAN.md)のI6eへ残す。訳文・翻訳元ハッシュは変更していない。
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`12523bfb`上のI6d差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/spectrum-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持値・無効窓・未取得、PSD帯域電力・ESD窓エネルギー、履歴の読み取り専用と操作対象を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからなかった。停止中のリセット、時間カーソルの窓内外、履歴のDC状態の差分翻訳・旧キー整理と現在の対象画像は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。訳文・翻訳元ハッシュは変更していない。
 
 ### Spectrogramの状態と専用ツールチップの視覚レビュー（I6d）
 
@@ -252,7 +252,7 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 文字全体がclip・画面内に収まることと実Tooltip層を検査し、画像・ログ・ソース／カタログ／バイナリ識別は指定出力先のmanifestへ保存する。`--assertions-only`は画像確認の代用にしない。通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れとは分ける。
 
-macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`57a198d8`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/spectrogram-ja-final/manifest.json`を参照する。入力停止後のライブ表記、Cepstrogramの周波数操作案内、カーソル注記・ケフレンシー差分の重なり、狭幅詳細末尾の文字欠けを修正し、再撮影した。既存訳に改訂を要する問題は見つからなかった。Cepstrogram関連の既存19キーは日本語を含む全8翻訳で未翻訳のため、[PLAN](PLAN.md)のI6eへ残す。訳文・翻訳元ハッシュは変更していない。
+macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`57a198d8`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/spectrogram-ja-final/manifest.json`を参照する。入力停止後のライブ表記、Cepstrogramの周波数操作案内、カーソル注記・ケフレンシー差分の重なり、狭幅詳細末尾の文字欠けを修正し、再撮影した。既存訳に改訂を要する問題は見つからなかった。Cepstrogram関連の差分翻訳と現在の対象画像は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。訳文・翻訳元ハッシュは変更していない。
 
 ### XYの状態と専用ツールチップの視覚レビュー（I6d）
 
