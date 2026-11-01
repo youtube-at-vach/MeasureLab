@@ -19,6 +19,9 @@ io.demo_square: 带限方波
 io.device: 设备
 io.device_default: 设备默认值
 io.device_default_khz: 设备默认值（%{sample_rate} kHz）
+io.dithering_bit_depth: 抖动位深
+io.dithering_description: 为活动输出CH添加TPDF噪声，并按所选位深量化，包括f32/f64输出。停止和OFF状态的CH保持静音。
+io.enable_dithering_tpdf: 启用抖动（TPDF）
 io.equal_amplitude_noise_free_sine_signals_for_xy_in: 用于 XY 的等幅、无噪声正弦信号：同相、正交相位或反相。
 io.frequency: 频率
 io.fs_peak: FS 峰值
