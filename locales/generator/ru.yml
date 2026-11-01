@@ -12,6 +12,7 @@ generator.applied_sample: Применённый отсчёт %{applied_sample}
 generator.applied_seed: Применённое начальное значение %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: Кнопки ± / Вверх / Вниз используют
   этот шаг в Hz, dBFS или градусах. Enter / фокус применяет; Esc отменяет.
+generator.connection_summary: 'Выход: %{output} · %{input}'
 generator.down: Вниз
 generator.duplicate: Дублировать
 generator.edit_step: ИЗМЕНИТЬ ШАГ
@@ -56,6 +57,8 @@ generator.error_reason.signal_identity: ID карточек Generator должн
 generator.error_reason.stopping: Дождитесь завершения затухания выхода
 generator.error_reason.waveform: 'Карточка в позиции %{position}: начальное значение
   шума не должно быть нулевым'
+generator.external_connection: Соедините выход с выбранным входом через физический
+  или виртуальный аудиотракт. Запускайте вход и выход отдельно.
 generator.frequency: Частота
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -73,6 +76,8 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · каналов: %{chan
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS пик · опережение
   на %{phase_degrees}°'
 generator.in_use: ' · используется'
+generator.loopback_not_selected: Для измерения этого внутреннего выхода выберите петлю
+  Generator в настройках входа. Запускайте вход и выход отдельно.
 generator.ms_cycles: '%{frequency_hz} ms / 2 цикла'
 generator.no_signals_add_a_signal_to_choose_its_waveform: Нет сигналов. Добавьте сигнал,
   чтобы выбрать форму сигнала и выход.
