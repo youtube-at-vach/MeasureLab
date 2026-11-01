@@ -103,6 +103,14 @@ fn prepare(app: &mut ScopeApp, instrument: &str, target: &str) -> Result<(), Str
         driver.click(app, i18n::text("generator.stop_output_2"))?;
         scope::wait(app, |a| a.generator.stopped())?;
     }
+    if matches!(target, "dithering" | "output-error" | "disconnected") {
+        // A device output cannot feed Generator loopback. Prepare a valid,
+        // stopped software input before the invariance snapshot is taken.
+        app.core = None;
+        app.pending_scope = None;
+        app.source = Source::Software;
+        app.switch_source();
+    }
     if instrument == "generator" {
         let mut settings = app.generator.settings;
         match target {
@@ -259,12 +267,6 @@ fn prepare(app: &mut ScopeApp, instrument: &str, target: &str) -> Result<(), Str
         };
     }
     if target == "dithering" {
-        // A device output cannot feed Generator loopback. Prepare a valid,
-        // stopped software input before the invariance snapshot is taken.
-        app.core = None;
-        app.pending_scope = None;
-        app.source = Source::Software;
-        app.switch_source();
         let config = output::device::Config {
             rate: 48000,
             channels: 2,
