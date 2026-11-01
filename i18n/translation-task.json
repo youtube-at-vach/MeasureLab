@@ -1,13 +1,14 @@
 {
   "version": 3,
-  "base_revision": "b2bf88c86e6c33aa38d0b885b1df0724cd386c60",
+  "base_revision": "57695c26083ffbd9c467324ee8d88bcbfcb0fb8f",
   "locale": "ko",
   "groups": [
-    "oscilloscope"
+    "spectrum"
   ],
   "review_keys": [
-    "oscilloscope.fit_visible_channels"
+    "spectrum.time_cursor_inside_fft_window",
+    "spectrum.time_cursor_outside_fft_window"
   ],
   "kind": "translation",
-  "entries_hash": "fe977c87bc01acc3a48008515cc44f03a7194dd6781bc3eb79dcd9bb3d73c437"
+  "entries_hash": "e57e0cd6479d1d4f58b115dfec683e5547c27a373e67ee51bd11e08e5fbef222"
 }

@@ -39329,12 +39329,12 @@
       "spectrum.time_cursor_inside_fft_window": {
         "source": " · time cursor %{index}: inside FFT window",
         "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
-        "translation_hash": "42563e42ccf14288fc3d512d06a0c8a6a22ccdb09fc86e9cd40632d259d34502"
+        "translation_hash": "e3eff3dc4598d60900dcaf3abbc5934731fc62eab8fe185ca01c5f28b9f1a6d7"
       },
       "spectrum.time_cursor_outside_fft_window": {
         "source": " · time cursor %{index}: outside FFT window",
         "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
-        "translation_hash": "b4dd3742f3b40c8326695d5a0daeb7178a8fd6573306519c56794445f3d60ba7"
+        "translation_hash": "9e1c57ede2e56fa5e3bd88593fc3f6249c6ff16d723ae7ec81d5d63b45b97634"
       }
     }
   }
