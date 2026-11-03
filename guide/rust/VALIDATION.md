@@ -330,6 +330,10 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 | Spectrogram／Cepstrogram／XY | Hold中の取得継続・模擬エラー。解析モード、ケフレンシーの範囲・刻み・符号付き係数、無信号／非有限、操作説明と履歴Spectrumの利用不可。XYのTrace Snap・Freeの操作説明・模擬エラー |
 | Generator／Lock-in／同期比較 | 保持と独立出力、停止・出力エラー、波形・OUT・適用値と数値編集。Lock-inの4値・REF消失・有効／無効セル・積分窓、同期比較の欠落・保持条件・表示範囲と各詳細 |
 
+macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、全9言語の対象画像を照合した。操作名・説明・単位と主要値を読み分けられ、選定範囲に未解決の文字欠けはなかった。Cepstrogramの説明内の操作名、フランス語の履歴Spectre表記、ロシア語の同期比較見出し・有効帯域・範囲上限を改訂し、対象画面を再撮影して確認した。ロシア語のカスタム範囲は既存の`MEASURELAB_UI_SMOKE_COMPARISON_AXIS=custom`でも通常幅／狭幅を確認した。
+
+証拠は`dist/i18n-visual-review/i6-final/`の各言語と`corrections/`のmanifest、採用画像と改訂前後の照合は`review-summary.json`へ保存する。Rust・撮影スクリプトと影響しない訳文の同一性を照合して元の画像を再利用し、変更キーが表示される画面は改訂後のバイナリで置き換えた。元の一括撮影と改訂後の再撮影のソース／カタログ／バイナリ識別をそれぞれ保持する。
+
 これは明示した画面・状態のレビューで、全ての値・文字列組合せ、通常配布物、他OS、実モニター間DPI、物理入出力の受け入れとは分ける。問題キーの改訂は[翻訳手順](I18N.md#確認済み訳文の視覚レビュー)で1言語・1グループずつ行い、対象画面を再撮影する。通常開発の英語変更は従来どおり独立した差分翻訳へ渡す。
 
 ### G4に残る手動受け入れ
