@@ -4,8 +4,28 @@ spectrogram.analysis: Analyse
 spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: Les changements
   d’analyse s’appliquent au redémarrage de l’entrée. L’image capturée reste maintenue.
 spectrogram.auto_color_range: Plage de couleurs automatique
+spectrogram.captured_cepstral: 'Acquisition : %{fs} Hz nominaux · N %{n} / pas %{hop}
+  · f64 · plancher log %{floor} dB'
 spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 'Capturé : nominal %{sample_rate}
   Hz · fenêtre %{sample_rate_2} s · ligne %{sample_rate_3} ms · bin %{size} Hz'
+spectrogram.cepstral_channel: CH %{channel} · dB re 1
+spectrogram.cepstral_definition: Cepstre réel signé ; couleur = (2c)² en dB re 1.
+  q=0 exclu. Le plancher logarithmique relatif est indépendant de la couleur. FS non
+  étalonné, Fs nominale ; aucune garantie de hauteur ou de retard.
+spectrogram.cepstral_gestures: 'Molette : zoom en quéfrence. Glisser : déplacer quéfrence/temps.
+  Maj+molette : parcourir l’historique. Clic : figer et choisir temps/quéfrence A
+  ou B. Le bouton En direct libère les sélections. Double-clic : réinitialiser la
+  plage et la position temporelle.'
+spectrogram.cepstral_link_disabled: Le spectre historique n’est pas disponible pour
+  les coefficients du cepstre réel.
+spectrogram.cepstral_power: Puissance cepstrale (dB re 1)
+spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
+
+  CH %{channel} · échantillons %{start}..%{end}'
+spectrogram.cepstral_status: '%{status} · plancher log %{floor} dB · %{count} bins
+  unilatéraux ramenés au plancher'
+spectrogram.cepstral_valid: Cepstre réel valide
+spectrogram.cepstrogram: Cepstrogramme
 spectrogram.ch_dbfs: CH %{channel} · dBFS
 spectrogram.collecting_a_complete_stft_window: Acquisition d’une fenêtre STFT complète…
 spectrogram.color_map: PALETTE DE COULEURS
@@ -22,6 +42,8 @@ spectrogram.color_range_dbfs: PLAGE DE COULEURS · dBFS
 spectrogram.display: Affichage
 spectrogram.end_s_s_retained_n_hop: '%{live} · Fin %{sample_rate} s · %{retained_seconds}
   s conservées · N %{size} / pas %{hop}%{else}'
+spectrogram.f64_required: Le cepstrogramme utilise f64. La précision du spectrogramme
+  est conservée.
 spectrogram.fft_length: LONGUEUR FFT
 spectrogram.fft_overlap: CHEVAUCHEMENT FFT
 spectrogram.frequency_hz: Fréquence / Hz
@@ -53,16 +75,19 @@ spectrogram.invalid_stft_window_non_finite_input_samples: Fenêtre STFT invalide
 spectrogram.linear_hz: Hz linéaire
 spectrogram.live: EN DIRECT
 spectrogram.live_action: En direct
+spectrogram.log_floor: Plancher logarithmique relatif
 spectrogram.log_hz: Hz logarithmique
 spectrogram.max: Max
 spectrogram.min: Min
 spectrogram.min_and_max_must_be_finite_with_min_max: Min et Max doivent être finis,
   avec Min < Max. La plage précédente est conservée.
+spectrogram.no_signal: Aucun signal après prétraitement
 spectrogram.no_stft_data_at_this_time_gap_or_unavailable: Aucune donnée STFT à cet
   instant · lacune ou données indisponibles
 spectrogram.no_stft_row_before_input_began: '%{index} Aucune ligne STFT
 
   Avant le début de l’entrée'
+spectrogram.non_finite: 'Fenêtre invalide : entrée ou calcul non fini'
 spectrogram.outside_visible_time_range: '
 
   Hors de la plage temporelle visible'
@@ -74,6 +99,11 @@ spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 'Am
   Blanc : historique indisponible.'
 spectrogram.points: '%{size} points'
 spectrogram.preparing_history_view: Préparation de l’affichage de l’historique…
+spectrogram.quefrency_effective: Affichage %{min}…%{max} ms · pas %{step} ms · Fs
+  nominale
+spectrogram.quefrency_invalid: La quéfrence exige des valeurs finies avec 0 ≤ Min
+  < Max. Plage précédente conservée.
+spectrogram.quefrency_ms: Quéfrence (ms)
 spectrogram.remove_dc_offset: Supprimer le décalage continu
 spectrogram.s_ch: '%{index} −%{age} s
 
@@ -81,8 +111,10 @@ spectrogram.s_ch: '%{index} −%{age} s
 spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
 
   Aucune ligne STFT · lacune ou indisponible'
+spectrogram.search_terms: Cepstrogramme cepstre écho harmonique périodicité quéfrence
 spectrogram.spectrogram: Spectrogramme
 spectrogram.start_input_to_begin_acquisition: Démarrez l’entrée pour commencer l’acquisition
+spectrogram.time_quefrency_cursor: Curseur temps / quéfrence
 spectrogram.time_range: PLAGE TEMPORELLE
 spectrogram.to: À
 spectrogram.to_uses_nyquist_log_excludes_dc: À = 0 utilise Nyquist. L’échelle logarithmique

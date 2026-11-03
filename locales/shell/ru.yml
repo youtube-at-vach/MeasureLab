@@ -10,6 +10,7 @@ shell.analysis_enabled_waiting_for_input: Анализ включён · ожи�
 shell.analysis_on: АНАЛИЗ ВКЛ.
 shell.analysis_status: Состояние анализа…
 shell.analysis_stopped: Анализ · остановлен
+shell.arrange_view: Разместить виды…
 shell.audio_i_o: Audio I/O
 shell.audio_i_o_settings: Настройки Audio I/O
 shell.back_to_instruments: К приборам

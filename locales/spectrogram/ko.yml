@@ -4,8 +4,24 @@ spectrogram.analysis: 분석
 spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: 입력을 다시
   시작하면 분석 변경 사항이 적용됩니다. 캡처된 이미지는 고정 상태로 유지됩니다.
 spectrogram.auto_color_range: 자동 색상 범위
+spectrogram.captured_cepstral: '취득 조건: 공칭 %{fs} Hz · N %{n} / 홉 %{hop} · f64 · 로그
+  하한 %{floor} dB'
 spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: '캡처됨: 공칭 %{sample_rate} Hz
   · 윈도우 %{sample_rate_2} s · 행 %{sample_rate_3} ms · 빈 %{size} Hz'
+spectrogram.cepstral_channel: CH %{channel} · dB re 1
+spectrogram.cepstral_definition: 부호 있는 실수 켑스트럼. 색상 = (2c)²의 dB re 1. q=0 제외. 상대 로그
+  하한은 색상과 독립적입니다. 미교정 FS, 공칭 Fs이며 피치나 지연 정확도를 보장하지 않습니다.
+spectrogram.cepstral_gestures: '휠: 케프렌시 확대/축소. 드래그: 케프렌시/시간 이동. Shift+휠: 기록 탐색. 클릭:
+  유지하고 시간/케프렌시 A 또는 B 선택. 실시간을 누르면 선택이 해제됩니다. 두 번 클릭: 범위와 시간 위치 초기화.'
+spectrogram.cepstral_link_disabled: 실수 켑스트럼 계수에는 기록 Spectrum을 사용할 수 없습니다.
+spectrogram.cepstral_power: 켑스트럼 파워(dB re 1)
+spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
+
+  CH %{channel} · 샘플 %{start}..%{end}'
+spectrogram.cepstral_status: '%{status} · 로그 하한 %{floor} dB · 단측 스펙트럼의 %{count}개 빈에
+  하한 적용'
+spectrogram.cepstral_valid: 유효한 실수 켑스트럼
+spectrogram.cepstrogram: 켑스트로그램
 spectrogram.ch_dbfs: CH %{channel} · dBFS
 spectrogram.collecting_a_complete_stft_window: 완전한 STFT 윈도우 수집 중…
 spectrogram.color_map: 색상 맵
@@ -22,6 +38,7 @@ spectrogram.color_range_dbfs: 색상 범위 · dBFS
 spectrogram.display: 표시
 spectrogram.end_s_s_retained_n_hop: '%{live} · 종료 %{sample_rate} s · 유지 %{retained_seconds}
   s · N %{size} / 홉 %{hop}%{else}'
+spectrogram.f64_required: 켑스트로그램은 f64를 사용합니다. Spectrogram의 정밀도 설정은 유지됩니다.
 spectrogram.fft_length: FFT 길이
 spectrogram.fft_overlap: FFT 중첩
 spectrogram.frequency_hz: 주파수 / Hz
@@ -50,16 +67,19 @@ spectrogram.invalid_stft_window_non_finite_input_samples: 잘못된 STFT 윈도�
 spectrogram.linear_hz: 선형 Hz
 spectrogram.live: 실시간
 spectrogram.live_action: 실시간
+spectrogram.log_floor: 상대 로그 하한
 spectrogram.log_hz: 로그 Hz
 spectrogram.max: 최대
 spectrogram.min: 최소
 spectrogram.min_and_max_must_be_finite_with_min_max: 최소와 최대는 유한한 값이어야 하며 최소 < 최대여야
   합니다. 이전 범위를 유지합니다.
+spectrogram.no_signal: 전처리 후 신호 없음
 spectrogram.no_stft_data_at_this_time_gap_or_unavailable: 이 시간에 STFT 데이터가 없습니다 · 간격이
   있거나 사용할 수 없음
 spectrogram.no_stft_row_before_input_began: '%{index} STFT 행 없음
 
   입력 시작 전'
+spectrogram.non_finite: '유효하지 않은 창: 입력 또는 계산이 유한하지 않음'
 spectrogram.outside_visible_time_range: '
 
   보이는 시간 범위 밖'
@@ -70,6 +90,9 @@ spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: '�
   빈 진폭 · 비보정 FS. 주황색 줄무늬: 누락되었거나 유효하지 않은 STFT. 공백: 사용할 수 없는 이력.'
 spectrogram.points: '%{size}개 포인트'
 spectrogram.preparing_history_view: 이력 보기 준비 중…
+spectrogram.quefrency_effective: 표시 %{min}…%{max} ms · 간격 %{step} ms · 공칭 Fs
+spectrogram.quefrency_invalid: 케프렌시는 유한한 값으로 0 ≤ Min < Max를 충족해야 합니다. 이전 범위를 유지합니다.
+spectrogram.quefrency_ms: 케프렌시(ms)
 spectrogram.remove_dc_offset: DC 오프셋 제거
 spectrogram.s_ch: '%{index} −%{age} s
 
@@ -77,8 +100,10 @@ spectrogram.s_ch: '%{index} −%{age} s
 spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
 
   STFT 행 없음 · 간격이 있거나 사용할 수 없음'
+spectrogram.search_terms: 켑스트로그램 켑스트럼 에코 고조파 주기성 케프렌시
 spectrogram.spectrogram: Spectrogram
 spectrogram.start_input_to_begin_acquisition: 취득을 시작하려면 입력 시작을 누르세요
+spectrogram.time_quefrency_cursor: 시간/케프렌시 커서
 spectrogram.time_range: 시간 범위
 spectrogram.to: 끝
 spectrogram.to_uses_nyquist_log_excludes_dc: 끝 = 0은 Nyquist를 사용합니다. 로그 축에서는 DC를 제외합니다.

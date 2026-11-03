@@ -47,6 +47,8 @@ spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: 'Curseur %{i
   de contribution %{start_2}..%{end_2} (poids exponentiels). Génération d’entrée %{input_generation}
   ; fenêtres manquantes %{missing_windows}.%{times}'
 spectrum.custom_frequency_range: Plage de fréquences personnalisée
+spectrum.dc_removed: supprimée
+spectrum.dc_retained: conservée
 spectrum.ema: EMA 1/%{averages}
 spectrum.ema_settling: Stabilisation de l’EMA
 spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: Densité spectrale
@@ -153,6 +155,8 @@ spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: Demandé %{requested
 spectrum.reset: Réinitialiser
 spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: Réinitialiser la moyenne
   et le maintien du pic pour toutes les traces du spectre
+spectrum.reset_requires_running_input: Démarrez l’entrée pour réinitialiser la moyenne
+  et les crêtes. Les résultats figés restent inchangés.
 spectrum.select_a_time_frame_in_spectrogram: Sélectionner une trame temporelle dans
   le spectrogramme
 spectrum.show_ch_spectrum: Afficher le spectre de CH%{index}
@@ -176,6 +180,10 @@ spectrum.sum_of_f64_esd_f_over_all_bins_including: Somme f64 de ESD × Δf sur t
 spectrum.time: Temps %{i}
 spectrum.time_2: Temps %{i} · %{i_2}
 spectrum.time_a_b_from_spectrogram: Temps A/B du spectrogramme
+spectrum.time_cursor_inside_fft_window: ' · curseur temporel %{index} : dans la fenêtre
+  FFT'
+spectrum.time_cursor_outside_fft_window: ' · curseur temporel %{index} : hors de la
+  fenêtre FFT'
 spectrum.time_end_s_ch_samples_hz_pt_dc: Temps %{i} · fin %{sample_rate} s · CH %{channel}
   · échantillons %{start}..%{end} · %{sample_rate_2} Hz · %{size} pt · %{name} · %{name_2}
   · CC %{retained}
@@ -192,7 +200,6 @@ spectrum.top: Haut
 spectrum.update_mode: MODE DE MISE À JOUR
 spectrum.weight: Poids %{count}
 spectrum.weight_2: Poids %{average_weight}
-spectrum.window: ' · %{index} fenêtre %{outside}'
 spectrum.window_duration_available_after_input_starts: Durée de fenêtre disponible
   après le démarrage de l’entrée
 spectrum.window_energy_s: Énergie de fenêtre %{spectrum_energy} %{power_unit}·s

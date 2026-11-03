@@ -17,6 +17,19 @@ PREFIX = "MEASURELAB_UI_SMOKE_"
 
 
 def cases(devices=()):
+    for instrument, targets in {
+        "generator": "live held stopped empty error error-empty output-error square triangle noise unassigned disconnected collapsed details details-footer menu-waveform menu-routing menu-step tooltip-edit tooltip-applied tooltip-applied-values tooltip-stop tooltip-output details-noise dithering preferences-error",
+        "lockin": "live held stopped empty error error-empty disabled unavailable settling ref-loss ref-unstable missing invalid pending cartesian all details details-footer captured menu-ref menu-sig menu-tau menu-tau-last menu-integration tooltip-valid tooltip-invalid",
+        "comparison": "live held stopped empty error error-empty disabled unavailable filling averaging missing invalid ref-loss response-loss incoherent pending details details-footer captured menu-ref menu-sig menu-size menu-window menu-span tooltip-range",
+    }.items():
+        for review in targets.split():
+            for compact in (False, True):
+                yield (
+                    f"{instrument}-review-{review}-{'compact' if compact else 'wide'}",
+                    compact,
+                    {"SIGNAL_REVIEW": f"{instrument}:{review}", "VIEW": instrument, "IDLE": "1"}
+                    | ({"ZOOM": "1.25"} if compact else {}),
+                )
     for review in (
         "empty",
         "live",
@@ -351,6 +364,41 @@ def cases(devices=()):
         yield f"held-{name}-replay", True, {source: device, "REPLAY": "1", "COMPARE": "1"}
 
 
+def language_review_cases():
+    """I6e: explicit locale/screen/state matrix; use --locale per independent review."""
+    names = {
+        f"{instrument}-{width}"
+        for instrument in ("scope", "spectrum", "spectrogram", "xy", "lockin", "comparison", "generator")
+        for width in ("wide", "compact")
+    }
+    names.update(
+        (
+            "header-menu-file-wide",
+            "header-menu-audio-compact",
+            "header-menu-view-wide",
+            "header-menu-scale-compact",
+            "header-menu-language-compact",
+            "header-menu-analysis-compact",
+            "instrument-review-selection-single-wide",
+            "instrument-review-arrange-compact",
+            "io-wide",
+            "io-compact",
+            "io-calibration",
+        )
+    )
+    for instrument, states in {
+        "scope": "held-wide live-compact error-compact single-compact tooltip-fit-common-compact",
+        "spectrum": "held-wide psd-compact esd-compact tooltip-reset-disabled-compact history-details-compact tooltip-cursor-times-wide error-compact",
+        "spectrogram": "cepstral-held-wide cepstral-details-compact cepstral-display-compact cepstral-silence-wide cepstral-invalid-compact tooltip-cepstral-compact tooltip-cepstral-link-compact menu-mode-compact hold-live-wide error-compact",
+        "xy": "trace-wide tooltip-plot-free-compact error-compact",
+        "generator": "held-wide stopped-compact output-error-compact disconnected-compact menu-routing-compact menu-waveform-compact tooltip-edit-compact tooltip-applied-compact details-noise-compact tooltip-applied-values-compact dithering-compact preferences-error-wide",
+        "lockin": "held-wide error-compact ref-loss-compact all-compact menu-integration-compact menu-tau-last-compact tooltip-valid-compact tooltip-invalid-compact details-footer-compact",
+        "comparison": "held-wide error-compact missing-compact captured-compact menu-span-compact tooltip-range-compact details-footer-compact",
+    }.items():
+        names.update(f"{instrument}-review-{state}" for state in states.split())
+    return names
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
@@ -358,7 +406,7 @@ def main():
     parser.add_argument(
         "--case",
         action="append",
-        help="Run a named case, header-menus, instrument-menus, scope-review, spectrum-review, spectrogram-review or xy-review (repeatable)",
+        help="Run a named case, header-menus, instrument-menus, scope-review, spectrum-review, spectrogram-review, xy-review, generator-review, lockin-review, comparison-review or language-review (repeatable)",
     )
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
@@ -396,6 +444,14 @@ def main():
     if "xy-review" in requested:
         requested.remove("xy-review")
         requested.update(name for name, _, _ in available if name.startswith("xy-review-"))
+    for instrument in ("generator", "lockin", "comparison"):
+        group = f"{instrument}-review"
+        if group in requested:
+            requested.remove(group)
+            requested.update(name for name, _, _ in available if name.startswith(group + "-"))
+    if "language-review" in requested:
+        requested.remove("language-review")
+        requested.update(language_review_cases())
     selected = [case for case in available if args.case is None or case[0] in requested]
     if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
@@ -467,6 +523,8 @@ def main():
                 passed = passed and f"Spectrum review UI OK: {options['SPECTRUM_REVIEW']};" in log
             if "SPECTROGRAM_REVIEW" in options:
                 passed = passed and f"Spectrogram review UI OK: {options['SPECTROGRAM_REVIEW']};" in log
+            if "SIGNAL_REVIEW" in options:
+                passed = passed and f"Signal review UI OK: {options['SIGNAL_REVIEW']};" in log
             if "XY_REVIEW" in options:
                 passed = passed and f"XY review UI OK: {options['XY_REVIEW']};" in log
             if "INTERACTIONS" in options:

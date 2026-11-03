@@ -11,6 +11,7 @@ generator.applied_sample: 已应用样本 %{applied_sample}
 generator.applied_seed: 已应用种子 %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: ± 按钮 / 上 / 下在 Hz、dBFS 或度数中使用此步长。Enter
   / 聚焦时应用；Esc 取消。
+generator.connection_summary: 输出：%{output} · %{input}
 generator.down: 下
 generator.duplicate: 复制
 generator.edit_step: 编辑步长
@@ -39,6 +40,7 @@ generator.error_reason.signal_count: Generator 最多支持 16 张卡片
 generator.error_reason.signal_identity: Generator 卡片 ID 必须唯一且小于下一个 ID
 generator.error_reason.stopping: 等待输出淡出完成
 generator.error_reason.waveform: 位置 %{position} 的卡片：噪声种子不能为零
+generator.external_connection: 通过物理或虚拟音频路径将输出连接到所选输入。输入与输出分别启动。
 generator.frequency: 频率
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -55,6 +57,7 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} 通道 · 
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS 峰值 · %{phase_degrees}°
   超前'
 generator.in_use: ' · 使用中'
+generator.loopback_not_selected: 要测量此内部输出，请在输入设置中选择Generator环回。输入与输出分别启动。
 generator.ms_cycles: '%{frequency_hz} ms / 2 个周期'
 generator.no_signals_add_a_signal_to_choose_its_waveform: 没有信号。添加信号以选择波形和输出。
 generator.off: 关闭

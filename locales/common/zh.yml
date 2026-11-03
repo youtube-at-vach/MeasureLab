@@ -242,6 +242,10 @@ common.spectrum_linear_values_bin_position: Spectrum 线性值 · 频点位置
 common.spectrum_prep_ms: Spectrum 准备 %{spectrum_build_ms} ms
 common.spectrum_windows_missing: Spectrum %{mode} · %{updates} 个窗口 · 缺失 %{missing_windows}
 common.start_input_to_begin_acquisition: 启动输入以开始采集
+common.startup_preferences: 启动偏好设置
+common.startup_preferences_error: 启动偏好设置错误
+common.startup_preferences_help: 输入/输出选择、测量条件和显示设置会自动保存。启动时输入和输出均保持停止。
+common.startup_preferences_recovery: 为保护此文件，已禁用自动保存。请关闭MeasureLab，将此文件移至别处，然后重新启动以创建新设置。
 common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / 步长 %{hop} · 样本 %{start}..%{end}
 common.stft_history_storage_losses_allocated_mib_peak_mib: STFT 历史存储丢失 %{elaxed} ·
   已分配 %{allocated_frame_bytes} MiB / 峰值 %{peak_frame_bytes} MiB

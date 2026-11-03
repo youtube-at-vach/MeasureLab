@@ -8,6 +8,7 @@ shell.analysis_enabled_waiting_for_input: 分析已启用 · 等待输入
 shell.analysis_on: 分析已开启
 shell.analysis_status: 分析状态…
 shell.analysis_stopped: 分析 · 已停止
+shell.arrange_view: 排列视图…
 shell.audio_i_o: Audio I/O
 shell.audio_i_o_settings: Audio I/O 设置
 shell.back_to_instruments: 返回仪器

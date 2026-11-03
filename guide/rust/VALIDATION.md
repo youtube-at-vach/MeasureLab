@@ -151,7 +151,9 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 `header-menus`は入力停止中のFile／View／Audio I/O／Analysis status、表示倍率・言語のサブメニューを通常幅・狭幅で、狭幅のMenuも含めて実イベントから開く。狭幅では表示倍率125%を使う。各メニューの主要項目の文字全体がclip・画面内へ収まることと、測定設定・配置・入力世代・Generator設定の不変性をQAで検査する。`--case header-menu-file-wide`などで個別に実行でき、`--locale`で別言語も指定できる。`--assertions-only`は撮影しないため視覚レビューの完了には使わない。
 
-画像・ログ・ソース／カタログ／バイナリ識別は指定した出力先へ保存する。自動assertionの成功と画像の訳語・読み取りやすさの確認は別に判定する。取得中／保持／模擬エラー、計器固有メニュー・ツールチップと他言語全画面の確認はI6の後続とし、通常版の手動操作・実モニター間DPIの受け入れへ代用しない。
+撮影はデスクトップのロックを解除して実行する。QAはネイティブのフォーカス取得を待ってから操作し、取得できない場合は状態とポインター位置をログに残して失敗する。再ロックを避けるため、macOSでは上記の`caffeinate -du`を付ける。
+
+画像・ログ・ソース／カタログ／バイナリ識別は指定した出力先へ保存する。自動assertionの成功と画像の訳語・読み取りやすさの確認は別に判定する。取得中／保持／模擬エラー、計器固有メニュー・ツールチップと他言語全画面の確認は各計器と全9言語レビューで扱い、通常版の手動操作・実モニター間DPIの受け入れへ代用しない。
 
 ### 計器選択・配置と共通ツールチップの視覚レビュー（I6b）
 
@@ -175,7 +177,7 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 画像・ログ・manifestの保存と`--assertions-only`の制限はI6aと同じ。画像での訳語・冗長さ・読み取りやすさの判定を自動assertionと分ける。計器内のカーソル・軸・測定状態などの専用説明、取得中／保持／模擬エラー、他言語の画面はI6c以降へ分け、通常配布物・実モニター間DPI・物理入出力の受け入れへ広げない。
 
-macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`eb8c5d27`上のI6b差分の画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/instrument-menus-ja-final/manifest.json`を参照する。対象メニューと説明の文字欠けは見つからず、入力停止・解析OFF・出力停止、Undoの無効表示を読み取れた。`shell.arrange_view`の未翻訳による英語フォールバックは全8翻訳にあり、[PLAN](PLAN.md)の独立差分翻訳へ残す。狭幅検索の編集継続と選択後の終了は修正後の実ウィジェットQAで確認した。
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`eb8c5d27`上のI6b差分の画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/instrument-menus-ja-final/manifest.json`を参照する。対象メニューと説明の文字欠けは見つからず、入力停止・解析OFF・出力停止、Undoの無効表示を読み取れた。`shell.arrange_view`の差分翻訳と現在の他言語の確認範囲は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。狭幅検索の編集継続と選択後の終了は修正後の実ウィジェットQAで確認した。
 
 ### Scopeの状態と専用ツールチップの視覚レビュー（I6c）
 
@@ -199,9 +201,9 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 撮影操作で測定条件・表示構成・カーソル・入力世代・出力コマンドが変わらないことを検査する。保持中は入力条件・Scopeのf64生サンプル・統計・欠落を比較し、取得中は入力フレームとFFT窓、出力継続中は出力サンプルの進行を確認する。ツールチップは実際のTooltip層の文字全体がclip・画面内へ収まることを検査し、ログへ文字領域とpixel倍率も残す。画像・manifestと`--assertions-only`の扱いはI6aと同じ。
 
-画像の訳語・欠け・操作名の判定は自動assertionと分ける。他言語の画像、通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れへ広げない。既存の未翻訳・古い訳は英語フォールバックを維持し、[PLAN](PLAN.md)のI6eへ言語・グループ別に渡す。
+画像の訳語・欠け・操作名の判定は自動assertionと分ける。他言語の画像、通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れへ広げない。差分翻訳は言語・グループ別タスクとし、現在の対象画面は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。
 
-macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`de5a5a6d`上のI6c差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/scope-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持波形・数値、Single・未捕捉・無効値・模擬エラーと次の操作を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからず、訳文・翻訳元ハッシュは変更していない。未翻訳キーの英語表示はPLANのI6eへ残す。
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`de5a5a6d`上のI6c差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/scope-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持波形・数値、Single・未捕捉・無効値・模擬エラーと次の操作を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからず、訳文・翻訳元ハッシュは変更していない。現在の差分翻訳と対象画像は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。
 
 ### Spectrumの状態と専用ツールチップの視覚レビュー（I6d）
 
@@ -226,7 +228,7 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 文字全体がclip・画面内に収まることと実Tooltip層の表示を検査し、画像・ログ・manifestは指定出力先へ保存する。`--assertions-only`は画像確認の代用にしない。履歴連携では実STFTのf64フレームを選択する。Spectrogram自体の専用説明・状態とCepstrogramの履歴連携不可の説明は[同計器のI6d](#spectrogramの状態と専用ツールチップの視覚レビューi6d)で確認する。通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れとは分ける。
 
-macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`12523bfb`上のI6d差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/spectrum-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持値・無効窓・未取得、PSD帯域電力・ESD窓エネルギー、履歴の読み取り専用と操作対象を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからなかった。停止中のリセットと時間カーソルの窓内外・履歴のDC状態の新しい英語キーは英語フォールバックを維持し、各言語の訳文と旧キーの整理は[PLAN](PLAN.md)のI6eへ残す。訳文・翻訳元ハッシュは変更していない。
+macOS 14.8.9・Intel Mac・Metalのdev-fast／qa版で、`12523bfb`上のI6d差分の日本語画像を確認した。ソース・カタログ・バイナリ識別と画像は`dist/i18n-visual-review/spectrum-ja-final/manifest.json`を参照する。入力停止と独立した出力、保持値・無効窓・未取得、PSD帯域電力・ESD窓エネルギー、履歴の読み取り専用と操作対象を読み分けられた。既存訳に改訂を要する文字欠け・操作名の問題は見つからなかった。停止中のリセット、時間カーソルの窓内外、履歴のDC状態の差分翻訳・旧キー整理と現在の対象画像は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。訳文・翻訳元ハッシュは変更していない。
 
 ### Spectrogramの状態と専用ツールチップの視覚レビュー（I6d）
 
@@ -252,7 +254,7 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 
 文字全体がclip・画面内に収まることと実Tooltip層を検査し、画像・ログ・ソース／カタログ／バイナリ識別は指定出力先のmanifestへ保存する。`--assertions-only`は画像確認の代用にしない。通常配布物・手動操作・実モニター間DPI・物理入出力の受け入れとは分ける。
 
-macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`57a198d8`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/spectrogram-ja-final/manifest.json`を参照する。入力停止後のライブ表記、Cepstrogramの周波数操作案内、カーソル注記・ケフレンシー差分の重なり、狭幅詳細末尾の文字欠けを修正し、再撮影した。既存訳に改訂を要する問題は見つからなかった。Cepstrogram関連の既存19キーは日本語を含む全8翻訳で未翻訳のため、[PLAN](PLAN.md)のI6eへ残す。訳文・翻訳元ハッシュは変更していない。
+macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`57a198d8`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/spectrogram-ja-final/manifest.json`を参照する。入力停止後のライブ表記、Cepstrogramの周波数操作案内、カーソル注記・ケフレンシー差分の重なり、狭幅詳細末尾の文字欠けを修正し、再撮影した。既存訳に改訂を要する問題は見つからなかった。Cepstrogram関連の差分翻訳と現在の対象画像は[全9言語レビュー](#全9言語の画面レビューi6e)を参照する。訳文・翻訳元ハッシュは変更していない。
 
 ### XYの状態と専用ツールチップの視覚レビュー（I6d）
 
@@ -282,6 +284,57 @@ caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
 Scope専用の上端／右端Tマーカーの説明は、共有トリガーの編集部品からScopeの詳細欄へ分離した。`widget-interactions`ではXYへの混入を検査し、`scope-review-tooltip-marker-details-wide`／`scope-review-tooltip-marker-details-compact`でScope側の説明も撮影できる。`widget-interactions`に含む言語切替の性能検査は、他のビルド・実時間QAと並行せず単独で実行する。
 
 macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、`84271754`上のI6d差分の日本語画像を確認した。証拠は`dist/i18n-visual-review/xy-ja-final/manifest.json`と同ディレクトリの`review-summary.json`を参照する。言語切替の性能検査は並行コンパイル中に一度失敗し、終了後の同一バイナリの単独再実行で成功した。元の失敗と再実行は`widget-retry/manifest.json`を含めて保持する。入力停止と独立した出力、Free／Trace Snapと範囲外の読値、保持CHと次回CH予約、利用不可の理由を読み分けられた。Scope専用の説明の混入を修正し、再撮影した。既存訳に改訂を要する問題は見つからず、訳文・翻訳元ハッシュは変更していない。
+
+### Generator・Lock-in・同期比較の視覚レビュー（I6d）
+
+```sh
+./scripts/cargo.sh build --profile dev-fast --locked --features qa
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale ja \
+    --case generator-review --case lockin-review --case comparison-review \
+    --output dist/i18n-visual-review/signal-ja
+```
+
+通常幅と狭幅（表示倍率125%）で、次の対象を実ウィジェットから撮影する。個別ケースは`--case lockin-review-menu-tau-compact`のように指定できる。
+
+| 計器 | 状態・画面 | メニュー・専用ツールチップ |
+| --- | --- | --- |
+| Generator | 入力・出力とも動作中、入力停止／出力継続、入出力停止、未取得／取得後の模擬入力エラー、出力エラー、カードなし・未割当、4波形のプレビュー、折りたたみ、適用値・出力詳細 | 波形・OUT割当（使用中を含む）・編集ステップ。数値編集、適用Fsとプレビューの意味、桁を省略しない適用値、独立Stopと出力状態の全専用説明 |
+| Lock-in | 取得・保持・停止・未取得・模擬入力エラー、無効・CH利用不可・整定・REF消失／不安定・欠落・非有限、次回設定、Polar／Cartesian／4値、保持した測定詳細 | SIG／REF、時定数プリセット、積分窓。数値セルの有効値／無効値の全専用説明 |
+| 同期比較 | 取得・保持・停止・未取得・模擬入力エラー、無効・利用不可・窓収集／平均待ち・欠落・非有限、REF／SIG消失・非コヒーレント、次回設定、保持条件 | REF／SIG、FFTサイズ・窓・表示範囲。表示だけを変更する範囲操作の専用説明 |
+
+通常Generatorの内部2chを、共通の測定・Lock-in・比較ワーカーへ渡す。既知の振幅・相対位相とゲインを照合し、実ウィジェットからの入力開始・有限Stop・独立出力停止を使う。取得中の入力フレーム・FFT窓、入力停止後も独立して進む出力サンプルを確認する。停止後のLock-in／比較のf64結果・整数区間・取得条件・欠落と、メニュー・ホバー中の測定設定・配置・入力世代・出力コマンドの不変性を検査する。数値条件・許容差の正本は[Signal計器QA](../../src/app/gui_qa/menus/signal.rs)とする。
+
+無効な解析状態は、入力・出力を停止してワーカーを解放した後の明示した表示fixtureで、実際のREF消失や欠落の発生試験とは分ける。出力エラーは存在しない試験用IDの開始要求を管理ワーカーが拒否する経路を使い、物理ストリームは開かない。入力エラーは模擬通知で確認し、USB抜去は行わない。
+
+`generator-review-dithering-*`は停止した合成出力能力でf32のTPDF・量子化ビット深度を表示し、出力を開始しない。`generator-review-preferences-error-*`はファイルアクセスを行わない設定エラーfixtureで、自動保存の説明・復旧案内を表示する。通常の利用者設定は読み書きしない。
+
+文字のclip・画面内への収まりと実Tooltip層を検査し、画像の読み取りやすさ・訳語・冗長さは別に画像で判定する。画像・ログ・ソース／カタログ／バイナリ識別のmanifestを保持し、撮影失敗を`--assertions-only`の成功で置き換えない。
+
+macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、日本語の対象画像を確認した。入力停止と独立出力、保持値・未取得・各無効理由、適用値と次回設定、メニュー・専用説明を読み分けられた。証拠とソース／カタログ／バイナリ識別は`dist/i18n-visual-review/i6-final/ja/manifest.json`を参照する。低層のエラー詳細と明示したfixture名は原文を保持する。
+
+### 全9言語の画面レビュー（I6e）
+
+```sh
+caffeinate -du ./.venv/bin/python scripts/qa_gui_redesign.py \
+    --binary target/dev-fast/measurelab --locale de --case language-review \
+    --output dist/i18n-visual-review/language-de
+```
+
+`--locale`を`en-US`／`ja`／`fr`／`de`／`es`／`pt`／`ru`／`zh`／`ko`ごとに指定し、同じバイナリで直列実行する。対象の正本は[scripts/qa_gui_redesign.py](../../scripts/qa_gui_redesign.py)の`language_review_cases()`である。
+
+| 対象 | 言語ごとに確認する範囲 |
+| --- | --- |
+| 共通画面 | 7計器の通常幅／狭幅、File／View／Audio I/O／解析状態と倍率・言語メニュー、計器一覧・配置、入出力・校正・起動時設定のエラー／復旧説明・ディザリング |
+| Scope／Spectrum | 取得／保持／模擬エラー・Single、共通縦軸Fit。振幅／PSD／ESD、停止中のリセット、時間カーソルのFFT窓内外と履歴のDC状態 |
+| Spectrogram／Cepstrogram／XY | Hold中の取得継続・模擬エラー。解析モード、ケフレンシーの範囲・刻み・符号付き係数、無信号／非有限、操作説明と履歴Spectrumの利用不可。XYのTrace Snap・Freeの操作説明・模擬エラー |
+| Generator／Lock-in／同期比較 | 保持と独立出力、停止・出力エラー、波形・OUT・適用値と数値編集。Lock-inの4値・REF消失・有効／無効セル・積分窓、同期比較の欠落・保持条件・表示範囲と各詳細 |
+
+macOS 14.8.9・Intel Mac・Metal（AMD Radeon R9 M290X）のdev-fast／qa版で、全9言語の対象画像を照合した。操作名・説明・単位と主要値を読み分けられ、選定範囲に未解決の文字欠けはなかった。Cepstrogramの説明内の操作名、フランス語の履歴Spectre表記、ロシア語の同期比較見出し・有効帯域・範囲上限を改訂し、対象画面を再撮影して確認した。ロシア語のカスタム範囲は既存の`MEASURELAB_UI_SMOKE_COMPARISON_AXIS=custom`でも通常幅／狭幅を確認した。
+
+証拠は`dist/i18n-visual-review/i6-final/`の各言語と`corrections/`のmanifest、採用画像と改訂前後の照合は`review-summary.json`へ保存する。Rust・撮影スクリプトと影響しない訳文の同一性を照合して元の画像を再利用し、変更キーが表示される画面は改訂後のバイナリで置き換えた。元の一括撮影と改訂後の再撮影のソース／カタログ／バイナリ識別をそれぞれ保持する。
+
+これは明示した画面・状態のレビューで、全ての値・文字列組合せ、通常配布物、他OS、実モニター間DPI、物理入出力の受け入れとは分ける。問題キーの改訂は[翻訳手順](I18N.md#確認済み訳文の視覚レビュー)で1言語・1グループずつ行い、対象画面を再撮影する。通常開発の英語変更は従来どおり独立した差分翻訳へ渡す。
 
 ### G4に残る手動受け入れ
 

@@ -23,6 +23,10 @@ io.demo_square: Signal carré à bande limitée
 io.device: APPAREIL
 io.device_default: Valeur par défaut de l’appareil
 io.device_default_khz: Valeur par défaut de l’appareil (%{sample_rate} kHz)
+io.dithering_bit_depth: PROFONDEUR DU DITHERING
+io.dithering_description: Ajoute du bruit TPDF et quantifie les CH de sortie actifs
+  à la profondeur choisie, y compris en f32/f64. Les CH arrêtés ou OFF restent silencieux.
+io.enable_dithering_tpdf: Activer le dithering (TPDF)
 io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Signaux sinusoïdaux de même
   amplitude et sans bruit pour XY : en phase, en quadrature ou en opposition de phase.'
 io.frequency: FRÉQUENCE

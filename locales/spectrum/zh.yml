@@ -35,6 +35,8 @@ spectrum.cursor_nearest_bin_latest_window_samples_exclusive_end_ch: 光标 %{ind
   Hz，%{size} 点，%{name}，%{name_2}。EMA α = 1/%{averages}；已处理 %{updates} 个窗口，贡献包络 %{start_2}..%{end_2}（指数权重）。输入代次
   %{input_generation}；缺少 %{missing_windows} 个窗口。%{times}
 spectrum.custom_frequency_range: 自定义频率范围
+spectrum.dc_removed: 已移除
+spectrum.dc_retained: 已保留
 spectrum.ema: EMA 1/%{averages}
 spectrum.ema_settling: EMA 稳定时间
 spectrum.energy_spectral_density_energy_per_hz_selecting_esd_presets: 能量谱密度 · 每 Hz
@@ -116,6 +118,7 @@ spectrum.requested_hz_inclusive_centres_of_bins_sum_of_f64: 请求 %{requested_h
   %{missing_windows} 个窗口。可选移除 DC 后的窗口均方值；不是 Scope 观察区间。
 spectrum.reset: 重置
 spectrum.reset_averaging_and_peak_hold_for_all_spectrum_traces: 重置所有 Spectrum 轨迹的平均值和峰值保持
+spectrum.reset_requires_running_input: 请启动输入以重置平均和峰值保持。保持结果不变。
 spectrum.select_a_time_frame_in_spectrogram: 在 Spectrogram 中选择时间帧
 spectrum.show_ch_spectrum: 显示 CH%{index} Spectrum
 spectrum.span: 范围 %{hz}
@@ -133,6 +136,8 @@ spectrum.sum_of_f64_esd_f_over_all_bins_including: 对包括 DC/Nyquist 在内�
 spectrum.time: 时间 %{i}
 spectrum.time_2: 时间 %{i} · %{i_2}
 spectrum.time_a_b_from_spectrogram: 来自 Spectrogram 的时间 A/B
+spectrum.time_cursor_inside_fft_window: ' · 时间光标%{index}：FFT窗口内'
+spectrum.time_cursor_outside_fft_window: ' · 时间光标%{index}：FFT窗口外'
 spectrum.time_end_s_ch_samples_hz_pt_dc: 时间 %{i} · 结束 %{sample_rate} s · CH %{channel}
   · 样本 %{start}..%{end} · %{sample_rate_2} Hz · %{size} 点 · %{name} · %{name_2} ·
   DC %{retained}
@@ -147,6 +152,5 @@ spectrum.top: 顶部
 spectrum.update_mode: 更新模式
 spectrum.weight: 权重 %{count}
 spectrum.weight_2: 权重 %{average_weight}
-spectrum.window: ' · %{index} %{outside} 窗口'
 spectrum.window_duration_available_after_input_starts: 启动输入后可查看窗口持续时间
 spectrum.window_energy_s: 窗口能量 %{spectrum_energy} %{power_unit}·s

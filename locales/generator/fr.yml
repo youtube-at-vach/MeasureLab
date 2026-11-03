@@ -13,6 +13,7 @@ generator.applied_sample: Échantillon appliqué %{applied_sample}
 generator.applied_seed: Graine appliquée %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: Les boutons ± et Haut / Bas utilisent
   ce pas en Hz, dBFS ou degrés. Entrée ou perte du focus applique ; Échap annule.
+generator.connection_summary: 'Sortie : %{output} · %{input}'
 generator.down: Bas
 generator.duplicate: Dupliquer
 generator.edit_step: MODIFIER LE PAS
@@ -57,6 +58,8 @@ generator.error_reason.signal_identity: Les ID des cartes du générateur doiven
 generator.error_reason.stopping: Attendez la fin du fondu de sortie
 generator.error_reason.waveform: 'Carte à la position %{position} : la graine aléatoire
   du bruit doit être non nulle'
+generator.external_connection: Reliez la sortie à l’entrée sélectionnée par une connexion
+  audio physique ou virtuelle. Démarrez séparément l’entrée et la sortie.
 generator.frequency: Fréquence
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -73,6 +76,9 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels}ch · %{pcm
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS crête ·
   avance de phase %{phase_degrees}°'
 generator.in_use: ' · utilisé'
+generator.loopback_not_selected: Pour mesurer cette sortie interne, sélectionnez le
+  bouclage Generator dans les réglages d’entrée. Démarrez séparément l’entrée et la
+  sortie.
 generator.ms_cycles: '%{frequency_hz} ms / 2 cycles'
 generator.no_signals_add_a_signal_to_choose_its_waveform: Aucun signal. Ajoutez un
   signal pour choisir sa forme d’onde et sa sortie.

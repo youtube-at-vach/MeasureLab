@@ -12,6 +12,7 @@ generator.applied_sample: Amostra aplicada %{applied_sample}
 generator.applied_seed: Semente aplicada %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: Botões ± / Para cima / Para baixo
   usam esta etapa em Hz, dBFS ou graus. Enter / foco aplica; Esc cancela.
+generator.connection_summary: 'Saída: %{output} · %{input}'
 generator.down: Para baixo
 generator.duplicate: Duplicar
 generator.edit_step: EDITAR ETAPA
@@ -54,6 +55,8 @@ generator.error_reason.signal_identity: Os IDs dos cartões do Generator devem s
 generator.error_reason.stopping: Aguarde a conclusão do fade da saída
 generator.error_reason.waveform: 'Cartão na posição %{position}: a semente de ruído
   deve ser diferente de zero'
+generator.external_connection: Conecte a saída à entrada selecionada por uma rota
+  de áudio física ou virtual. Inicie a entrada e a saída separadamente.
 generator.frequency: Frequência
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -70,6 +73,8 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} canais · 
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS pico · avanço
   de %{phase_degrees}°'
 generator.in_use: ' · em uso'
+generator.loopback_not_selected: Para medir esta saída interna, selecione o loopback
+  do Generator nas configurações de entrada. Inicie a entrada e a saída separadamente.
 generator.ms_cycles: '%{frequency_hz} ms / 2 ciclos'
 generator.no_signals_add_a_signal_to_choose_its_waveform: Nenhum sinal. Adicione um
   sinal para escolher sua forma de onda e saída.

@@ -34,6 +34,14 @@ impl State {
     }
 
     #[cfg(feature = "qa")]
+    pub(super) fn visual_review_error() -> Self {
+        Self {
+            error: Some("I6 simulated unreadable preferences (no file access)".into()),
+            ..Self::new(false)
+        }
+    }
+
+    #[cfg(feature = "qa")]
     fn at(path: std::path::PathBuf) -> Self {
         Self {
             worker: Some(Worker::new(path.clone())),

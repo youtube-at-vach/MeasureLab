@@ -13,6 +13,7 @@ generator.applied_seed: Übernommener Seed %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: ±-Schaltflächen / Hoch / Runter
   verwenden diesen Schritt in Hz, dBFS oder Grad. Eingabe / Fokus übernimmt; Esc bricht
   ab.
+generator.connection_summary: 'Ausgang: %{output} · %{input}'
 generator.down: Runter
 generator.duplicate: Duplizieren
 generator.edit_step: SCHRITT BEARBEITEN
@@ -55,6 +56,8 @@ generator.error_reason.signal_identity: Generator-Karten-IDs müssen eindeutig s
 generator.error_reason.stopping: Warten, bis die Ausgabe ausgeblendet wurde
 generator.error_reason.waveform: 'Karte an Position %{position}: Rausch-Seed darf
   nicht null sein'
+generator.external_connection: Den Ausgang über eine physische oder virtuelle Audioverbindung
+  mit dem gewählten Eingang verbinden. Ein- und Ausgang getrennt starten.
 generator.frequency: Frequenz
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -71,6 +74,8 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} Kanäle ·
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS Spitze ·
   Phasenvorlauf %{phase_degrees}°'
 generator.in_use: ' · in Verwendung'
+generator.loopback_not_selected: Für die Messung dieses internen Ausgangs in den Eingangseinstellungen
+  Generator-Loopback wählen. Ein- und Ausgang getrennt starten.
 generator.ms_cycles: '%{frequency_hz} ms / 2 Zyklen'
 generator.no_signals_add_a_signal_to_choose_its_waveform: Keine Signale. Signal hinzufügen,
   um Signalform und Ausgang auszuwählen.

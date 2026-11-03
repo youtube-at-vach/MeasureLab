@@ -2088,14 +2088,14 @@
         "translation_hash": "1831485c6951e146805149e83d93ce75d5b08b1a54e24e81564e501481ad234e"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "5d2dec47a2d268c20025e5fd87b94f3c27ae852c1f4791cd71b5ea1d35b6eb4c"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "670f4db86fdac6e0a63af6334e37ab15a62343175e384f6d81c7fb3057ec19db"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "5e59118f301cdbc47952f7af8d488902d5d88a2390f562d75fcae6f3b608d89a"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "e442b458ae846cb3cfe82531e4fce87b771ea956e2e0eda8499d0b66a2d027d4"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -2261,11 +2261,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "f4d84f5823543044a43e07e64c0b7ee0335a3d8f4fca6c300e2c4d9242e59cd4"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -4477,11 +4472,6 @@
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "a7a6b88ca218ffbdd9275a7d34159a348da0251e1f614fbe791727af34fa0fd0"
       },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "114178560275ed3e45e969f5f6f254c1d4a1712811f7b2c0797000794d7bae56"
-      },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
         "source_hash": "abf1a4b971d2174be4f0cd6bfbfd2b9f7212b72a44be7b37a2128b042861582f",
@@ -4716,6 +4706,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "a06151a5a37363bca19ce21a4921a1d6081d7fc2448cf1a6952dc02d24a4e88e"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "4a076a5b9e184a586d6200c67d054a49e0fe9f658e860ba83d3380a64e66a3b0"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "239441b6cf1de6567bf2345b7a1f4d9fdee9de0664225d78577e9778a9938e13"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "9915b3061c1f707779b2d0d6d8b16d7fe3d2c4829c338ba5e901f92db6350429"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "29314b43eaeadbda018dd58cb5c039d1d415c2608a7380ebf744750af6219118"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "0f94123f6b722d870313bd65682b6267145446d4b76f7d595eb0887d19cee4c0"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "544cffff4dfc20c8ecfb03cabb05d29f8dcc3494a82d27b65b7201587e2c7f7b"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "5bc197744c19a5454772059ccfcbe658dbd4535044b14683d417d32b2e6691c9"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "f7fb2bef11fc35d1f0587910176b9da32ca50bfd74fd33e77dfd0a614f21746f"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "103656273578aa293f70d11eb268d7687c58120bd980a2e75e9f30b31efaec4f"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "301fc743293303abdcee84568f61741ff29ad78400e3ff055fabf29d5ea20c15"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "ff999b0b1875baaa36d1e064b9e73a94f2b19764ec20b3b20701d870ce5bd846"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "3b2f4fbee2e1097d0a8c079934036bdac254f1be207893a763605ccb1c012010"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "f5915a18929672f393e0b462f9f2207ce8aa82eae54ed9b6c259e1fc785f65ee"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "63f4cf0dbced5c6a7f33df9607c6a1f002e772d5bac66cf890bd115ff2c9e187"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "8bbf3a79b99ffefa9d1a6ed92982973e75c95270f2bffe3a823f587a20c032e0"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "a96401f968031c2b37357d007b2aee8634c5be511df869cc80db8d453282dce6"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "bca517c78c0083e7cfc1e88b87368243f11ff5840676ccdf6e1053dff851286f"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "2f0d9f9c99d4bc235ce3456bcae60b5144828a119987ba96d69cf2546cb2ac0e"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "8811df4f699872b49d52faf1ec91bc84716f090f11798677f8bbb2d34ebf3726"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "d5e8b98ff4977a510cee6aa9f24f493deca804224818f10b676b3dec347f2146"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "366299a8a9dfe067eedfb0df3a4c35f1682c057499cc027cd5306582a6c2f393"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "fd9259b09f1fa2668052a07f2e103633026efb1d6e191875f88dbe11c3ddc360"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "095623f40e45cd14f5c53d79d6b419abfad398fe4583ed1ea362d5d0f22a0f37"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "38e7dfdb917c2fb64a9c117f460e750c79e506418ca3db7111a74296ffa91273"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "8828a7ca48d5ea9c4cde9f064d93caf3d21f04ba49cd37a0cc148fb67ac98745"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "675396d861545f3f4037a296d4a8349ef4d8a0d55f73c7a5dc308841efa23a2f"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "d1f82f31f7a00bf67f0b6d737b9d6811c4dc313608966ddc8efe5be1465194e0"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "abbaf83b10c45e894e202d4222309f8bb4cc3c32f9f5d7799b42c1604e27c7b8"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "e4179332a14387d518bdaf36cecdf0c265d48b1add10a89534c84d786b69b0fa"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "fa3177f867f6b58d24333f433d46b10fe97c858dc4c1060b4ba7e6cabbbf4c13"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "681fddaecebc423a824dd0a702b67f4a274cdf7cc8211f7f0a448862184daf15"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "d334e99c0989f2580593052d8881dfe539b78793302f1cfc5888e14503c42efb"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "a7274eee6169bc598029dd3177594ebec6a93a11789588ea374cebd86f3964d3"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "9a58356353dfb93e84e3efe0c05d5957576c6576e588e2c599c5a1cae50c37f5"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "8587db1ec106c89f44ce162d686f59c90b5ccd51a653d32e0c838b4de4fa0215"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "9fdbd574134bba1960b47f2b00876bf264226d8c705300dce9db5e98e7df5a9f"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "d1dfce03dd26232e6a51fff233d92b37e2532033cad098aa1e1c005fa194dad6"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "782367f0334d254489455e8a61be66750e2c2d713af962736caeb5d73236a7c2"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "077e7744e4ad55b37def6e45681cae00cde1fdc10df518567885b75c55780aa1"
       }
     },
     "fr": {
@@ -6805,14 +7005,14 @@
         "translation_hash": "e223c6797e25f267dc157eda1e1577f638f5ba25a2e2387efc427c517033d60b"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "699030f7056742c36a8fed309e07304a068103f9a4baee8c6b693a06d293365a"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "03596e3e99114255483c2ed9680c5d873c9b5a846b9d42b201bdae9043e7c98a"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "9e380fe25f695c95c4a4560471add94d27c90a2823389a7b5031c550d1a5b5bf"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "eed8f6f97ae81fe0d92c1b57e12da16d625ad4f91f8ad097297c5c7ddd5f0b08"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -6978,11 +7178,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "681d4c5643fc1dc073b36d6a98786cf75bcfc73a65a2344afa23c4d0bdd899f9"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -7763,11 +7958,6 @@
         "source": "Weight %{average_weight}",
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "df104e98bc7c12d6cfc13110e6b1d316d831b1dd727126bf6ce728675df5c184"
-      },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "e8f22ec394ea1b8fcaa5444e3578ea8c7e5a8dbdfb15c2cc7477e368f40af3bc"
       },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
@@ -9433,6 +9623,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "a83934b453366f15b05a02aa0350f28739fbacebbfaa209057a0c583a8c02cae"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "37c0bd7d40c2685ac581a3db949327a4557b74e067fbf8cb5ad8a1ef78c24db5"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "57dddc9692a4cea1b5b767e72ca791c60a7a170318293a674991d88dec314324"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "c0efe241704c4822bbce1005664ac676fff7cd52a3a0be5cd2ecccf04322ac10"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "d5968d7d72840e5ff50c26bb06ea485b586bbb45a3c38876153454b1c247e43d"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "45fec2c1a5627341d12d039d7ad7d2019dca72b39ee7d721acad11965fcb0f02"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "053d0a8e1623918926b8cfa8a35dc2753bb93961a1e35b747e5935e3a72a6940"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "f0a4229d1fe829d652ca104d719365eb2b72fe1fa859c93c43b8048f2f4a5860"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "dc83908f70ab7cf38bd3f765798e6545a11af3357c6fe3dc95ee3c7fcf101aff"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "cfa6bbd9b1abaae1bf57bb322044cf0514ec8be6578249f52f2eb262323bc54a"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "7208b4d4796bc99a8db4d8df60a909ba7dcfed4126e55551a86a9edb07bf4130"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "2a0cfc1a9b48ec2f9928a27a1421e3ce3a0980b46b56c6b8dce5d3622704f17b"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "b3e31d1ba3b8a6786a872f352e7ccc3a9416c3bb23e108247755d81229e40c3a"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "d467baae9f0f34f40e83ac233e5bbc26d824cb574392117a0d24b9eaed95ced9"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "8a203e99de50f2cc3d240362eb03a4da836a971d455c14bfdd49a7e56d439c06"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "cfd0932cb5a12750787b717a3f51a08075705399e7810ddcfa48ed99e78fde8c"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "d66c62ae4a9bb7de6902f6a05baaf9dfc320ec05b1f4630adf5bc2b03f375764"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "fa309b09cad9f65665ccb389b2ce45e5250153de1a49504b603e0ac65f22bc65"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "9bf30e516f80ad5b10b1777eae829022d605ba71180b51fddbaa31721e6d57a4"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "0545006e56881e160763a7e5c449a91d7766f25beb3a9f1474a1b171d47ad615"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "070060bd618f085b3b0cec63dc5541f4630463ce5bfc5938378ac509f3829051"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "473084c22ea148e17f7c1d9c73893b81c04706e18149209a451cc9542bbefdb4"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "85635ec94a381853d8269b6c739bad86426e7850b129bacac81191c01cc3033f"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "2d0e4686c6cecd9c187808ed8b7a2682f93f741899c2340626b0485732f5ba40"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "abb2fd7d8739a57033da7578f4b2e4b51c9f74bb5eab4531e67d523aaad5fb35"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "b28359eac1594eb257738565dfd919baf4277a8d21d0f8942bfb9749fae81726"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "b7750b0a7af2f1207bed14f01330785905d77628cbcfe9ae1e533c5b1fb66e7a"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "690f32e14716a61cd4ec8d43af22b8e81eba1f3230b708f5574e55fa75e310e0"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "d9e66c3d32fb1e7b292d55310882ceeb692d392616f10bba135db81c607dda3b"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "f84b05a5f0cea6abb8da5121e72e6d761802bc9ea9a91eb73aaddf802a7ca6ac"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "1871f0c404960c75d24fcf90b9fe2ea982e69d4a3383cf694af3d5ec0dc1b601"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "8ef92b71c625009e30bf18e13d6aeb000242b9166c1230c5f0cf9be080ed79ba"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "432398e4857ba291156e1e48404658939dd1e57f8481f5559a7884450b272fe2"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "e990f7b17dde5ef5ce7364207d0c488d0ea7ff93dea8293157e6a1e72eceaa2a"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "eacb7c9ea84ed66157785398ab6a4ca5d58faafdf050c4ef38c5ec9d0de91544"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "1123022b978d9d4cc281871a9194f29f96d071a7a847c2c3a42d9db745c4aa7b"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "744204dbec42cdbf6fb0486f9e9f9e9d8c3a76823520b8ce9f58f69a877c0b3d"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "0f0a13d98a1176c05c49a35e93f594d4112b2826dc374f82c8320081c5ac7a5a"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "ebf2b6b21c4448cffd9f8295aa8d3e1a917f8d8ec977396f49e5da54bbe770eb"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "1a9af6628fc46a3b9ae00a38aee9a17857051a99a02a430cc2d4a780c1051d93"
       }
     },
     "de": {
@@ -11522,14 +11922,14 @@
         "translation_hash": "9d7c83684a17bfdc7ab7e702d25cd4bf2b73885a2ded740a13bed3e8310b5c83"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "133759c367f25ea5b2baa4f4697f3cac1523fccc2c619128596b8ae67f6642a6"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "310cc5f8fab019a9c1adb46a12f36cc3f6420a9849ebe34fed05a8640730cdcf"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "c6d753e8afa16ebf0f49de5f093b0ef649ae3f6a8c65695bb6c2eae364ac67bc"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "fdb47198772a2b6cabb88bdbf1271b10459cfc1e3eef38e417a9bff80f43b0df"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -11695,11 +12095,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "4d2623457673cb213929e75375520d2813b2275833280f7dcbfb1b4b7de45406"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -12480,11 +12875,6 @@
         "source": "Weight %{average_weight}",
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "4d4b2996bbd6c3467661caf0666a41cfd6ab78638b8c73b7bcc16d0fb4258bbf"
-      },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "e187f1dc01cef3ed731728eef44e99ef9b9552ae7fcedbb3e29669137bde0f26"
       },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
@@ -14150,6 +14540,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "6ec52c33e47b15ef2f23ed67180a75b58f4d2e86ac69e6dcd6b5146b05a1c581"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "d82c7a0d498e0e854482eaaf8d395f6a9ba036708054b91bc28183a9546b6d9a"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "037af4a71304389183f3c6b978f5307ed37b7569fa3f05d9c7957fff376ae7fc"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "a08e55ea784a34d4df636f2436bc2c59cbd8bf6edc9801b7747d187d58ca3fd3"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "3ab72cac631459991dfd55061765b05a2ee0fc103fdc23c2c2ea7ed8e8031975"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "2fe3e5f6177bdf7c0ee2f408133a981a8c64f9a688448480bc6c3da54c20c40e"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "a8fa27df6ccf56dc133f005c2a678c6963e27c1e3c7c156777c4031876ed33b9"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "5137eb25c62236263b91434ddaa80b91dfd3e1dd59138d3ca997bb31e91b50d7"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "11871a3b8917859da00b07da498895108f35b0c78158ba2c92556cee02589d2c"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "7df1444e3ab85662ca4696c83ce6cdd18752952f84916d317831324ac0f67ec5"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "5e2c451cd88d4b5d484532eda13c0d3e53ccb634e12179aa59a6fa67e9b38799"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "e04d8127d8e8e1b45cd1bac4d50780bf793c0f16f71f99a142cd0d5a12db7f04"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "afc2aa1aad273e4df1f93c7ed0322d272f2e735a42c0100db7ba8cd3a113cef7"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "8c221f8a067ef72a8c93c3857c8afcb49e9bcd9c1073c9ed82e02045bf03f081"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "ea17e7f3abba0cc2320a4163016da17623021ad25fd5c510409dd1494b2541e8"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "6c7c170a9f6d05a140495361986a837125c9bbaa6e0d190ab6ceec369834cfe0"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "47aad6798b8a13ecfeee449317c5a40e7bef48430dee892be9bc5a72ccc7446e"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "514e282eed9e11ff4a8edfd589e3bb2de708a90e49dd8e1f15fd9ee29b61d2fa"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "002df801454a021d245d6ef3a17994f9a29576ab9def888cb65b284871dcbe5d"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "15e6a2a0df65d1e9e121734a1748efafbb11beae5dbbf740d64ba87f84682148"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "237fe311f5191882e81f18660242d108637469e07439401a56f81659a72d2528"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "b44b117ff1ee938ca99cf64ba413816836c9eea1a202f1a34cf8178d4c9f729e"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "c6ce21e60613b44185cbbafd5e13789ce043ac957a0e38cff410514e5ffd6bf9"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "a45c16117f0419cd0774f7869ef49fa2d255886a4a10c708e4742ed949f17087"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "3a1436e4e5449f50bcf36cdefd35a2f1749f48c4c8b68d64b78ef3568ceaae7d"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "b14fe4ba708535c2a1e77a6ec8d9b10369c1c2925b5c98367902c7ca333573be"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "bb8ee4fe627d5622208ed3976d22788370817ac57118ea5b5fc11e7576142007"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "1928f69c93c9630d8cb8854362619dca1f76ad907439a29813b8abb5413c6353"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "87b233fe2f7144001f19a2ec8d05450ea4f76f1ae51c0d65db54afc6c35391d9"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "52963bf9e89ba024b0e9c8a6b2252ee6888eef4ff37cca6bc561c0c31fea11bf"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "d7c28f288b4c0fa094581ac057d0f897f7009bd703872fb2897694beb177b944"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "801459e0b44e5ee010d2a8691949f2e9af20cc24ff537ba6a3be1d2f181d0c69"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "d2a2b53f63bf0b87b13533d6ecc9ab09d5b311f97fdef3a74d83accbcadd7523"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "efd56db48e14883bcf36e48c50802c1c22915e1beefb5a0e94c6df554b4be0dc"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "4bc5e0acad71807971389da1a3e20f489a6c682b8fd3e63763a171ab603ced06"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "2975b1bd85a2e88cb032de5e0f71cefae147a2cbaf57807c805bd29e220f1b90"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "3c3533a485c9fa3450c7fcb2cd18b3a3748ce6ff848a38597280fb06f3ba1bac"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "1c02fdf6f58717b8e1bcf44184a5dd5f5eb0fbbade98d1c090414b15484898d1"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "5e15f7faf12bd5e4aa626d6c1eb7f665b6f9420f45f446f5382365ee5814f613"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "b09ed92cf69a174b268c7b6ec1e0384912278692520bc1c92cf26885bdb2a588"
       }
     },
     "es": {
@@ -16239,14 +16839,14 @@
         "translation_hash": "2da22bde0347476f957c127c4c91f6eca3d1c48f9465b7aa5ee6031b5005576e"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "e87137333d497e982a664469984fd6d4b6d509e3475ebb0908e4b6af0eaeb1db"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "ce7f34f52a74f790f6850f71f45a0abbae3ea5bd39730b4848ab7e702d972e1f"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "9a1b3ea4153b1547865b30221761fc3e57092a823190ab7ba1d22a8e2d3fba44"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "d767d8ed38732625d7e751dc32a6c0577b88b954de318217e1a841178c5c295b"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -16412,11 +17012,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "4ceb5d12eba57b472462efa724a3962b2679d2c8ae51bf234f48ec37ae122301"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -17197,11 +17792,6 @@
         "source": "Weight %{average_weight}",
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "cde9125822ffc27c485c88671e98ca36178c499139f1cdebcde55d2609864bf8"
-      },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "0170d68f51024839816aa66f21983c3b2a7bedbe799fbbac1dd224d80a876e82"
       },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
@@ -18867,6 +19457,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "cb511fb413debfbc8195807d3bf0f0229064599be873becd858ec0d96cdc9b45"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "9117bcb495c4be1d0e72698bcec54c1be08b2bc5bd3121015f34387f2f822c94"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "8bccd95364542780f95ab960a77d81530ac06cfdfb3fc60fcce6b947d6d87656"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "ec58666d95315041aea2e630554f27791f94af3d082e5364efda8587ac5a8fc7"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "4b4a8c6f5c9418dcd3d33f12bbc86fa040551dedcfd7cbbb9ec1ce58d3751388"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "8a9829483df1939f1889f6ade91f79acbde47b006db50a279da8dda92746cd9a"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "fd3c5deaa94def517cf54cce86c70994908654dba162bcb993b7c47396b4a976"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "42735aca44ff7920f82bccb4657a16cfaf948673457edab7e1658173be52321c"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "0849530f97b57f81686f22e8a468a03d1b6d4cd6d78e24acce5c875f370f8fbf"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "9da9ac4acf9c55bff18db2bcedc71ec0aea2a8a2a986ec3eebd441f40c9c9cb4"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "b63678e340df500e7026a8a1dd7e99d7f49da150ac3c2e15625e7495d691c623"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "8a177042e163fb6c04c80a7d0b5e03d871759a50faf5b6fab1ba96f3432e886c"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "467d0aa72a3bb96e1a46d6c46734450cf400d285e41a7c2e1f0f9a7033e00403"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "77d1eff5c5b82b324e12a5e5cf23f1c5c70bb93d96e140269b0acc2b7f75b1ff"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "4686a149413e525ca16e6830c237f8826ad534c00e738c0ffb670cc9ea3d3381"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "47c4dbb7365d280df0cb82f461b259c5e9cbaddd30a3443daac03b3bd2737696"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "cb56de8ddd8d642197a43fc82f3bc71c6ed5ad50eec0f13ce0279ffd124585fa"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "0a268c89b72e9047b9869c501fcf24c88d15b49aaf38d2963036748f76f2b0fb"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "94f93af113d30fb9636575e58f308b7b7555e6fae79f0913d9ebe8a935a39a86"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "8294329cb084d081b80754237d57c8b9987e3befc15436c0a68a4a6e2342e5c9"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "1d47c788942e9216ce715694fc224a4a989849f2f89dd15b76d6d6b0f95f9bb4"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "04611a4898a9990e10fd3f5b01b82965b55d2db8559f25a7a085923766c9080a"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "961a76e0ee9764cd742c8ff1ab1b03afed0d88099af2202145b311d31dd658a6"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "0df861e60af959e054374bf58e65c4350ab05114dc275d280861aba024a27c43"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "bd0a5394d06ed442882b1f27c0d11cc7db697f4d93322ebe2d3b234a7c7bb512"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "37cd64100ced9029b9828806f1cbb10bff73990a2baa950495ed993fca180618"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "817a731c79bd28486462e46e7739ae118aa691d084a0722b8e34a95c671b7f37"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "5265ce7f051ae80b92b10645507b1c55f5bc6178f297c31373010254122a71a2"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "dc29aec7a7efd415dd86ad02eade837f437a1cd1c02ceb6019f7fb5ab864729c"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "e167b404453f74a9720fa7a19bf885139d8552ed7240d0e6fd6e61503d3454a1"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "02a53468f76a0749b2e3984a309386f7fa3f5af4c07dca683f567ec016810b40"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "8a38bf70b9004f3310bee13cc86f14b8629b8f1825040a313f80dab50eef7725"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "dcb3cf4beb214620bba0e0298602fce930adebe5d7eef13d279c894ff4add64d"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "d4ede3811f4f1f94093f01c36549864aae6f219b81bbc306824976fffbf1dc06"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "eb0cc7e428a231e24d3138e14846afc79c686f9011e4f06b7d1f6236b3d9ab77"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "0179c7aa8c63c8bd0963e78056397544b2b3e6245926fb98253c0fbf8e6493db"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "63b19327ccc547a708b0002a92162fe7f144b4c548b99961b09130867bee057c"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "237889e393a7f67046b1be4077702b6353d3f2fa97594174c874505af57d16c2"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "e2fd3290968b49b3bcd0263e980abc1017d7f7a750a7566d987f28c0ccd91729"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "53b3b73fbcefb95133c17abb0592e5606ded24f6e405d7b558828e2c8a5b59e8"
       }
     },
     "pt": {
@@ -20956,14 +21756,14 @@
         "translation_hash": "2da22bde0347476f957c127c4c91f6eca3d1c48f9465b7aa5ee6031b5005576e"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "f8ad4ee32e83e55720ea7eb09d843d8b8ad7afadcac77ab513bbe78ab7943984"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "aaac6a926fb4f0c773c0080436bd21cae24e4d371ad151f62c75aaeccffff7b4"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "0435b41f142cf895eb649d29e4c7703d6ae84da56314b8e03cd8943827088aeb"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "bb7a5ff6681ec9a9a0d9379797c85b5b25c9b3ae46a466571f07da1c46746d7a"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -21129,11 +21929,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "2e99211bf03d97c35b796b64ab14cdb6aede9f821b82742e6e6995ad578b7523"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -21914,11 +22709,6 @@
         "source": "Weight %{average_weight}",
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "cde9125822ffc27c485c88671e98ca36178c499139f1cdebcde55d2609864bf8"
-      },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "af6d690df7fae2840e5ede4b5a1e67731d3c91581763908d7e95bebfa98f774d"
       },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
@@ -23584,6 +24374,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "4005080a49932c389d8034e578a0576b5e51254d1fc20625d9f7835e4abf0615"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "90f67f88b8e1a8a60e6131f5f5dd66ee3f5c68176ed5755c96a1c4397b592704"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "69ad441f85c1cde9cc95329a778dd3f66afa6663965c0ce42349a82d9708c36e"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "fb6699dccd4ce5dc23f888b06bc82fa9e69f2fa97de206769c7861fd2be9428c"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "f3ed6ee781e1ff34a1b5355d0b1b277508e200d62b7b61b0ff65fbf6696615a0"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "2f24a97878756b5ad34aa219f57ecac402434c2f22b13908a35567538a1dd7fb"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "2a5a5bbe8d4f3a02017c63f5f705f101259cf61afb247a02959deeaa45aa6a41"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "f59e8758c0136859416fed9cbf371b13e94e629a40ec34ff5c63dff2603c0f7a"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "8befb01e6edf9bdfbf91b6d2732fda7f13c8404e8160026f23cf8515a9d8e09a"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "38ef957e7e265c096d7a2e22b286f266d2434e107ad8e000b164e75ee8256487"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "36c9cb71eebcc2ef71f36fb87e5a0c61138405d0d51d2b274e062c6217eb21c3"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "a9ccead843e46829ff5d87cb10a8d21560dab371673d340d9c29679350488dc6"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "6bd93fa62066f3ad0c0ab84d4709961530382b88f9e99e7c965edd3f569d976e"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "686b1f83a531786ed6d5879e8592837b3202d2c8a9e2f107ee196a12587150c9"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "03f8014aa1e0c61dbab076676910694904a14a2f592e9d1855aaf6570b54dadd"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "47c4dbb7365d280df0cb82f461b259c5e9cbaddd30a3443daac03b3bd2737696"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "58a5c55a13a85e3ff7768a9190f67710baa81db37cae252308de38c57a187b45"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "e3be7a7c926853154f120580ea8156fbe3121e368d2dc9d8a87c84c9059ae4ff"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "d9a53985c8b09129138ad827fa8f1268c67eefa663b4cbb950cba187e3a5f94c"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "91e4d796cf3e8c5e094dfc54230cf3a0dd5a40f0572f433fbc527a1883b15b23"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "4cf72614c9fe94109dff785cc61ed9ddf61f8c43c4568493376bbd810f1f4592"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "e9bdc72b5ad44441551f941377e41a0df4c7fa407157e91e42ed02e6eca971b1"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "2c17a9e9f41d443e63252258744a707a2d36964d5c8ace84d988f1f60404a956"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "c0be7ad16ec75edf43c1db1d23213abd7477571c7085cce548662c800de3c720"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "c36b8972ed9b74fd4a7842c19ea2fe0b5eafca9d9f61b983e8fcf887de795e18"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "37cd64100ced9029b9828806f1cbb10bff73990a2baa950495ed993fca180618"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "74651b7c593ac47d6b117317abceab71b70f29792ea42f9e3e1462d8c22b5efd"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "5265ce7f051ae80b92b10645507b1c55f5bc6178f297c31373010254122a71a2"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "79852c59bd35f47145c1586bf0537ae387aeba577d157bf96f561d3f8ca7d61b"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "6bd351f5d7fc492f7de2cdf4f4ea4f5fa3075ffd47e3ca0c2fb65f585534d8e1"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "1d20eb1d3d25195df0920e316f266a4c83f5ba7f169e94fc5f1e8f74fc0341ee"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "52e73af0d57594795d7639e1d2d7415393b3774fde9ef9fec542fb0d2c6ec5f4"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "d01cbc9da32cb48c2c397eaf172c4a9db4e27174836510dca92ea3bd663888e1"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "ca9d5376720e4a1a517c3e760b3a0f40571ef8de0f99bd57594002804654c0cb"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "81362caa73ea113fc3c1be088f1deca61e13bc42401879ba6cceef9b89649bfb"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "49085c08f42b67040bf4446db5a0b52235006eabba97e8bb108d4ff0a2fb7636"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "40538226a5367001a5ed2b80032c74ba0112ff552288be1afef8bff6a8725187"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "544c313474a24cf63030d057b80bc6016e8058031c951cfb503e239d7900b3e4"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "310acd651e07a3e1fa6e3431be2e34bcabdd73150630b1265da282c6bb03de51"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "e11b1dfabbf9bf786f0522e01dc621c60550f5faffd61b1d28cdfef04f873202"
       }
     },
     "ru": {
@@ -25673,14 +26673,14 @@
         "translation_hash": "39de07efb7af7610a197eecedd8d20a46b4fc031774e5f13ac4aeaa0f3ad1f02"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "51d80e431807004d464dc9121615e5e5fef4d56d53fef8ffc5aeb3e9cb92e03c"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "93d024c69e9de5a8be47d4c01efc869c8784aa576b0f52f4ce0b4b990d2cd829"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "2c09724996b7507714f10094fcbabf78f553cda6b5b870a73a65d936e7c47648"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "c6b456d2f099e47a4fb994a9bb1369ebcd123c9e63fd8fce5e4012dc445a9557"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -25846,11 +26846,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "232ed1fcf020bf9402c76a54d8b219df99816e1a5f7411daec813a0f4f93e6f3"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -26631,11 +27626,6 @@
         "source": "Weight %{average_weight}",
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "6ee990bb0f53a527f2f8d3d5e2210aa072e80fc288fcba96d912aae897d773f7"
-      },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "3c20129218e9bbb682b490d55a16cf54e2b8dc8847dfc33d5a42e65a10605d4c"
       },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
@@ -28250,17 +29240,17 @@
       "comparison.synchronous_comparison": {
         "source": "Synchronous comparison",
         "source_hash": "7884d1c3c2e2d3681248eb45639ac4db3c12f32a67d3c6d8ae0af3ea2e1cb181",
-        "translation_hash": "076d50bf960f733ae0ab633c3d92cf7d2904909652ee3ff1f3f44901265e85f4"
+        "translation_hash": "5c7d27ad5992f2e8980ca04ced459b15d6fd1836d9ae934f6576787f1df4a64e"
       },
       "comparison.to": {
         "source": "To ",
         "source_hash": "81dcbe958121a9b1eceb8ab2bd605ab0dfaed3482e5e4266fdcba6ade2343086",
-        "translation_hash": "7f8ee827b12a48d98371adfc7062cc62a77b037f0286be9eea063488728b40f6"
+        "translation_hash": "5a347316dd3625d6b69961f02b0b961ba697f17234252d7a84d7ed129dc4c0fd"
       },
       "comparison.valid_band": {
         "source": "Valid band",
         "source_hash": "99e83a6ef2f9bddbf823b52ca67c24a82b5f6d2953e54e40c4b488e480e0f071",
-        "translation_hash": "fcef4f3a3c45c7ff63048457d929a680178af882e46a09994a3af8e696866966"
+        "translation_hash": "cff0f357da359ad64a264e5dfae3f970bbd6da4421d7e084c6c747f2337c3822"
       },
       "comparison.valid_transfer_bins_gaps_are_not_interpolated": {
         "source": "%{valid} valid transfer bins · gaps are not interpolated",
@@ -28301,6 +29291,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "45ff7a55ade0c703c98438ba9691ed35b14ceb47cc05e228f3d5680d0284b17c"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "53f9498444da777281e482ea0a621697ef3c3d1cc4b9f5fc2826dd32b0f6c5bc"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "6dd1de284d478392646e1360760052d25f9b605904c67ddb6b0dd29ab1686977"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "c93bbecc0fa57585d486408aaa782c561c0cf1f459507264f0d704a0e2e3ea22"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "60cba922eef3dd92289d290933457d233617295d6026c88b3fc1b2f4cd449f49"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "9760224a2df11fe4ca6cca5a6066a308b4bf11c5d8e27b89b1389bfa9435f697"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "01e2211cc77c0d1544c745b44239337617e1cb8a0ca7d8f1a7678b0b2625c915"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "96f85d4cd93780897c33d71c2ef953093b99c63bfa0325a1d154a881ff6bf7ad"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "1c18e2a4b9e1a680106856c5b90d3c4d3b1f8e9d33526d19aa94a2d98e59b201"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "64ce2bd183b03a02034a256e43d6d46d70448a0bd0372a968ddafaa99b1a1851"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "6b89642d080f854962916c400a6554019e296f947c62874c0075ba881852073e"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "0c823bd6429b617d667f46264e904a8396d5ba68c11f204d2da4790173b448cc"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "f0d5d1a84761074bd6a89e3f6fc09313ab34a67c2f6bea8a0f581469a240b111"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "829d6ab2b6e08784321e3451dde19850dfa3cefb970347a38c7ba881221bfcbb"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "3d15c5e5b1877c32b4ad56af8e1639eebeddd91423d088f856ea43f2fb62b964"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "01ebcd3a1627daeec2c1a6a569fe0320ae8c75d927aeb606f8bfcaa585ff782a"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "e49d987e0fb184702c2933ffb12c3f6fccd64798dff5933b2eabada30234e3ce"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "917a57df35457b78010dd17804cee8376f5ceac8393a9c506ec9e279667bd0c5"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "f6228f5f973c49ee35773b99a855d09bb227fafbd3669ea25be2dcef55354ab0"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "2ca49a3493c313d8e3cd0017414617803e266d144be34d5e1ac5169525e0e33a"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "af06590ffb00f604166dc9b2cb2e9790566e88f4f88e0fcb802769d32e9ec54c"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "a6cb3cf4f8cfc1645212c4594d2741bc2ecdae4ea9ccf98d90167faefe7e52f8"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "60595a16def56e24a36971d2ec4eee2a5eac4ddc94e824b38af55a3fb5b6a3eb"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "34f25b437143ddd8dacca4dce59cf83e54a1eae976f28b166880b3368669575a"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "0988b83bb01f998b7986b1e556e7522e80bf1ea3ab0290f140ecf1a689123aa6"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "bd61c20d278fb89ff9dd30354e1b11c25fecda27cf3030a206094cab3277ad8a"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "a629735196bd02c1bf2435c2f06534cdcf00f6d7505ee17330a1f1a3491391b0"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "ee1448fe7835994a4d1ea9f91189de4932f3401d29af4ac284979de6f9d3b97f"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "9a32241d6e30cfd300f218666d56b0334f90e26b199917b4e1729f3b43ec4af8"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "6460309b7199f550e987ef7215c3b057bd1977e674e5a2cdfc1eb30e058466c2"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "0546ae578e76629bba9111d4a7b35665a1edd4c3fb11210558b5a173fce95bc0"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "244867d66f1dc91e1f1f5d898d78f60375073907aec03c20538cbe5d6d9233da"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "52e03e129f8b3c0144d1b25638e4848e5c6d63299c9c9a765ecaef68e8220a51"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "f2f8e88797a2218e4260cf4a784c0e5ae7c3fd0aa23a8d9d36680ab19040d748"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "fd63762dc24be0ca2a47b27cdf26a8cb8e65c05bcaef63039d372baa3d04e673"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "f846537dcc7d0eb4fea764c57675f05004b047e161d8b1da5edbb58f40c9304d"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "14da4d45c2cb340662f9c6107f2697e28721ef83cc4cfd663a3884f7f9e39c0f"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "f5c4535495c87d572531e5635b513b7dbebdc759d478caaa91ce21e98eda4bae"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "65cdc395c7ba130c3909d79773507ac296bb6b9791f1e56fa27f44e3ec683aa4"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "4b44a34cc77a8da219eb912f09bd75661e78f0d6d08b314a4dc0389e858c6f17"
       }
     },
     "zh": {
@@ -30390,14 +31590,14 @@
         "translation_hash": "f8b76f7e3ecec42a67dd342fdcbf016f6988f6346c18bc08efc912649c4ddf7f"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "79b3f0cda201c6513fc1d87b4b00dcf013804d9fcf7f895b21d24c0d3635fd57"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "b595e58b1b3bae35f25c6233e84341ce4d2b7fae3fb0a6590b7b291ff695ec4a"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "d619b26ed95e551e04bf5e01d51e2e76e769092331568261b71ded7b2c0a4035"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "9b88413c0ec83b05ead7c162b68a64121bfa3ff83cb80f2490883be11c74691d"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -30563,11 +31763,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "112aad65e55fb38af05ad558f23d7d7ae57d200d11dd16a0ff479266c1186dc4"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -31348,11 +32543,6 @@
         "source": "Weight %{average_weight}",
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "dcf5ce4d9774c6210e0c5db8314782ddce46b7ba5428e358bb7086647b4faa31"
-      },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "ca245266f453422371b6ac3f5a2a8f26b26185592d90cdbe37c768f511d509a0"
       },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
@@ -33018,6 +34208,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "6ac64ee9a0d7f23807d59b361000a21c61a7da55f6c4eaf2263ea22bc155e848"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "f488d1a6ed135e0835e077a3691fc59386c64f773e1de6ba3b6dbe35d5f9d487"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "ffa01e57639aa45c12a08a58dff8b1469be257bee6123d5582d3422820498229"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "5ea3e2fbce1c4412c83a957d36a6b5dcc91c125facae9cb659d8cb92f04bda28"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "0373b940d19799997281a184d654990cf1e6a2906d849124ee76aec81c877123"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "d12d4df1b1d405476210fd3f082f697a5a46d7b556dcc0d57fa63adf252a0a60"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "12e1683d33c1f3bf88efb29aced6048411157705fa9bdbb78b786357083afc36"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "6f46beeff17457e2d4bbad54aa8e9aa9e6a7a833212303869d207b98aab5a2c4"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "a36b34396a741d4b4fc6e364a421a149c84c96cd05ff4b3a940a551490da642d"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "85b75175eb207a6c558af59bcbd2358273d5814cb3c866096950ace49666ac69"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "7a0c7e8697875ed457a5ff2653658254d9b5fa5b7cb287030ed4238dbc5640f3"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "f9693ffc2a5082c8f281d0274c5cf418415f370d766c342ccaa3a06db71cd4e2"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "58e68904971533b7e7b9f882412878c41693b488694d691b58394c8449b23a2e"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "15ef2a0bb6ec396049bafbc9267a855ed3fcc31264e1b314d287167a3346c33f"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "40162322e67d9d6619e76c329c48a283e0bc23184d245aa55e8ce571a87bca04"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "7686ea3b59c7e4a4d150c178baf5ff14fda190eec582faa22371e8081a749623"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "50797428a45e2e0a4c03cef5d7b6d5b7ea553685254d06c599ad51d20ae1949d"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "a8e8574228bc7d4adfd767276e467d0fbc7e60d334f672de3278175c8778247b"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "1c884f29e1973c6555b81fc9183672d68186556f8383db4edb3834012f02ca4a"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "5dc5cb959076fda52fa2ea3e5172d72968c9b556f96e1bb45fd714b7f5f15abf"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "655fae2a2e8bda68dcafff19bed8dc30a6a76808ed2a31476ea8a688de17acce"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "e09fe8cf107e1d3c95082205af3be1bb41ea8dc35aca5f9babc864b71738ca4b"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "4a475c1fe58345e54a08af5e48ba318dcac6a83bba11df34d3db8f6daeb8e659"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "6c13395fc4a9836c3284fe4598a84bea5fc3abf407f9366a8157017bd5fdb94d"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "35624a8d4cb286edde05956e51ad41182b5e012ba8c28ff45000bb35c351c8d4"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "ee40c16e9344e3e04764ea536652e113d7d24c938ec31a8cee9c178882219db4"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "0d89fbd0331cefeea7ef14e0cfec320651d43737a4be1a7ead4148cd9e89c3c5"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "f7af7e84995a222e51c934207d34edb8a5ddf7637365d19ee0ca700b9370bf4b"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "901b3b969f7cacf7f7fd958b0f2c1b485d6f7a3b601af0ed8fdc8534c7355c66"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "938751d5b516c4276532cafc23a06cba89dae985a5502b9fbfa3980cc8c8c0d6"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "6859e10bf56f19fcbea997c01466847e2dc54e68661407243c8b060acdf49556"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "60770a95a63240acb6b7c918c6fc4be91088b8fcfbdcd8d99151e29c96f7710a"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "d1b2b7984a47a8f2b3ed306d35cf39b9b207fde1a88a29d3a5a3447b9c56cff1"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "1f9ac75f3dd8e36dcc1772d6dfe3007076274c15c591e6faa6d0003c32c39428"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "a90a37ec77db32b99490a4c816bee44e20fd9c00767bd9f40c426822eeac86b1"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "174688c755b96fb0e75c3fb0abc8d9494cff0c7ad60513617acc9ad9d10657e3"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "e309f2263e7587654d7b9e19d98ee3e360f95d1811c462290e9384e139f6cf05"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "cf65dfec193d94fea705cdd3306f08271544c1fb7e4c4af1284f82214f4f51d5"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "5ac2031b6a8bfebd2e15d24031218ec97bf0853c996d7a89b50f6d08a5281955"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "4998910becaab7c02530917a4be65c116425fe9e5aac8ff19ecabe634346a849"
       }
     },
     "ko": {
@@ -35107,14 +36507,14 @@
         "translation_hash": "310f443baf31dc696c3e7abadd1266474c9112c3fd285b98e0ab0bbdfdb26eae"
       },
       "oscilloscope.autoset_frequency": {
-        "source": "Autoset: %{frequency} Hz from raw crossings",
-        "source_hash": "6618dc3577ec8d3be7ceb1ce3cbe3aa7d67e99699424b8db5fc0704cd64aacc3",
-        "translation_hash": "ba0dc76d923dd392553d41cf3cd03c92b98bff97f7c1c3f15e54ec57ee5991a3"
+        "source": "Last Autoset: %{frequency} Hz from raw crossings",
+        "source_hash": "2ced0743ff83aef1c834c384f54cfe806df108e48324cc83748f5c903b3c8c1f",
+        "translation_hash": "284cfe576bcb6fb829cbcb11da1b7d1765e11d681e2ff4166af8d2abf8adf70d"
       },
       "oscilloscope.autoset_held": {
-        "source": "Held capture amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
-        "source_hash": "fa31d13c7583a08cdb6f8e0927dbf2d80e92229bb3a50352c546aea86af1636e",
-        "translation_hash": "7986d9e11d91d08bdb889ab3dbb98d92c2e9ff8ac7de5465a1d9e35530f27745"
+        "source": "Last Autoset: held amplitude fitted; time/trigger apply on next Start (%{frequency} Hz)",
+        "source_hash": "6bc609ea20ccf8ad305dff535a617d6bd12a239fd0371199c41caae8d8c2937f",
+        "translation_hash": "68934523857882fd961a28edeaf5e4a8840998e3f6984dbae45606df703f79a6"
       },
       "oscilloscope.capture_once_on_the_next_trigger_crossing": {
         "source": "Capture once on the next trigger crossing",
@@ -35280,11 +36680,6 @@
         "source": "%{index} %{seconds} ms · %{sample}",
         "source_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66",
         "translation_hash": "fba84212d2241043fc380172c47aaad0bc8dbb40519b62bb62dce89a5421fd66"
-      },
-      "oscilloscope.ms_div_waveform_raw_fs": {
-        "source": "%{scope_display_ms_per_div} ms/div · waveform: raw FS",
-        "source_hash": "66f1fd9d4167f608ccf4e95d86c95d06a378c58e3988a716eb7457ca10631759",
-        "translation_hash": "51d479138170a5cfef7d1c69c65df155155c81f71aea778e504b67bc82afafcd"
       },
       "oscilloscope.no_acquired_samples_for_this_channel_and_interval": {
         "source": "No acquired samples for this channel and interval",
@@ -36065,11 +37460,6 @@
         "source": "Weight %{average_weight}",
         "source_hash": "5a17f4be75705101cb6174b9319dad6ec3306f2c81d62d394127b333688a9691",
         "translation_hash": "37d750c82e4a5c8b930b06504663c4ae63db77fd60a3dafa93debe5e4dafd213"
-      },
-      "spectrum.window": {
-        "source": " · %{index} %{outside} window",
-        "source_hash": "af9abe87156ad38e4c2ea8ef9c13350cce29d2c397ecca7fcf1e4669ee263c6d",
-        "translation_hash": "4c4c143cfc15e2635e575e6d990ff1c9fbebc011791bfbdc38f0f61d318cfa5e"
       },
       "spectrum.window_duration_available_after_input_starts": {
         "source": "Window duration available after input starts",
@@ -37735,6 +39125,216 @@
         "source": "Quadrature · peak",
         "source_hash": "6d1d53edb1f14ff9fbfd6dd5f2439105adf65c22560ea95fe976744ef3b245a7",
         "translation_hash": "fac418195ec7d2355dc72175722b20e010595d34dbc8c5fbe23bbed53176a0c0"
+      },
+      "common.startup_preferences": {
+        "source": "STARTUP PREFERENCES",
+        "source_hash": "49490234310783261e4f99930a6b279b5f8c806ddff45d528de27c871fee074c",
+        "translation_hash": "9be71b2534f55fff1c20c861fdd2692480c7d6f836a3242da831b5697a4087a8"
+      },
+      "common.startup_preferences_error": {
+        "source": "Startup preferences error",
+        "source_hash": "7ac5bc5b0fbca65d83973142079282e3a54be19675159015c570a1f34db169aa",
+        "translation_hash": "67f145879bfa290c4c68d831af2a0058d83c05907532bafadafbe9cc9596946d"
+      },
+      "common.startup_preferences_help": {
+        "source": "Input/output selection, measurement conditions and display preferences are saved automatically. Input and output stay stopped on launch.",
+        "source_hash": "d2a7f9d6798ef91cae28fd8ee9fb55291d7d35dc6db7d4d41a257ca8fe8f434a",
+        "translation_hash": "7c494021d4631b14b6d52f71a67137f4700886a1671e0b076b06cb7405852776"
+      },
+      "common.startup_preferences_recovery": {
+        "source": "Automatic saving is disabled to preserve this file. Close MeasureLab, move the file aside, then relaunch to use fresh preferences.",
+        "source_hash": "34006f19998d61814221b254ab730eb7694ecf44d0a73c2b31b70e59fb7330f5",
+        "translation_hash": "318fec89b1d7f87e237bd7762e1c9daf229e6f5e9b59fca197f7f4434c911a42"
+      },
+      "generator.connection_summary": {
+        "source": "Output: %{output} · %{input}",
+        "source_hash": "fd833438506424a30cbb174d9b366242c2b2a3d55e31e3e2798a1572c7b32d69",
+        "translation_hash": "98a45324ee3afc5abe337cccfc2893f9f72af1164917b6de5f93d533f2cd8114"
+      },
+      "generator.external_connection": {
+        "source": "Connect the output to the selected input through your physical or virtual audio route. Start input and output separately.",
+        "source_hash": "85feedac1916d7ea66865a95011802bf6f21cc030dd156a8f35f8a528b053209",
+        "translation_hash": "0849723db08c7e5f7ce14bc41bd7f9e20fc0464324697ab8381c1d397a3dae2d"
+      },
+      "generator.loopback_not_selected": {
+        "source": "To measure this internal output, select Generator loopback in input settings. Start input and output separately.",
+        "source_hash": "fdd3abccb3de0f0dfd68608561cd722536d6658ca3d2d29546fde5f27e6fd34a",
+        "translation_hash": "2a8b9750faba3e9649a48a0dc0670e02375992332e673cd18a2d9c5ee7c97e07"
+      },
+      "io.dithering_bit_depth": {
+        "source": "DITHERING BIT DEPTH",
+        "source_hash": "6c7c0dfefaf260d99464ea262fa28efd7b67038634056cd507192519689e3436",
+        "translation_hash": "70807164218fb35884ee7a764d708411fa720d8e0868b985dde4f917635a43ad"
+      },
+      "io.dithering_description": {
+        "source": "Adds TPDF noise and quantizes active output channels to the selected bit depth, including f32/f64 output. Stopped and OFF channels stay silent.",
+        "source_hash": "67e2485a2eb6446e45039f814813b035e1181a8880da30f33e96393d14202e3f",
+        "translation_hash": "d8f2f264143d527c1c48f87dea983d08bfe2ef7d54e948086aaff380398d6c8f"
+      },
+      "io.enable_dithering_tpdf": {
+        "source": "Enable dithering (TPDF)",
+        "source_hash": "877cc90bef9551bbf4f25a7de8941493baee5bb4891d330c6b1d15af50001fed",
+        "translation_hash": "ba6b234f9fce074804a1f21b90e0cd9404c2afcdb18a3183eeae996dd81d25df"
+      },
+      "oscilloscope.amplitude_axis_ch": {
+        "source": "Amplitude [FS] · CH%{channel} axis",
+        "source_hash": "1872b6f8b0c2d34227d763f91680cc4663ad2202f811331f0e01a1c7cf31871e",
+        "translation_hash": "2b3960c1b46ccb460165a184d071217634aa8b0d405eaf70de98033a787476fe"
+      },
+      "oscilloscope.common_scale": {
+        "source": "Common scale",
+        "source_hash": "2ad6f0eddd6fedf1d7358ac50aa45a22c5252fe4130291ecb97ed7630682f0e5",
+        "translation_hash": "a635e7ae1aaef1e4f586043a7f1e7dcf1674aa7a78c41a6028fd3b8a6511a591"
+      },
+      "oscilloscope.fit_visible_channels": {
+        "source": "Fit the largest visible channel's raw peak and centre the common offset",
+        "source_hash": "3b81499cdae3a768640de6b8c7768779275da6dad95aa21afb08c8a9b251d98d",
+        "translation_hash": "30ddf473e9e034cfe803ca313a5717a2a6d22f4086884bde6edecf19d58de8d6"
+      },
+      "oscilloscope.held_time_scale_next_start": {
+        "source": "Held: %{scale} ms/div · time / trigger edits apply on next Start",
+        "source_hash": "2f960e7c3587bcadb81d7644cdac94236a48ec9f9cc0c947dd8177c40eb5954e",
+        "translation_hash": "7a729028e3d3d604cfc07d32a3c6cc98ef77ba42f80873cd171c4b08659b9ec9"
+      },
+      "oscilloscope.p_p": {
+        "source": "P-P",
+        "source_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37",
+        "translation_hash": "4304dd48f448375ba31239e9e17905e8c77304a9cdcc92d973e253e33a1ccf37"
+      },
+      "oscilloscope.per_channel_scale": {
+        "source": "Per-channel scale",
+        "source_hash": "eac9657300db9832609f4c23b1f8dc0b5586cc59eddf74b0682f347c42cfd970",
+        "translation_hash": "4123c5092b41e9225e3ab807be32671d9050203685129773d6cff964eb9cab2d"
+      },
+      "oscilloscope.rms": {
+        "source": "RMS",
+        "source_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8",
+        "translation_hash": "6f32da8ac3f85fdea1188325e7b05701024222a06d501c24b4c8805d10efe0e8"
+      },
+      "shell.arrange_view": {
+        "source": "Arrange view…",
+        "source_hash": "866ed64a2b2e605fa3f0ac59947275ac05fefca1ec21d713430c1a75dc3dfb25",
+        "translation_hash": "84d7feac3cf805d11359951b40a0ddca8526bcf6edacb371fa9391679bac0051"
+      },
+      "spectrogram.captured_cepstral": {
+        "source": "Captured: nominal %{fs} Hz · N %{n} / hop %{hop} · f64 · log floor %{floor} dB",
+        "source_hash": "f06887cae6df636ce6224bf64d9b061e1c7e36dedac06acf10b13f056f743f2f",
+        "translation_hash": "2a12b08df58a7e223a98b654e7f00bf5d99896764d56d580bd026576ae187870"
+      },
+      "spectrogram.cepstral_channel": {
+        "source": "CH %{channel} · dB re 1",
+        "source_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771",
+        "translation_hash": "241fb3cfd9d73f8185fcc115f1afe5e73120d4a186bff01714b6abc542798771"
+      },
+      "spectrogram.cepstral_definition": {
+        "source": "Signed real cepstrum; color = (2c)² in dB re 1. q=0 excluded. Relative log floor is independent of color. Uncalibrated FS, nominal Fs; no pitch or delay guarantee.",
+        "source_hash": "47a6f0c2aed25f4aba15eb479bd369c0651602f45ee0230132eb2ae5b42969a1",
+        "translation_hash": "9f3110abfe1ab492bcc13e060981849d341056ac8ce1b4ccfcc9dbfdf4b72477"
+      },
+      "spectrogram.cepstral_gestures": {
+        "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
+        "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
+        "translation_hash": "2818ba860758453648e11972355474223c2c65908a114cbe7bff4c3fda8b869f"
+      },
+      "spectrogram.cepstral_link_disabled": {
+        "source": "History Spectrum is unavailable for real cepstrum coefficients.",
+        "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
+        "translation_hash": "c11c75be671744dd2bf63ff802488b5fc49168154a5bb9097592a80ae2519d4e"
+      },
+      "spectrogram.cepstral_power": {
+        "source": "Cepstral power (dB re 1)",
+        "source_hash": "4ded1ba9b54c40fce0a471395432db89775864fbf19febfdaff1c0e10cde3b75",
+        "translation_hash": "540a9cf0351ca004cee6a03534450a24d91f53838e7f26465830d2b7a5705cc5"
+      },
+      "spectrogram.cepstral_readout": {
+        "source": "q %{q} · %{ms} ms · c %{c} · %{db} dB re 1\nCH %{channel} · samples %{start}..%{end}",
+        "source_hash": "041361f4c2b5a113315e6a9d0ffba54d46c3bf8d7fa46d973e9454689170cdd9",
+        "translation_hash": "a04a0d0a5c7078fdaada996e748b04901bbc87958124d93ea8bdc8fbf7b708e1"
+      },
+      "spectrogram.cepstral_status": {
+        "source": "%{status} · log floor %{floor} dB · %{count} one-sided bins floored",
+        "source_hash": "af607b88fefd5b941479b026bc8148e76fb391852760d916cb8da61db4e983de",
+        "translation_hash": "37df614f95761b030cf1861b13107dbb7680bee4c795a1ebc38ea8aea267a7a7"
+      },
+      "spectrogram.cepstral_valid": {
+        "source": "Valid real cepstrum",
+        "source_hash": "d5cd62c4ab6a1538ef56e189837b887a875af6383f247733ab7d78362896ecb6",
+        "translation_hash": "f079542e9fcfc0b98852456f7c33b2e5d1969d1548c5fd688fa766dc678d01e0"
+      },
+      "spectrogram.cepstrogram": {
+        "source": "Cepstrogram",
+        "source_hash": "acb3f2cd4f00fa66e251cff3dc20f12216dd1bf53a0da34cecc96178dc775b97",
+        "translation_hash": "a9ea4850619fcff21607f79711e1f88a08c2f35869de2557a2092cdad63689e9"
+      },
+      "spectrogram.f64_required": {
+        "source": "Cepstrogram uses f64. Spectrogram precision is retained.",
+        "source_hash": "9e8511e61182a68e981ff7653be149d984358d6ac94a6ea1ee6b4442df4b7dc1",
+        "translation_hash": "9537c2a27dcf3539bd3ea9afadcb31fbb6db8aeedad2c31ecf22145cbea19cf4"
+      },
+      "spectrogram.log_floor": {
+        "source": "Relative log floor",
+        "source_hash": "bd9a0ea08e42d58d24f6b5258e513454c189859adfaeea55c3b3ca9d1fd385ea",
+        "translation_hash": "33cebc0055a3e6b26668a62fb92288614cbc500604dbc8ddd6b7920aaee4e50b"
+      },
+      "spectrogram.no_signal": {
+        "source": "No signal after preprocessing",
+        "source_hash": "aae9bf619a5e89a8f66dec8fce608e6c7b59c3ed9233a1e0c3bc360676ac8c44",
+        "translation_hash": "e562a692514ca4f87e67d59d9e5cbcbe3fce6bbdbc3a3abec08da9716efef5f1"
+      },
+      "spectrogram.non_finite": {
+        "source": "Invalid window: non-finite input or calculation",
+        "source_hash": "d97b8c21cc5d83f0b6344e3e8da53b29047c65b204c420ecba949662d14b5d7f",
+        "translation_hash": "db5f68cc34271caebdde2940f46c3744b477ff9f405bf8ced58fdc79d19bce09"
+      },
+      "spectrogram.quefrency_effective": {
+        "source": "Displayed %{min}…%{max} ms · grid %{step} ms · nominal Fs",
+        "source_hash": "7e4a13be2652c2d3147c966393f36839a3ba10b9ade3a6f60f2e003126ac863a",
+        "translation_hash": "97baf70791712f8532dd88ee6bc650c8245691f307e20147f1b662cf55bd4f3b"
+      },
+      "spectrogram.quefrency_invalid": {
+        "source": "Quefrency requires finite 0 ≤ Min < Max. Previous range retained.",
+        "source_hash": "0f210a73b6327359bce06ad2fc02cdb32577cf0bc94c90ad66bb8c2d73c1aae7",
+        "translation_hash": "42a7d3359c99a7643cd67a5a5f3908b518d866ab5ff2bd940506ab4eb9772f89"
+      },
+      "spectrogram.quefrency_ms": {
+        "source": "Quefrency (ms)",
+        "source_hash": "7bfde300012893888ddab9df326d85388fe9a010c8e50660d1a8c698d12d392e",
+        "translation_hash": "947489171130e8d2a1fc5d53d5bad9184c6fab8205f3002b3de025ca51dbfb44"
+      },
+      "spectrogram.search_terms": {
+        "source": "Cepstrogram cepstrum echo harmonic periodicity quefrency",
+        "source_hash": "295564c743326f66d01ba088915cef1e08f8ae0f2731e8420c284090f45bf72c",
+        "translation_hash": "09b2c635dc56de6660dff72b279bd87c50f5418acfcb734a228bc82ad36dc58d"
+      },
+      "spectrogram.time_quefrency_cursor": {
+        "source": "Time / quefrency cursor",
+        "source_hash": "ef06ddcc7698d40cd18c5e9a06895092e2d8b1e293fa00994f3aba2b073c6f73",
+        "translation_hash": "86eddedce6ffec63f853d5aa4181619220ca2444dd8b770408eafc1ee5e610b0"
+      },
+      "spectrum.dc_removed": {
+        "source": "removed",
+        "source_hash": "e1f79758cc42e6fe6037941205d1fbc37f5780f13aa077d0ba8287fd93cecd52",
+        "translation_hash": "e3f30be742c5635a0287d0b3b6718bca7ba1624d9eb5bffa32ddc3bc6e687210"
+      },
+      "spectrum.dc_retained": {
+        "source": "retained",
+        "source_hash": "ca67bd59cc4116ac80db5f64cbf4747f26ba929c85e8cc689a6123368d08719b",
+        "translation_hash": "f1c04a1ba46211c424474c6d92c09215ed9eba1951a3219578f1469c3288aa1d"
+      },
+      "spectrum.reset_requires_running_input": {
+        "source": "Start input to reset averaging and peak hold. Held results remain unchanged.",
+        "source_hash": "62e8004e8cc1a47ece8820c88cfc7d21b9c32b08a41a69dc16cb1f553d73a506",
+        "translation_hash": "23d7484ac0d1f3fce0993bcf8f0a567c4dccc1f449845124f9bdb293f44cb85e"
+      },
+      "spectrum.time_cursor_inside_fft_window": {
+        "source": " · time cursor %{index}: inside FFT window",
+        "source_hash": "48394c26c1fd267dae5119e76b2e54f84425e521fb91c3f89bc67252a04a9bd0",
+        "translation_hash": "e3eff3dc4598d60900dcaf3abbc5934731fc62eab8fe185ca01c5f28b9f1a6d7"
+      },
+      "spectrum.time_cursor_outside_fft_window": {
+        "source": " · time cursor %{index}: outside FFT window",
+        "source_hash": "aba602eedf9c95546c70225f9b8864d43d23b1f4c177cdce849f361652ae5544",
+        "translation_hash": "9e1c57ede2e56fa5e3bd88593fc3f6249c6ff16d723ae7ec81d5d63b45b97634"
       }
     }
   }

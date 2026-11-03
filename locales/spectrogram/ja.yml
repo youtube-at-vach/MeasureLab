@@ -3,8 +3,21 @@ spectrogram.age_s: 経過時間／s
 spectrogram.analysis: 解析
 spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: 解析設定の変更は入力を再開したときに適用します。取得済みの画像は保持します。
 spectrogram.auto_color_range: 色範囲を自動調整
+spectrogram.captured_cepstral: 取得条件：公称 %{fs} Hz · N %{n} / hop %{hop} · f64 · 対数下限
+  %{floor} dB
 spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 取得時：公称 %{sample_rate} Hz ·
   窓時間 %{sample_rate_2} s · 行間隔 %{sample_rate_3} ms · ビン幅 %{size} Hz
+spectrogram.cepstral_channel: CH %{channel} · dB re 1
+spectrogram.cepstral_definition: 符号付き実ケプストラム。色は (2c)² の dB re 1、q=0は除外。相対対数下限は色と独立。未校正FS・公称Fsで、ピッチや遅延の精度は保証しません。
+spectrogram.cepstral_gestures: ホイール：ケフレンシーを拡大縮小。ドラッグ：ケフレンシー／時間を移動。Shift＋ホイール：履歴を移動。クリック：保持して時間／ケフレンシーA・Bを選択。ライブで選択を解除。ダブルクリック：範囲と時間位置をリセット。
+spectrogram.cepstral_link_disabled: 実ケプストラム係数には履歴Spectrumを使用できません。
+spectrogram.cepstral_power: ケプストラムパワー（dB re 1）
+spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
+
+  CH %{channel} · サンプル %{start}..%{end}'
+spectrogram.cepstral_status: '%{status} · 対数下限 %{floor} dB · 片側スペクトルの %{count} ビンを下限処理'
+spectrogram.cepstral_valid: 有効な実ケプストラム
+spectrogram.cepstrogram: ケプストログラム
 spectrogram.ch_dbfs: CH %{channel} · dBFS
 spectrogram.collecting_a_complete_stft_window: 完全なSTFT窓を取得中…
 spectrogram.color_map: カラーマップ
@@ -21,6 +34,7 @@ spectrogram.color_range_dbfs: 色範囲 · dBFS
 spectrogram.display: 表示
 spectrogram.end_s_s_retained_n_hop: '%{live} · 終端 %{sample_rate} s · %{retained_seconds}
   s保持 · N %{size} / ホップ %{hop}%{else}'
+spectrogram.f64_required: ケプストログラムはf64で演算します。Spectrogramの精度設定は保持します。
 spectrogram.fft_length: FFT長
 spectrogram.fft_overlap: FFTオーバーラップ
 spectrogram.frequency_hz: 周波数／Hz
@@ -46,14 +60,17 @@ spectrogram.invalid_stft_window_non_finite_input_samples: 無効なSTFT窓 · �
 spectrogram.linear_hz: Hz（線形）
 spectrogram.live: ライブ
 spectrogram.live_action: ライブ
+spectrogram.log_floor: 相対対数下限
 spectrogram.log_hz: Hz（対数）
 spectrogram.max: 最大
 spectrogram.min: 最小
 spectrogram.min_and_max_must_be_finite_with_min_max: 最小値と最大値は有限値で、最小値 < 最大値にしてください。直前の範囲を維持します。
+spectrogram.no_signal: 前処理後に信号なし
 spectrogram.no_stft_data_at_this_time_gap_or_unavailable: この時刻のSTFTデータなし · 欠落または利用不可
 spectrogram.no_stft_row_before_input_began: '%{index} STFT行なし
 
   入力開始前'
+spectrogram.non_finite: 無効な窓：入力または演算が非有限値
 spectrogram.outside_visible_time_range: '
 
   表示時間範囲外'
@@ -64,6 +81,9 @@ spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 各
   · 未校正FS。オレンジの縞：STFTの欠落または無効。空白：利用できない履歴。
 spectrogram.points: '%{size}点'
 spectrogram.preparing_history_view: 履歴表示を準備中…
+spectrogram.quefrency_effective: 表示 %{min}…%{max} ms · 刻み %{step} ms · 公称Fs
+spectrogram.quefrency_invalid: ケフレンシーには有限値で 0 ≤ Min < Max が必要です。前の範囲を保持します。
+spectrogram.quefrency_ms: ケフレンシー（ms）
 spectrogram.remove_dc_offset: DCオフセットを除去
 spectrogram.s_ch: '%{index} −%{age} s
 
@@ -71,8 +91,10 @@ spectrogram.s_ch: '%{index} −%{age} s
 spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
 
   STFT行なし · 欠落または利用不可'
+spectrogram.search_terms: ケプストログラム ケプストラム エコー 高調波 周期性 ケフレンシー
 spectrogram.spectrogram: スペクトログラム
 spectrogram.start_input_to_begin_acquisition: 取得を始めるには入力を開始してください
+spectrogram.time_quefrency_cursor: 時間／ケフレンシーカーソル
 spectrogram.time_range: 時間範囲
 spectrogram.to: 上限
 spectrogram.to_uses_nyquist_log_excludes_dc: 上限を0にするとナイキスト周波数を使います。対数表示ではDCを除きます。

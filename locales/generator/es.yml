@@ -12,6 +12,7 @@ generator.applied_sample: Muestra aplicada %{applied_sample}
 generator.applied_seed: Semilla aplicada %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: Los botones ± / Arriba / Abajo
   usan este paso en Hz, dBFS o grados. Intro / foco aplica; Esc cancela.
+generator.connection_summary: 'Salida: %{output} · %{input}'
 generator.down: Abajo
 generator.duplicate: Duplicar
 generator.edit_step: EDITAR PASO
@@ -54,6 +55,8 @@ generator.error_reason.signal_identity: Los ID de tarjeta de Generator deben ser
 generator.error_reason.stopping: Espere a que termine la atenuación de la salida
 generator.error_reason.waveform: 'Tarjeta en posición %{position}: la semilla de ruido
   debe ser distinta de cero'
+generator.external_connection: Conecte la salida a la entrada seleccionada mediante
+  una ruta de audio física o virtual. Inicie la entrada y la salida por separado.
 generator.frequency: Frecuencia
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -70,6 +73,8 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels} canales ·
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS pico · adelanto
   de %{phase_degrees}°'
 generator.in_use: ' · en uso'
+generator.loopback_not_selected: Para medir esta salida interna, seleccione el bucle
+  de Generator en los ajustes de entrada. Inicie la entrada y la salida por separado.
 generator.ms_cycles: '%{frequency_hz} ms / 2 ciclos'
 generator.no_signals_add_a_signal_to_choose_its_waveform: No hay señales. Añada una
   señal para elegir su forma de onda y salida.

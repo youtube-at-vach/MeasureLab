@@ -9,6 +9,7 @@ shell.analysis_enabled_waiting_for_input: 분석 활성화 · 입력 대기 중
 shell.analysis_on: 분석 켜짐
 shell.analysis_status: 분석 상태…
 shell.analysis_stopped: 분석 · 중지됨
+shell.arrange_view: 뷰 배치…
 shell.audio_i_o: Audio I/O
 shell.audio_i_o_settings: Audio I/O 설정
 shell.back_to_instruments: 기기로 돌아가기

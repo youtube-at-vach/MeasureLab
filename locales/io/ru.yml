@@ -23,6 +23,10 @@ io.demo_square: Полосно-ограниченный меандр
 io.device: УСТРОЙСТВО
 io.device_default: Настройки устройства по умолчанию
 io.device_default_khz: Настройки устройства по умолчанию (%{sample_rate} kHz)
+io.dithering_bit_depth: РАЗРЯДНОСТЬ ДИТЕРИНГА
+io.dithering_description: Добавляет шум TPDF и квантует активные выходные CH до выбранной
+  разрядности, включая выход f32/f64. Остановленные и выключенные CH остаются беззвучными.
+io.enable_dithering_tpdf: Включить дитеринг (TPDF)
 io.equal_amplitude_noise_free_sine_signals_for_xy_in: 'Синусоидальные сигналы одинаковой
   амплитуды без шума для XY: синфазные, квадратурные или противофазные.'
 io.frequency: ЧАСТОТА

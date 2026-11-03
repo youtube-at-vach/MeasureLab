@@ -11,6 +11,7 @@ generator.applied_sample: 적용된 샘플 %{applied_sample}
 generator.applied_seed: 적용된 시드 %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: ± 버튼 / 위 / 아래는 Hz, dBFS 또는 도 단위로
   이 값을 사용합니다. Enter / 포커스로 적용하고 Esc로 취소합니다.
+generator.connection_summary: '출력: %{output} · %{input}'
 generator.down: 아래
 generator.duplicate: 복제
 generator.edit_step: 단계 편집
@@ -42,6 +43,7 @@ generator.error_reason.signal_count: Generator는 최대 16개 카드까지 지�
 generator.error_reason.signal_identity: Generator 카드 ID는 고유해야 하며 다음 ID보다 앞서야 합니다
 generator.error_reason.stopping: 출력 페이드가 끝날 때까지 기다리세요
 generator.error_reason.waveform: '%{position} 위치 카드: 잡음 시드는 0이 아니어야 합니다'
+generator.external_connection: 물리 또는 가상 오디오 경로로 출력을 선택한 입력에 연결하세요. 입력과 출력은 각각 시작합니다.
 generator.frequency: 주파수
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -58,6 +60,8 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels}채널 · %
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS 피크 · 위상
   선행 %{phase_degrees}°'
 generator.in_use: ' · 사용 중'
+generator.loopback_not_selected: 이 내부 출력을 측정하려면 입력 설정에서 Generator 루프백을 선택하세요. 입력과
+  출력은 각각 시작합니다.
 generator.ms_cycles: '%{frequency_hz} ms / 2주기'
 generator.no_signals_add_a_signal_to_choose_its_waveform: 신호가 없습니다. 신호를 추가해 파형과 출력을
   선택하세요.

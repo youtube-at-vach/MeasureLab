@@ -3,8 +3,21 @@ spectrogram.age_s: 时长 / s
 spectrogram.analysis: 分析
 spectrogram.analysis_changes_apply_when_input_restarts_the_captured_image: 分析更改将在输入重启时应用。捕获的图像会继续保留。
 spectrogram.auto_color_range: 自动颜色范围
+spectrogram.captured_cepstral: 采集条件：标称 %{fs} Hz · N %{n} / 步长 %{hop} · f64 · 对数下限
+  %{floor} dB
 spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 已捕获：标称 %{sample_rate} Hz ·
   窗口 %{sample_rate_2} s · 行 %{sample_rate_3} ms · 频点 %{size} Hz
+spectrogram.cepstral_channel: CH %{channel} · dB re 1
+spectrogram.cepstral_definition: 有符号实倒谱；颜色 = (2c)² 的 dB re 1。排除q=0。相对对数下限与颜色独立。FS未经校准、Fs为标称值；不保证音高或延迟精度。
+spectrogram.cepstral_gestures: 滚轮：缩放倒频率。拖动：平移倒频率/时间。Shift+滚轮：浏览历史。单击：保持并选择时间/倒频率A或B。点击“实时”清除选择。双击：重置范围和时间位置。
+spectrogram.cepstral_link_disabled: 实倒谱系数不支持历史Spectrum。
+spectrogram.cepstral_power: 倒谱功率（dB re 1）
+spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
+
+  CH %{channel} · 样本 %{start}..%{end}'
+spectrogram.cepstral_status: '%{status} · 对数下限 %{floor} dB · 单边谱中 %{count} 个频点已设为下限'
+spectrogram.cepstral_valid: 有效实倒谱
+spectrogram.cepstrogram: 倒谱图
 spectrogram.ch_dbfs: CH %{channel} · dBFS
 spectrogram.collecting_a_complete_stft_window: 正在采集完整 STFT 窗口…
 spectrogram.color_map: 颜色映射
@@ -21,6 +34,7 @@ spectrogram.color_range_dbfs: 颜色范围 · dBFS
 spectrogram.display: 显示
 spectrogram.end_s_s_retained_n_hop: '%{live} · 结束 %{sample_rate} s · 保留 %{retained_seconds}
   s · N %{size} / 跳步 %{hop}%{else}'
+spectrogram.f64_required: 倒谱图使用f64。保留Spectrogram的精度设置。
 spectrogram.fft_length: FFT 长度
 spectrogram.fft_overlap: FFT 重叠
 spectrogram.frequency_hz: 频率 / Hz
@@ -47,14 +61,17 @@ spectrogram.invalid_stft_window_non_finite_input_samples: STFT 窗口无效 · �
 spectrogram.linear_hz: 线性 Hz
 spectrogram.live: 实时
 spectrogram.live_action: 实时
+spectrogram.log_floor: 相对对数下限
 spectrogram.log_hz: 对数 Hz
 spectrogram.max: 最大值
 spectrogram.min: 最小值
 spectrogram.min_and_max_must_be_finite_with_min_max: 最小值和最大值必须为有限值，并且最小值 < 最大值。保留先前范围。
+spectrogram.no_signal: 预处理后无信号
 spectrogram.no_stft_data_at_this_time_gap_or_unavailable: 此时没有 STFT 数据 · 间隙或不可用
 spectrogram.no_stft_row_before_input_began: '%{index} 没有 STFT 行
 
   输入开始前'
+spectrogram.non_finite: 无效窗口：输入或计算值非有限
 spectrogram.outside_visible_time_range: '
 
   超出可见时间范围'
@@ -65,6 +82,9 @@ spectrogram.per_window_bin_amplitude_uncalibrated_fs_orange_stripes_missing: 每
   · 未校准 FS。橙色条纹：STFT 缺失或无效。空白：历史不可用。
 spectrogram.points: '%{size} 点'
 spectrogram.preparing_history_view: 正在准备历史视图…
+spectrogram.quefrency_effective: 显示 %{min}…%{max} ms · 网格 %{step} ms · 标称Fs
+spectrogram.quefrency_invalid: 倒频率需为有限值且满足 0 ≤ Min < Max。保留原范围。
+spectrogram.quefrency_ms: 倒频率（ms）
 spectrogram.remove_dc_offset: 移除 DC 偏移
 spectrogram.s_ch: '%{index} −%{age} s
 
@@ -72,8 +92,10 @@ spectrogram.s_ch: '%{index} −%{age} s
 spectrogram.s_no_stft_row_gap_or_unavailable: '%{index} −%{age} s
 
   没有 STFT 行 · 间隙或不可用'
+spectrogram.search_terms: 倒谱图 倒谱 回声 谐波 周期性 倒频率
 spectrogram.spectrogram: Spectrogram
 spectrogram.start_input_to_begin_acquisition: 启动输入以开始采集
+spectrogram.time_quefrency_cursor: 时间/倒频率光标
 spectrogram.time_range: 时间范围
 spectrogram.to: 到
 spectrogram.to_uses_nyquist_log_excludes_dc: 到 = 0 表示 Nyquist。对数刻度不包含 DC。

@@ -232,6 +232,10 @@ common.spectrum_linear_values_bin_position: スペクトラムの線形値 · �
 common.spectrum_prep_ms: スペクトラム準備 %{spectrum_build_ms} ms
 common.spectrum_windows_missing: スペクトラム %{mode} · %{updates} 窓 · 欠落 %{missing_windows}
 common.start_input_to_begin_acquisition: 「入力を開始」で取得を始める
+common.startup_preferences: 起動時の設定
+common.startup_preferences_error: 起動時設定のエラー
+common.startup_preferences_help: 入出力の選択・測定条件・表示設定は自動保存されます。起動時は入力・出力とも停止します。
+common.startup_preferences_recovery: このファイルを保護するため自動保存を停止しています。MeasureLabを終了し、ファイルを別の場所へ移してから再起動してください。
 common.stft_ch_n_hop_samples: STFT CH %{channel} · N %{size} / ホップ %{hop} · サンプル %{start}..%{end}
 common.stft_history_storage_losses_allocated_mib_peak_mib: STFT履歴保存の欠落 %{elaxed} ·
   確保 %{allocated_frame_bytes} MiB / ピーク %{peak_frame_bytes} MiB

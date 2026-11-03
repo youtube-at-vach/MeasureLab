@@ -19,6 +19,9 @@ io.demo_square: 帯域制限矩形波
 io.device: デバイス
 io.device_default: デバイスの既定値
 io.device_default_khz: デバイスの既定値（%{sample_rate} kHz）
+io.dithering_bit_depth: ディザリングのビット深度
+io.dithering_description: 動作中の出力CHにTPDFノイズを加え、選択したビット深度に量子化します。f32/f64出力にも適用します。停止中・OFFのCHは無音を保ちます。
+io.enable_dithering_tpdf: ディザリングを有効化（TPDF）
 io.equal_amplitude_noise_free_sine_signals_for_xy_in: XY用の等振幅・ノイズなしの正弦波信号：同相、直交位相、逆相。
 io.frequency: 周波数
 io.fs_peak: FS ピーク

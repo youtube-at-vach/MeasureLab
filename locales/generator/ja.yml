@@ -10,6 +10,7 @@ generator.applied_output: 適用済み出力
 generator.applied_sample: 適用サンプル番号 %{applied_sample}
 generator.applied_seed: 適用した乱数シード %{noise_seed}
 generator.buttons_up_down_use_this_step_in_hz_dbfs: ±ボタン／↑／↓でHz、dBFS、度の増減幅を使います。Enterまたはフォーカスを外すと適用、Escで取り消します。
+generator.connection_summary: 出力：%{output} · %{input}
 generator.down: 下へ
 generator.duplicate: 複製
 generator.edit_step: 増減幅を編集
@@ -38,6 +39,7 @@ generator.error_reason.signal_count: 信号発生器で使えるカードは最�
 generator.error_reason.signal_identity: 信号発生器のカードIDは重複せず、次のIDより小さい必要があります
 generator.error_reason.stopping: 出力のフェードが終わるまでお待ちください
 generator.error_reason.waveform: 'カード位置 %{position}: ノイズの乱数シードは0以外にしてください'
+generator.external_connection: 物理配線または仮想オーディオ経路で出力を選択した入力へ接続してください。入力と出力は個別に開始します。
 generator.frequency: 周波数
 generator.gen: GEN %{id}
 generator.gen_2: GEN %{id} · %{s} · %{off}
@@ -54,6 +56,7 @@ generator.hz_ch_nominal_fs: '%{nominal_sample_rate} Hz · %{channels}ch · %{pcm
 generator.hz_dbfs_peak_lead: '%{frequency_hz} Hz · %{amplitude_dbfs} dBFS peak · %{phase_degrees}°
   進み位相'
 generator.in_use: ' · 使用中'
+generator.loopback_not_selected: この内部出力を測定するには、入力設定でGeneratorループバックを選択してください。入力と出力は個別に開始します。
 generator.ms_cycles: '%{frequency_hz} ms／2周期'
 generator.no_signals_add_a_signal_to_choose_its_waveform: 信号がありません。信号を追加して波形と出力先を選択してください。
 generator.off: 'OFF'

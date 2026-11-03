@@ -1,13 +1,14 @@
 _version: 1
 oscilloscope.acquiring_post_trigger: 正在采集触发后数据
 oscilloscope.acquisition: 采集
+oscilloscope.amplitude_axis_ch: 幅度 [FS] · CH%{channel}轴
 oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: 采集或校准的值不是有限数值；没有有效的数值读数
 oscilloscope.auto: 自动
 oscilloscope.auto_free: 自动 / 自由运行
 oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: 为周期信号自动设置时间刻度、幅度和触发
 oscilloscope.autoset: 自动设置
-oscilloscope.autoset_frequency: 自动设置：根据原始交叉点计算为 %{frequency} Hz
-oscilloscope.autoset_held: 已拟合保留捕获的幅度；时间/触发将在下次启动时应用（%{frequency} Hz）
+oscilloscope.autoset_frequency: 上次自动设置：从原始信号过零检测到 %{frequency} Hz
+oscilloscope.autoset_held: 上次自动设置：已调整保持波形的幅度；时间/触发在下次启动时应用（%{frequency} Hz）
 oscilloscope.capture_once_on_the_next_trigger_crossing: 下次触发交叉时捕获一次
 oscilloscope.centre_offset: 中心偏移
 oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
@@ -20,6 +21,7 @@ oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{
 
   %{display}'
 oscilloscope.channel_out_of_range: — · 通道超出范围
+oscilloscope.common_scale: 共用标度
 oscilloscope.cursor: 光标 %{index} · %{join}
 oscilloscope.display: 显示
 oscilloscope.drag_the_slider_or_value_to_adjust_double_click: 拖动滑块或数值进行调整。双击数值可输入数字。
@@ -30,6 +32,7 @@ oscilloscope.edge_names.rising: 上升
 oscilloscope.falling_edge: 下降沿
 oscilloscope.fit_amplitude: 按幅度缩放
 oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 根据所选通道的原始峰值调整纵轴范围，并将偏移归零。
+oscilloscope.fit_visible_channels: 按可见CH的最大原始峰值适配，并将共用偏移居中
 oscilloscope.free_run: 自由运行
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -38,6 +41,7 @@ oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = 满量程 · F
 oscilloscope.guides: 参考线
 oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: 保留的采集条件已保留
   · 排队的测量设置将在下次启动时应用
+oscilloscope.held_time_scale_next_start: 保持：%{scale} ms/div · 时间/触发修改在下次启动时应用
 oscilloscope.horizontal: 水平
 oscilloscope.input_source: 输入源
 oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
@@ -53,7 +57,6 @@ oscilloscope.mode_names.auto: 自动
 oscilloscope.mode_names.normal: 正常
 oscilloscope.mode_names.single: 单次
 oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
-oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · 波形：原始 FS'
 oscilloscope.no_acquired_samples_for_this_channel_and_interval: 此通道和区间没有已采集样本
 oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
   · 没有已采集样本
@@ -66,10 +69,13 @@ oscilloscope.out_of_range: 超出范围
 oscilloscope.outside_input_channel_range: ' · 超出输入通道范围'
 oscilloscope.outside_input_channel_range_2: '%{channel} · 超出输入通道范围'
 oscilloscope.outside_sweep: '%{index} #%{sample} · 超出扫描范围'
+oscilloscope.p_p: P-P
 oscilloscope.partial_missing_samples: 部分 · 缺少 %{scope_missing} 个样本
+oscilloscope.per_channel_scale: 各CH独立标度
 oscilloscope.position: 位置
 oscilloscope.reset_time_position: 重置时间位置
 oscilloscope.rising_edge: 上升沿
+oscilloscope.rms: RMS
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · 峰峰值 %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · 峰峰值 %{peak_to_peak}
   %{unit} · 峰值 %{peak} %{unit} · 已采集 %{samples} 个样本

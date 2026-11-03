@@ -1,13 +1,14 @@
 _version: 1
 oscilloscope.acquiring_post_trigger: トリガー後のサンプルを取得中
 oscilloscope.acquisition: 取得
+oscilloscope.amplitude_axis_ch: 振幅 [FS] · CH%{channel}軸
 oscilloscope.an_acquired_or_calibrated_value_is_nonfinite_no_valid: 取得値または校正後の値が有限値ではないため、有効な数値を表示できません
 oscilloscope.auto: オート
 oscilloscope.auto_free: オート／フリー
 oscilloscope.automatically_set_time_scale_amplitude_and_trigger_for_a: 周期信号に合わせて時間軸・振幅・トリガーを自動設定
 oscilloscope.autoset: オートセット
-oscilloscope.autoset_frequency: オートセット：生サンプルの交差から %{frequency} Hzを検出
-oscilloscope.autoset_held: 保持波形に縦軸を合わせました。時間軸／トリガーは次回開始時に適用します（%{frequency} Hz）
+oscilloscope.autoset_frequency: 前回のオートセット：生サンプルの交差から %{frequency} Hzを検出
+oscilloscope.autoset_held: 前回のオートセット：保持波形の振幅を調整。時間軸／トリガーは次回開始時に適用（%{frequency} Hz）
 oscilloscope.capture_once_on_the_next_trigger_crossing: 次のトリガー交差で1回取得
 oscilloscope.centre_offset: 中心オフセット
 oscilloscope.ch: CH%{scope_selected} · %{scope_selected_2}
@@ -20,6 +21,7 @@ oscilloscope.ch_select_to_edit_this_channel_in_scope_settings: 'CH%{index} · %{
 
   %{display}'
 oscilloscope.channel_out_of_range: — · チャンネル範囲外
+oscilloscope.common_scale: 共通スケール
 oscilloscope.cursor: カーソル %{index} · %{join}
 oscilloscope.display: 表示
 oscilloscope.drag_the_slider_or_value_to_adjust_double_click: スライダーまたは数値をドラッグして調整します。数値をダブルクリックすると入力できます。
@@ -30,6 +32,7 @@ oscilloscope.edge_names.rising: 立ち上がり
 oscilloscope.falling_edge: 立ち下がりエッジ
 oscilloscope.fit_amplitude: 振幅に合わせる
 oscilloscope.fit_the_selected_channel_s_raw_peak_and_centre: 選択CHの生ピークに縦軸レンジを合わせ、オフセットを0に戻します。
+oscilloscope.fit_visible_channels: 表示中のCHの最大ピーク（校正前）に合わせ、共通オフセットを中央に戻す
 oscilloscope.free_run: フリーラン
 oscilloscope.fs: '%{channel}: %{raw} FS → %{value} %{channel_2}'
 oscilloscope.fs_div: '%{fs_per_div} FS/div'
@@ -38,6 +41,7 @@ oscilloscope.fs_full_scale_fs_sample_rate_div_grid_division: FS = デジタル�
 oscilloscope.guides: ガイド
 oscilloscope.held_conditions_retained_queued_measurement_settings_apply_on_next: 保持中の条件を維持
   · 適用待ちの測定設定は次回開始時に反映
+oscilloscope.held_time_scale_next_start: 保持中：%{scale} ms/div · 時間軸／トリガーの編集は次回開始時に適用
 oscilloscope.horizontal: 水平
 oscilloscope.input_source: 入力ソース
 oscilloscope.interval_exclusive_end_generation_nominal_hz_waveform_and_trigger: '%{channel}
@@ -52,7 +56,6 @@ oscilloscope.mode_names.auto: オート
 oscilloscope.mode_names.normal: ノーマル
 oscilloscope.mode_names.single: シングル
 oscilloscope.ms: '%{index} %{seconds} ms · %{sample}'
-oscilloscope.ms_div_waveform_raw_fs: '%{scope_display_ms_per_div} ms/div · 波形：FS（校正前）'
 oscilloscope.no_acquired_samples_for_this_channel_and_interval: このチャンネル・区間に取得サンプルがありません
 oscilloscope.no_acquired_samples_input_conditions_are_not_acquired_waveform: '%{channel}
   · 取得サンプルなし
@@ -65,10 +68,13 @@ oscilloscope.out_of_range: 範囲外
 oscilloscope.outside_input_channel_range: ' · 入力チャンネル範囲外'
 oscilloscope.outside_input_channel_range_2: '%{channel} · 入力チャンネル範囲外'
 oscilloscope.outside_sweep: '%{index} #%{sample} · 掃引範囲外'
+oscilloscope.p_p: P-P
 oscilloscope.partial_missing_samples: 一部欠落 · 欠落サンプル %{scope_missing} 件
+oscilloscope.per_channel_scale: CH別スケール
 oscilloscope.position: 位置
 oscilloscope.reset_time_position: 時間位置をリセット
 oscilloscope.rising_edge: 立ち上がりエッジ
+oscilloscope.rms: RMS
 oscilloscope.rms_p_p: RMS %{rms} %{unit} · P-P %{peak_to_peak} %{unit}
 oscilloscope.rms_p_p_peak_acquired_samples: RMS %{rms} %{unit} · P-P %{peak_to_peak}
   %{unit} · ピーク %{peak} %{unit} · 取得サンプル数 %{samples}

@@ -4,6 +4,7 @@ use std::collections::VecDeque;
 
 mod instruments;
 mod scope;
+mod signal;
 mod spectrogram;
 mod spectrum;
 mod xy;
@@ -34,6 +35,8 @@ pub(in crate::app) struct Review {
     spectrum: bool,
     spectrogram: bool,
     xy: bool,
+    signal: bool,
+    retained_signal: Option<signal::Retained>,
     running: bool,
     output_running: bool,
     held: Option<export::Document>,
@@ -47,6 +50,7 @@ pub(in crate::app) struct Review {
     pointer: Option<egui::Pos2>,
     scroll_position: Option<(egui::Pos2, usize)>,
     frames: usize,
+    native_focused: bool,
     ready: bool,
     conditions: Option<measurement::Config>,
     workspace: Option<settings::Workspace>,
@@ -68,6 +72,7 @@ impl Review {
         let scope_target = std::env::var("MEASURELAB_UI_SMOKE_SCOPE_REVIEW").ok();
         let spectrum_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTRUM_REVIEW").ok();
         let spectrogram_target = std::env::var("MEASURELAB_UI_SMOKE_SPECTROGRAM_REVIEW").ok();
+        let signal_target = std::env::var("MEASURELAB_UI_SMOKE_SIGNAL_REVIEW").ok();
         let xy_target = std::env::var("MEASURELAB_UI_SMOKE_XY_REVIEW").ok();
         if [
             &header_target,
@@ -76,6 +81,7 @@ impl Review {
             &spectrum_target,
             &spectrogram_target,
             &xy_target,
+            &signal_target,
         ]
         .iter()
         .filter(|target| target.is_some())
@@ -89,12 +95,14 @@ impl Review {
         let spectrum = spectrum_target.is_some();
         let spectrogram = spectrogram_target.is_some();
         let xy = xy_target.is_some();
+        let signal = signal_target.is_some();
         let Some(target) = header_target
             .or(instrument_target)
             .or(scope_target)
             .or(spectrum_target)
             .or(spectrogram_target)
             .or(xy_target)
+            .or(signal_target)
         else {
             return Ok(None);
         };
@@ -125,6 +133,8 @@ impl Review {
             spectrum::case(app, &target)?
         } else if spectrogram {
             spectrogram::case(app, &target)?
+        } else if signal {
+            signal::case(app, &target)?
         } else if xy {
             xy::case(app, &target)?
         } else {
@@ -137,6 +147,8 @@ impl Review {
             spectrum,
             spectrogram,
             xy,
+            signal,
+            retained_signal: signal.then(|| signal::Retained::new(app)),
             running: app.running(),
             output_running: !app.generator.stopped(),
             retained_spectrum: spectrum.then(|| spectrum::Retained::new(app)).transpose()?,
@@ -154,6 +166,7 @@ impl Review {
             pointer: None,
             scroll_position: None,
             frames: 0,
+            native_focused: false,
             ready: false,
             conditions: None,
             workspace: None,
@@ -172,7 +185,9 @@ impl Review {
     pub(in crate::app) fn input(&mut self, input: &mut egui::RawInput) {
         // An actual desktop pointer must not close or activate a review popup.
         input.events.clear();
-        if let Some(events) = self.events.pop_front() {
+        if input.focused
+            && let Some(events) = self.events.pop_front()
+        {
             input.events = events;
         } else if self.pointer.is_none() {
             input.events.push(egui::Event::PointerGone);
@@ -191,7 +206,8 @@ impl Review {
 
     pub(in crate::app) fn observe(&mut self, app: &ScopeApp, ctx: &egui::Context) {
         self.frames += 1;
-        if self.frames == 1 {
+        let focused = ctx.input(|input| input.focused);
+        if !focused && (self.frames == 1 || self.frames.is_multiple_of(30)) {
             ctx.send_viewport_cmd(egui::ViewportCommand::Focus);
         }
         if self.frames == 300 && !self.ready {
@@ -202,6 +218,22 @@ impl Review {
             for label in &self.case.labels {
                 eprintln!("Review pending text bounds: {:?}", painted_text(ctx, label));
             }
+            eprintln!(
+                "Review pending native state: {:?}",
+                ctx.input(|input| (
+                    input.viewport().clone(),
+                    input.pointer.latest_pos(),
+                    input.pointer.hover_pos()
+                ))
+            );
+            if let Some(Step::HoverText(label)) = self.case.steps.last() {
+                eprintln!(
+                    "Review hover source: {label:?}; bounds={:?}; intended={:?}",
+                    painted_text(ctx, label),
+                    self.pointer
+                );
+            }
+
             if self.spectrogram {
                 eprintln!(
                     "Review raster pending: prepared={} requested={} rows={} completed={} hold_anchor={:?} displayed_anchor={} latest={:?} input={} stft={}",
@@ -222,7 +254,7 @@ impl Review {
         }
         assert!(
             self.ready || self.frames < 360,
-            "Menu review did not settle: {}; step {}/{}",
+            "Menu review did not settle: {}; step {}/{}; native focused={focused} (desktop must be unlocked)",
             self.target,
             self.step,
             self.case.steps.len()
@@ -281,7 +313,13 @@ impl Review {
                         .insert(0, Step::Click(i18n::text("shell.menu").into()));
                     self.case.popup = true;
                 }
-                if !self.header && !self.scope && !self.spectrum && !self.spectrogram && !self.xy {
+                if !self.header
+                    && !self.scope
+                    && !self.spectrum
+                    && !self.spectrogram
+                    && !self.xy
+                    && !self.signal
+                {
                     instruments::compact(&mut self.case, &self.target, app);
                 }
             } else if !painted_text(ctx, i18n::text("common.file")).is_empty() {
@@ -294,6 +332,19 @@ impl Review {
             }
             self.conditions = Some(config);
             self.workspace = Some(app.capture_workspace());
+        }
+        // Native focus is asynchronous and cannot be acquired on a locked
+        // desktop. Do not consume scripted input before it is acknowledged.
+        if !focused {
+            self.native_focused = false;
+            return;
+        }
+        if !self.native_focused {
+            self.native_focused = true;
+            if let Some(position) = self.pointer {
+                self.events
+                    .push_front(vec![egui::Event::PointerMoved(position)]);
+            }
         }
         if !self.events.is_empty() {
             return;
@@ -449,6 +500,7 @@ impl Review {
                     && (self.spectrum
                         || self.spectrogram
                         || self.xy
+                        || self.signal
                         || index + 1 == self.case.labels.len())
                 {
                     !painted_text_on(ctx, label, Some(egui::Order::Tooltip))
@@ -511,6 +563,11 @@ impl Review {
             {
                 return;
             }
+            if self.signal
+                && !signal::verify(app, self.progress, self.retained_signal.as_ref().unwrap())
+            {
+                return;
+            }
             if !self.ready {
                 let bounds = self
                     .case
@@ -539,6 +596,8 @@ impl Review {
                         "Spectrum"
                     } else if self.spectrogram {
                         "Spectrogram"
+                    } else if self.signal {
+                        "Signal"
                     } else if self.xy {
                         "XY"
                     } else {
