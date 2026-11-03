@@ -15,7 +15,7 @@ spectrogram.cepstral_definition: Cepstro real com sinal; cor = (2c)² em dB re 1
   sem garantia de tom ou atraso.
 spectrogram.cepstral_gestures: 'Roda: ampliar quefrência. Arrastar: mover quefrência/tempo.
   Shift+roda: percorrer o histórico. Clique: reter e selecionar tempo/quefrência A
-  ou B. Live libera as seleções. Clique duplo: redefinir a faixa e a posição temporal.'
+  ou B. Ao vivo libera as seleções. Clique duplo: redefinir a faixa e a posição temporal.'
 spectrogram.cepstral_link_disabled: O Spectrum do histórico não está disponível para
   coeficientes do cepstro real.
 spectrogram.cepstral_power: Potência cepstral (dB re 1)
