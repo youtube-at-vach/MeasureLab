@@ -19566,7 +19566,7 @@
       "spectrogram.cepstral_gestures": {
         "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
         "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
-        "translation_hash": "6e24fed7bae0b76b87e7bd987b0b953eb5ca3a6299a2898f6011cb742cb7487d"
+        "translation_hash": "8294329cb084d081b80754237d57c8b9987e3befc15436c0a68a4a6e2342e5c9"
       },
       "spectrogram.cepstral_link_disabled": {
         "source": "History Spectrum is unavailable for real cepstrum coefficients.",

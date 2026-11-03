@@ -1,14 +1,13 @@
 {
   "version": 3,
-  "base_revision": "26f152211a149f53f7d6c908713a1172a8b2c724",
-  "locale": "fr",
+  "base_revision": "6ee35d2f54ed343bfc8b28d62f6c63fa51b2dc36",
+  "locale": "es",
   "groups": [
     "spectrogram"
   ],
   "review_keys": [
-    "spectrogram.cepstral_gestures",
-    "spectrogram.cepstral_link_disabled"
+    "spectrogram.cepstral_gestures"
   ],
   "kind": "translation",
-  "entries_hash": "d044442fd4d61822bb1d3c683e30c27fd538f1943ab3b912cb45e00157a4a41e"
+  "entries_hash": "e3f635c3e006c704ea6fcf19fcc2dd8c73175fe5eae88b784313252eed076835"
 }
