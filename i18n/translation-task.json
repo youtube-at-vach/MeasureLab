@@ -1,7 +1,7 @@
 {
   "version": 3,
-  "base_revision": "98d6ae1fdf7fcd6b4658e4ce03324a5f4afffa86",
-  "locale": "pt",
+  "base_revision": "b8e49d75a7dad65f2712a9b4ab6073e807053b4d",
+  "locale": "ru",
   "groups": [
     "spectrogram"
   ],
@@ -9,5 +9,5 @@
     "spectrogram.cepstral_gestures"
   ],
   "kind": "translation",
-  "entries_hash": "ade76711c11476d973a0ec5d3fe60f0d72e0ad2d19e16ed56b23b77d23753b97"
+  "entries_hash": "f0435553f8aff21a84bbee5df36cd4145f13160baf2fee631618dcbcf80eaf9e"
 }
