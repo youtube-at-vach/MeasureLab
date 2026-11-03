@@ -9732,12 +9732,12 @@
       "spectrogram.cepstral_gestures": {
         "source": "Wheel: zoom quefrency. Drag: pan quefrency/time. Shift+wheel: scroll history. Click: Hold and select time/quefrency A or B. Live releases selections. Double-click resets range and time position.",
         "source_hash": "321457a90fe274206e3e27f6b1ba8d82e1fa67cb078dd7525b476d621a094611",
-        "translation_hash": "6a3df96a4de185f2dd30d53f680b72ba49589b888f0e9206a58352b991b293df"
+        "translation_hash": "0545006e56881e160763a7e5c449a91d7766f25beb3a9f1474a1b171d47ad615"
       },
       "spectrogram.cepstral_link_disabled": {
         "source": "History Spectrum is unavailable for real cepstrum coefficients.",
         "source_hash": "265bbb7dce134bdc98d16c32977edad648ff5ced63eb3cc0060ced67bd1d261b",
-        "translation_hash": "e56aec1d8bbd6d89299ac8e14622004e80dfea9659218ad9b63f7c0d045eec0f"
+        "translation_hash": "070060bd618f085b3b0cec63dc5541f4630463ce5bfc5938378ac509f3829051"
       },
       "spectrogram.cepstral_power": {
         "source": "Cepstral power (dB re 1)",

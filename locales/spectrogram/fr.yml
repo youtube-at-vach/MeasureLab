@@ -14,9 +14,9 @@ spectrogram.cepstral_definition: Cepstre réel signé ; couleur = (2c)² en dB r
   étalonné, Fs nominale ; aucune garantie de hauteur ou de retard.
 spectrogram.cepstral_gestures: 'Molette : zoom en quéfrence. Glisser : déplacer quéfrence/temps.
   Maj+molette : parcourir l’historique. Clic : figer et choisir temps/quéfrence A
-  ou B. Live libère les sélections. Double-clic : réinitialiser la plage et la position
-  temporelle.'
-spectrogram.cepstral_link_disabled: Le Spectrum historique n’est pas disponible pour
+  ou B. Le bouton En direct libère les sélections. Double-clic : réinitialiser la
+  plage et la position temporelle.'
+spectrogram.cepstral_link_disabled: Le spectre historique n’est pas disponible pour
   les coefficients du cepstre réel.
 spectrogram.cepstral_power: Puissance cepstrale (dB re 1)
 spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
