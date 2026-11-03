@@ -9,7 +9,7 @@ spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 取得時：公称 %{sam
   窓時間 %{sample_rate_2} s · 行間隔 %{sample_rate_3} ms · ビン幅 %{size} Hz
 spectrogram.cepstral_channel: CH %{channel} · dB re 1
 spectrogram.cepstral_definition: 符号付き実ケプストラム。色は (2c)² の dB re 1、q=0は除外。相対対数下限は色と独立。未校正FS・公称Fsで、ピッチや遅延の精度は保証しません。
-spectrogram.cepstral_gestures: ホイール：ケフレンシーを拡大縮小。ドラッグ：ケフレンシー／時間を移動。Shift＋ホイール：履歴を移動。クリック：保持して時間／ケフレンシーA・Bを選択。Liveで選択を解除。ダブルクリック：範囲と時間位置をリセット。
+spectrogram.cepstral_gestures: ホイール：ケフレンシーを拡大縮小。ドラッグ：ケフレンシー／時間を移動。Shift＋ホイール：履歴を移動。クリック：保持して時間／ケフレンシーA・Bを選択。ライブで選択を解除。ダブルクリック：範囲と時間位置をリセット。
 spectrogram.cepstral_link_disabled: 実ケプストラム係数には履歴Spectrumを使用できません。
 spectrogram.cepstral_power: ケプストラムパワー（dB re 1）
 spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
