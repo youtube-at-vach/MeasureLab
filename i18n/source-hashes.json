@@ -29240,17 +29240,17 @@
       "comparison.synchronous_comparison": {
         "source": "Synchronous comparison",
         "source_hash": "7884d1c3c2e2d3681248eb45639ac4db3c12f32a67d3c6d8ae0af3ea2e1cb181",
-        "translation_hash": "076d50bf960f733ae0ab633c3d92cf7d2904909652ee3ff1f3f44901265e85f4"
+        "translation_hash": "5c7d27ad5992f2e8980ca04ced459b15d6fd1836d9ae934f6576787f1df4a64e"
       },
       "comparison.to": {
         "source": "To ",
         "source_hash": "81dcbe958121a9b1eceb8ab2bd605ab0dfaed3482e5e4266fdcba6ade2343086",
-        "translation_hash": "7f8ee827b12a48d98371adfc7062cc62a77b037f0286be9eea063488728b40f6"
+        "translation_hash": "5a347316dd3625d6b69961f02b0b961ba697f17234252d7a84d7ed129dc4c0fd"
       },
       "comparison.valid_band": {
         "source": "Valid band",
         "source_hash": "99e83a6ef2f9bddbf823b52ca67c24a82b5f6d2953e54e40c4b488e480e0f071",
-        "translation_hash": "fcef4f3a3c45c7ff63048457d929a680178af882e46a09994a3af8e696866966"
+        "translation_hash": "cff0f357da359ad64a264e5dfae3f970bbd6da4421d7e084c6c747f2337c3822"
       },
       "comparison.valid_transfer_bins_gaps_are_not_interpolated": {
         "source": "%{valid} valid transfer bins · gaps are not interpolated",

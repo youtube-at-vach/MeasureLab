@@ -90,9 +90,9 @@ comparison.state_names.non_finite: Нечисловое значение
 comparison.state_names.unavailable: Недоступно
 comparison.state_names.valid: Допустимо
 comparison.stop_analysis: Остановить анализ
-comparison.synchronous_comparison: Предустановки постоянной времени
-comparison.to: Отслеживать входной REF (подсказка ±10%)
-comparison.valid_band: ОТСЛЕЖИВАТЬ REF
+comparison.synchronous_comparison: Синхронное сравнение
+comparison.to: 'До '
+comparison.valid_band: Допустимая полоса
 comparison.valid_transfer_bins_gaps_are_not_interpolated: 'Действительных бинов передачи:
   %{valid} · разрывы не интерполируются'
 comparison.waiting_for_a_complete_average: Ожидание полного синхронного усреднения.

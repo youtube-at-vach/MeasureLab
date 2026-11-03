@@ -1,13 +1,15 @@
 {
   "version": 3,
-  "base_revision": "1ac3901cd545e59ccbdd9c37b3b0bfb1b1ab8dac",
-  "locale": "ko",
+  "base_revision": "af3b38bcd655b38046d75328940ffeda2242f3c8",
+  "locale": "ru",
   "groups": [
-    "spectrogram"
+    "comparison"
   ],
   "review_keys": [
-    "spectrogram.cepstral_gestures"
+    "comparison.synchronous_comparison",
+    "comparison.to",
+    "comparison.valid_band"
   ],
   "kind": "translation",
-  "entries_hash": "70ba8a32fb6e4ffee3d28aceac1bcc62c2a9f58eaf02cadef4b8ae6a72cf323d"
+  "entries_hash": "87aa009bb0c1115076a485da52a92f261126ec8ca9e9d1678ffc4d893ad17a76"
 }
