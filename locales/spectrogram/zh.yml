@@ -9,7 +9,7 @@ spectrogram.captured_nominal_hz_window_s_row_ms_bin_hz: 已捕获：标称 %{sam
   窗口 %{sample_rate_2} s · 行 %{sample_rate_3} ms · 频点 %{size} Hz
 spectrogram.cepstral_channel: CH %{channel} · dB re 1
 spectrogram.cepstral_definition: 有符号实倒谱；颜色 = (2c)² 的 dB re 1。排除q=0。相对对数下限与颜色独立。FS未经校准、Fs为标称值；不保证音高或延迟精度。
-spectrogram.cepstral_gestures: 滚轮：缩放倒频率。拖动：平移倒频率/时间。Shift+滚轮：浏览历史。单击：保持并选择时间/倒频率A或B。Live清除选择。双击：重置范围和时间位置。
+spectrogram.cepstral_gestures: 滚轮：缩放倒频率。拖动：平移倒频率/时间。Shift+滚轮：浏览历史。单击：保持并选择时间/倒频率A或B。点击“实时”清除选择。双击：重置范围和时间位置。
 spectrogram.cepstral_link_disabled: 实倒谱系数不支持历史Spectrum。
 spectrogram.cepstral_power: 倒谱功率（dB re 1）
 spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
