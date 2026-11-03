@@ -12,7 +12,7 @@ spectrogram.cepstral_channel: CH %{channel} · dB re 1
 spectrogram.cepstral_definition: 부호 있는 실수 켑스트럼. 색상 = (2c)²의 dB re 1. q=0 제외. 상대 로그
   하한은 색상과 독립적입니다. 미교정 FS, 공칭 Fs이며 피치나 지연 정확도를 보장하지 않습니다.
 spectrogram.cepstral_gestures: '휠: 케프렌시 확대/축소. 드래그: 케프렌시/시간 이동. Shift+휠: 기록 탐색. 클릭:
-  유지하고 시간/케프렌시 A 또는 B 선택. Live는 선택을 해제합니다. 두 번 클릭: 범위와 시간 위치 초기화.'
+  유지하고 시간/케프렌시 A 또는 B 선택. 실시간을 누르면 선택이 해제됩니다. 두 번 클릭: 범위와 시간 위치 초기화.'
 spectrogram.cepstral_link_disabled: 실수 켑스트럼 계수에는 기록 Spectrum을 사용할 수 없습니다.
 spectrogram.cepstral_power: 켑스트럼 파워(dB re 1)
 spectrogram.cepstral_readout: 'q %{q} · %{ms} ms · c %{c} · %{db} dB re 1
