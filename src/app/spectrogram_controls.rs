@@ -83,11 +83,19 @@ impl ScopeApp {
     /// as widgets. Widget event routing is covered separately by GUI smoke QA.
     #[cfg(feature = "qa")]
     pub(super) fn profile_spectrogram_history(&mut self) {
-        if self.profile.is_none()
-            || !self.running()
-            || std::env::var_os("MEASURELAB_PROFILE_SPECTROGRAM").is_none()
-            || self.spectrogram_snapshot.latest().is_none()
-        {
+        if self.profile.is_none() || !self.running() {
+            return;
+        }
+        let Ok(mode) = std::env::var("MEASURELAB_PROFILE_SPECTROGRAM") else {
+            return;
+        };
+        let hidden = mode == "hidden";
+        if if hidden {
+            self.spectrogram_profile.conditions.is_none()
+                && self.stft_history.snapshot().latest().is_none()
+        } else {
+            self.spectrogram_snapshot.latest().is_none()
+        } {
             return;
         }
         let conditions = (
@@ -103,7 +111,7 @@ impl ScopeApp {
             *expected, conditions,
             "display operations reconfigured STFT"
         );
-        if std::env::var("MEASURELAB_PROFILE_SPECTROGRAM").as_deref() != Ok("stress") {
+        if mode != "stress" {
             return;
         }
         let tick = self.created.elapsed().as_millis() as u64 / 100;
@@ -154,9 +162,9 @@ impl ScopeApp {
 
     #[cfg(feature = "qa")]
     pub(super) fn finish_spectrogram_profile(&self, input: Option<&measurement::Snapshot>) {
-        if std::env::var_os("MEASURELAB_PROFILE_SPECTROGRAM").is_none() {
+        let Ok(mode) = std::env::var("MEASURELAB_PROFILE_SPECTROGRAM") else {
             return;
-        }
+        };
         let input = input.expect("finite Spectrogram input");
         let config = input.stft_config;
         let frames = self
@@ -168,7 +176,10 @@ impl ScopeApp {
             .load(Ordering::Relaxed);
         assert_eq!(input.input_dropped, 0);
         let origin = input.history.range().end - frames;
-        let windows = 1 + (frames - config.size as u64) / config.hop as u64;
+        let windows = 1 + frames
+            .checked_sub(config.size as u64)
+            .expect("incomplete STFT input")
+            / config.hop as u64;
         let expected = origin + config.size as u64 + (windows - 1) * config.hop as u64;
         let deadline = Instant::now() + Duration::from_secs(5);
         while self
@@ -199,14 +210,12 @@ impl ScopeApp {
         assert!(
             self.spectrogram_view_worker.peak_cache_bytes() <= spectrogram::viewport::CACHE_BYTES
         );
-        let stress = std::env::var("MEASURELAB_PROFILE_SPECTROGRAM").as_deref() == Ok("stress");
         assert!(
-            !stress || self.spectrogram_profile.operations >= 20,
+            mode != "stress" || self.spectrogram_profile.operations >= 20,
             "stress cycle incomplete"
         );
         println!(
-            "Spectrogram {} QA OK: {} display steps, unchanged input/analysis generations, no STFT input/result/storage losses; raster peak {:.3} MiB, replaced requests {}",
-            if stress { "stress" } else { "live" },
+            "Spectrogram {mode} QA OK: {} display steps, unchanged input/analysis generations, no STFT input/result/storage losses; raster peak {:.3} MiB, replaced requests {}",
             self.spectrogram_profile.operations,
             self.spectrogram_view_worker.peak_cache_bytes() as f64 / 1048576.0,
             self.spectrogram_view_worker
@@ -215,6 +224,11 @@ impl ScopeApp {
         );
         let metrics = &self.spectrogram_view_worker.metrics;
         let completed = metrics.completed.load(Ordering::Acquire);
+        if mode == "hidden" {
+            assert_eq!(completed, 0, "hidden Spectrogram prepared rasters");
+            assert_eq!(self.spectrogram_profile.response.count, 0);
+            return;
+        }
         assert!(completed > 0, "no raster preparation completed");
         let response = &self.spectrogram_profile.response;
         assert!(

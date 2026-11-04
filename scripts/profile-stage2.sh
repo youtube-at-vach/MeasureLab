@@ -17,10 +17,19 @@ case "$measurelab_name" in
 esac
 : "${MEASURELAB_PROFILE_SECONDS:=600}"
 export MEASURELAB_PROFILE_SECONDS
-measurelab_output="dist/stage2-qa/$measurelab_name"
-mkdir -p dist/stage2-qa
+measurelab_output_dir=${MEASURELAB_QA_WORKDIR:-dist/stage2-qa}
+measurelab_output="$measurelab_output_dir/$measurelab_name"
+mkdir -p "$measurelab_output_dir"
 measurelab_binary=${MEASURELAB_QA_BINARY:-target/release/measurelab}
-"$measurelab_binary" "$@" > "$measurelab_output.log" 2>&1 &
+if [ -n "${MEASURELAB_QA_WORKDIR:-}" ]; then
+    case "$measurelab_binary" in
+        /*) ;;
+        *) measurelab_binary="$measurelab_root/$measurelab_binary" ;;
+    esac
+    (cd "$MEASURELAB_QA_WORKDIR" && exec "$measurelab_binary" "$@") > "$measurelab_output.log" 2>&1 &
+else
+    "$measurelab_binary" "$@" > "$measurelab_output.log" 2>&1 &
+fi
 measurelab_pid=$!
 measurelab_awake_pid=
 if [ "${MEASURELAB_PROFILE_KEEP_AWAKE:-0}" = 1 ] && command -v caffeinate >/dev/null 2>&1; then
