@@ -12,6 +12,7 @@ from qa_spectrogram import (
     assess,
     audit_manifest,
     comparisons,
+    generator_display_route,
     manifest_passed,
     peak_rss,
     profile_cases,
@@ -130,8 +131,58 @@ class ProfileAcceptance(unittest.TestCase):
         self.assertFalse(assess(captures.replace("max 1020.0", "max 5000.0"), *args)[0])
         self.assertFalse(assess(captures + "UI screenshot failed: disk unavailable\n", *args)[0])
 
+    def test_generator_hidden_checks_analysis_and_output_without_a_raster(self):
+        environment = generator_display_route("ZOOM UAC-232")[1]
+        hidden = (
+            LOG.replace("stress QA OK: 1200", "hidden QA OK: 0")
+            .replace("900 uploaded bytes", "0 uploaded bytes")
+            .replace("CH 1", "CH 2")
+        )
+        hidden = "\n".join(
+            line
+            for line in hidden.splitlines()
+            if not line.startswith(("Spectrogram response:", "Spectrogram preparation:"))
+        )
+        log = (
+            hidden
+            + """
+Spectrum final: missing windows 0, input missing 0
+Measurement worker: 1 input frames, 1 FFT windows, 17 skipped display updates
+Physical GUI finite Stop: independent errors
+Comparison independent input oracle OK:
+Generator output finite Stop:
+Generator input callback: notifications 0
+Generator output callback: notifications 0
+Generator callback report: callback-profile.json (streams released: true)
+"""
+        )
+        args = ("hidden", 120, 0, None)
+        passed, values = assess(log, *args, environment=environment)
+        self.assertTrue(passed)
+        self.assertEqual(values["skipped_display_updates"], 17)
+        for before, after, gate in (
+            ("0 uploaded bytes", "1 uploaded bytes", "ui_passed"),
+            ("max 1020.0", "max 5000.0", "ui_passed"),
+            ("0 storage dropped", "1 storage dropped", "analysis_passed"),
+            ("missing windows 0", "missing windows 1", "generator_audit_passed"),
+            ("streams released: true", "streams released: false", "generator_audit_passed"),
+            ("output callback: notifications 0", "output callback: notifications 1", "generator_audit_passed"),
+        ):
+            with self.subTest(before=before):
+                passed, values = assess(log.replace(before, after), *args, environment=environment)
+                self.assertFalse(passed)
+                self.assertFalse(values[gate])
+
 
 class ComparisonMatrix(unittest.TestCase):
+    def test_generator_comparison_isolates_display_and_capture_on_one_route(self):
+        cases = list(profile_cases([generator_display_route("ZOOM UAC-232")], "spectrogram"))
+        hidden, live, capture = cases
+        self.assertEqual([case["mode"] for case in cases], ["hidden", "live", "live"])
+        self.assertEqual(hidden["environment"] | {"SPECTROGRAM": "live"}, live["environment"])
+        self.assertEqual(live["environment"] | {"SCREENSHOT": "repeat"}, capture["environment"])
+        self.assertEqual(live["environment"]["SAMPLE_RATE"], "48000")
+
     def test_acceptance_requires_duration_and_each_planned_cell(self):
         plan = list(profile_cases([("demo-75", {}, [])], "both"))
         cases = [case | {"passed": True} for case in plan]

@@ -268,7 +268,12 @@ impl ScopeApp {
         &mut self,
         driver: &mut Driver,
     ) -> Result<(), String> {
-        self.check_scope_readout_layout(driver)?;
+        // The synthetic layout fixture temporarily sets Auto mode. Exercise it
+        // on the idle QA case so its resize cannot enqueue a real Scope request
+        // against the held measurement used by the integration case.
+        if self.core.is_none() {
+            self.check_scope_readout_layout(driver)?;
+        }
         let saved = (
             self.presentation.clone(),
             self.shell.clone(),

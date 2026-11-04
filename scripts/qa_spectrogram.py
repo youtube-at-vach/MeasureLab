@@ -1,4 +1,4 @@
-"""Compare Spectrogram/Cepstrogram Live/stress on selected routes, serially."""
+"""Compare STFT display modes and Generator display load, serially."""
 
 import argparse
 import hashlib
@@ -15,6 +15,8 @@ import time
 ROOT = Path(__file__).resolve().parent.parent
 PREFIX = "MEASURELAB_PROFILE_"
 STFT_SIZES = (1024, 2048, 4096, 8192, 16384, 32768)
+DEVICES = ("BlackHole 2ch", "BlackHole 16ch", "ZOOM UAC-232")
+GENERATOR_ACCEPTANCE_SECONDS = 600
 
 # Interaction gates, fixed before measuring. The intentional one-second UI
 # suspension is included in max interval, but never treated as an ordinary lag.
@@ -66,6 +68,20 @@ def routes(devices, basic=False):
         )
 
 
+def generator_display_route(device):
+    return (
+        "generator-" + device.lower().replace(" ", "-"),
+        {
+            "DEVICE": device,
+            "GENERATOR_DEVICE": device,
+            "COMPARISON": "1",
+            "SAMPLE_RATE": "48000",
+            "CHANNEL": "16" if device == "BlackHole 16ch" else "2",
+        },
+        [],
+    )
+
+
 def profile_cases(selected, analysis, sizes=(), sample_rate=None):
     """Keep each Live baseline adjacent to stress, with identical mode conditions."""
     analyses = ("spectrogram", "cepstrogram") if analysis == "both" else (analysis,)
@@ -74,7 +90,9 @@ def profile_cases(selected, analysis, sizes=(), sample_rate=None):
             pair = route + (f"-n{size}" if size is not None else "")
             for kind in analyses:
                 name = f"{pair}-{kind}" if analysis == "both" else pair
-                for mode in ("live", "stress"):
+                display_trial = "GENERATOR_DEVICE" in options
+                for display in ("hidden", "live", "capture") if display_trial else ("live", "stress"):
+                    mode = "live" if display == "capture" else display
                     case_options = {
                         "SPECTROGRAM": mode,
                         "SPECTRUM_MODE": "continuous",
@@ -82,6 +100,8 @@ def profile_cases(selected, analysis, sizes=(), sample_rate=None):
                         "KEEP_AWAKE": "1",
                         "FOREGROUND": "1",
                     } | options
+                    if display == "capture":
+                        case_options["SCREENSHOT"] = "repeat"
                     if sample_rate is not None:
                         case_options["SAMPLE_RATE"] = str(sample_rate)
                     case_options["FFT_SIZE"] = "32768" if case_options.get("SAMPLE_RATE") == "192000" else "8192"
@@ -90,7 +110,7 @@ def profile_cases(selected, analysis, sizes=(), sample_rate=None):
                     if kind == "cepstrogram":
                         case_options["CEPSTROGRAM"] = "1"
                     yield {
-                        "name": f"{name}-{mode}",
+                        "name": f"{name}-{display}",
                         "analysis": kind,
                         "mode": mode,
                         "comparison_key": f"{pair}-{mode}",
@@ -100,22 +120,19 @@ def profile_cases(selected, analysis, sizes=(), sample_rate=None):
                     }
 
 
-def metrics(log):
+def metrics(log, mode):
     def number(pattern):
         match = re.search(pattern, log)
         if match is None:
             raise ValueError(f"Missing QA metric: {pattern}")
         return float(match[1])
 
-    return {
+    values = {
         "ui_p95_ms": number(r"UI profile: .*?frame interval p95 ([\d.]+) ms"),
         "ui_frames": number(r"UI profile: (\d+) frames"),
         "ui_seconds": number(r"UI profile: .*?over ([\d.]+) s"),
         "ui_max_interval_ms": number(r"UI profile: .*?max ([\d.]+) ms"),
-        "response_p95_ms": number(r"Spectrogram response: .*?p95 ([\d.]+) ms"),
-        "response_max_ms": number(r"Spectrogram response: .*?max ([\d.]+) ms"),
-        "responses": number(r"Spectrogram response: (\d+) applied"),
-        "display_steps": number(r"Spectrogram (?:live|stress) QA OK: (\d+) display steps"),
+        "display_steps": number(r"Spectrogram (?:hidden|live|stress) QA OK: (\d+) display steps"),
         "gpu_uploaded_bytes": number(r"Spectrogram GPU payload: .*?, (\d+) uploaded bytes"),
         "peak_frame_mib": number(r"MiB retained / ([\d.]+) MiB peak frames"),
         "screenshots": len(re.findall(r"UI screenshot: dist/ui-smoke\.png", log)),
@@ -128,14 +145,54 @@ def metrics(log):
         "stft_cpu_ms": number(r"STFT profile: .*?worker CPU ([\d.]+) ms total"),
         "cepstrum_cpu_ms": number(r"Cepstrum extra log/inverse CPU: ([\d.]+) ms total"),
         "collector_cpu_ms": number(r"STFT history profile: .*?collector CPU ([\d.]+) ms total"),
-        "preparation_mean_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms mean"),
-        "preparation_max_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms max"),
         "sample_rate": number(r"STFT profile: (\d+) Hz"),
         "input_channels": number(r"STFT profile: .*?Hz, (\d+) ch"),
         "stft_size": number(r"STFT profile: .*?, (\d+)-point"),
         "channel": number(r"STFT profile: .*?CH (\d+)"),
         "hop": number(r"(?:Spectrogram|Cepstrogram) numerical QA OK: .*?hop (\d+)"),
     }
+    if mode != "hidden":
+        values |= {
+            "response_p95_ms": number(r"Spectrogram response: .*?p95 ([\d.]+) ms"),
+            "response_max_ms": number(r"Spectrogram response: .*?max ([\d.]+) ms"),
+            "responses": number(r"Spectrogram response: (\d+) applied"),
+            "preparation_mean_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms mean"),
+            "preparation_max_ms": number(r"Spectrogram preparation: .*?/ ([\d.]+) ms max"),
+        }
+    return values
+
+
+def assess_generator(log, values, edits):
+    spectrum = re.search(r"Spectrum final: .*?missing windows (\d+), input missing (\d+)", log)
+    skipped = re.search(r"Measurement worker: .*?, (\d+) skipped display updates", log)
+    callbacks = dict(re.findall(r"Generator (input|output) callback: .*?notifications (\d+)", log))
+    if not spectrum or not skipped or callbacks.keys() != {"input", "output"}:
+        return False
+    values["spectrum_missing_windows"], values["spectrum_input_missing"] = map(int, spectrum.groups())
+    values["skipped_display_updates"] = int(skipped[1])
+    values["input_notifications"] = int(callbacks["input"])
+    values["output_notifications"] = int(callbacks["output"])
+    if edits:
+        edit = re.search(r"Generator edits: (\d+) acknowledgements, p95 ([\d.]+) ms, maximum ([\d.]+) ms", log)
+        if not edit:
+            return False
+        values["edit_acknowledgements"], values["edit_p95_ms"], values["edit_max_ms"] = map(float, edit.groups())
+    return (
+        not any(
+            values[key]
+            for key in (
+                "spectrum_missing_windows",
+                "spectrum_input_missing",
+                "input_notifications",
+                "output_notifications",
+            )
+        )
+        and "Physical GUI finite Stop:" in log
+        and "Comparison independent input oracle OK:" in log
+        and "Generator output finite Stop:" in log
+        and "(streams released: true)" in log
+        and (not edits or (values["edit_acknowledgements"] == 100 and values["edit_p95_ms"] < 100))
+    )
 
 
 def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis="spectrogram", environment=None):
@@ -157,18 +214,19 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis
         )
     ):
         return False, {}
-    values = metrics(log)
+    values = metrics(log, mode)
     numerical = re.search(rf"{numerical_marker} (\d+) Hz, CH (\d+), N (\d+), hop (\d+),", log)
     if numerical is None:
         return False, values
-    passed = (
+    ui_passed = (
         values["ui_p95_ms"] <= UI_P95_MS
         and values["ui_max_interval_ms"] <= UI_MAX_INTERVAL_MS
         and seconds <= values["ui_seconds"] <= seconds + LIMITS["maximum_duration_overrun_seconds"]
         and values["ui_frames"] >= seconds * LIMITS["minimum_ui_frames_per_second"]
-        and values["response_p95_ms"] <= RESPONSE_P95_MS
-        and values["responses"] >= max(1, values["display_steps"] // 20)
-        and values["stft_rows"] >= 3
+        and values["surface_skips"] == 0
+    )
+    analysis_passed = (
+        values["stft_rows"] >= 3
         and all(
             values[key] == 0
             for key in (
@@ -176,22 +234,30 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis
                 "stft_input_dropped",
                 "stft_result_dropped",
                 "storage_dropped",
-                "surface_skips",
             )
         )
         and (analysis == "cepstrogram" or values["cepstrum_cpu_ms"] == 0)
         and tuple(map(int, numerical.groups()))
         == tuple(values[key] for key in ("sample_rate", "channel", "stft_size", "hop"))
     )
+    if mode == "hidden":
+        ui_passed = ui_passed and values["gpu_uploaded_bytes"] == 0
+    else:
+        ui_passed = (
+            ui_passed
+            and values["response_p95_ms"] <= RESPONSE_P95_MS
+            and values["responses"] >= max(1, values["display_steps"] // 20)
+        )
     if mode == "stress":
-        passed = (
-            passed
+        ui_passed = (
+            ui_passed
             and values["display_steps"] >= seconds * LIMITS["minimum_stress_steps_per_second"]
             and baseline is not None
             and values["ui_p95_ms"] <= baseline["ui_p95_ms"] + STRESS_EXTRA_MS
         )
     if screenshots:
-        passed = passed and values["screenshots"] >= seconds // 2
+        ui_passed = ui_passed and values["screenshots"] >= seconds // 2
+    passed = ui_passed and analysis_passed
     if environment is not None:
         size = int(environment.get("STFT_SIZE", min(int(environment.get("FFT_SIZE", "8192")), 32768)))
         hop = size // {"50": 2, "75": 4, "87.5": 8}[environment.get("STFT_OVERLAP", "75")]
@@ -213,6 +279,12 @@ def assess(log, mode, seconds, returncode, baseline, screenshots=False, analysis
             if audits:
                 values["output_attachment_notifications"] = int(audits[-1][0])
                 values["output_measured_notifications"] = int(audits[-1][1])
+        if "GENERATOR_DEVICE" in environment:
+            generator_passed = assess_generator(log, values, "GENERATOR_EDITS" in environment)
+            values["ui_passed"] = ui_passed and (mode == "hidden" or values["gpu_uploaded_bytes"] > 0)
+            values["analysis_passed"] = analysis_passed
+            values["generator_audit_passed"] = generator_passed
+            passed = passed and values["ui_passed"] and generator_passed
     return passed, values
 
 
@@ -274,7 +346,9 @@ def peak_rss(path):
 def manifest_passed(document):
     """Accept complete planned cells, never a short run or duplicate substitute."""
     cases = document["cases"]
-    minimum_seconds = 20 if document.get("acceptance_scope") == "basic" else 120
+    minimum_seconds = {"basic": 20, "generator-display": GENERATOR_ACCEPTANCE_SECONDS}.get(
+        document.get("acceptance_scope"), 120
+    )
     if not (
         cases
         and len(cases) == document["planned_cases"]
@@ -305,7 +379,10 @@ def audit_manifest(path):
     }
     baselines = {}
     for case in original["cases"]:
-        route, mode = case["name"].rsplit("-", 1)
+        route, legacy_mode = case["name"].rsplit("-", 1)
+        mode = case.get("mode", legacy_mode)
+        route = case.get("baseline_key", route)
+        environment = case.get("environment")
         log = (path.parent / case["log"]).read_text()
         try:
             passed, values = assess(
@@ -314,9 +391,9 @@ def audit_manifest(path):
                 original["duration_seconds"],
                 case["returncode"],
                 baselines.get(route),
-                original.get("repeated_screenshots", False),
+                original.get("repeated_screenshots", False) or "SCREENSHOT" in (environment or {}),
                 analysis=case.get("analysis", original.get("analysis", "spectrogram")),
-                environment=case.get("environment"),
+                environment=environment,
             )
             rss_value = peak_rss(path.parent / f"{case['name']}-rss.csv")
             if values:
@@ -380,20 +457,34 @@ def main():
     parser.add_argument("--physical-connection", help="Record the actual UAC-232 cabling and attenuation")
     parser.add_argument("--route", action="append", help="Run only named routes (repeatable)")
     parser.add_argument(
+        "--generator-display",
+        choices=DEVICES,
+        help="Compare normal Generator at 48 kHz with Spectrum, Spectrogram Live, and Live with repeated capture",
+    )
+    parser.add_argument(
         "--audit", type=Path, help="Reassess a saved manifest and logs with current gates; no audio is started"
     )
     parser.add_argument(
         "--device",
         action="append",
         default=[],
-        choices=["BlackHole 2ch", "BlackHole 16ch", "ZOOM UAC-232"],
+        choices=DEVICES,
         help="Opt in to device output; UAC-232 needs both output/input loop paths, <=0.1 FS peak, no DC",
     )
     args = parser.parse_args()
     if args.audit:
         raise SystemExit(0 if audit_manifest(args.audit.resolve()) else 1)
+    if args.generator_display:
+        if args.basic or args.screenshots or args.route or args.device or args.analysis != "spectrogram":
+            parser.error("--generator-display selects its own route, analysis, and screenshot conditions")
+        if args.sample_rate not in (None, 48000):
+            parser.error("--generator-display requires 48 kHz")
+        if args.generator_display == "ZOOM UAC-232" and not args.physical_connection:
+            parser.error("Record the actual stereo loopback wiring and attenuation with --physical-connection")
+    acceptance_scope = "generator-display" if args.generator_display else "basic" if args.basic else "extended"
+    minimum_seconds = GENERATOR_ACCEPTANCE_SECONDS if args.generator_display else 20 if args.basic else 120
     if args.seconds is None:
-        args.seconds = 20 if args.basic else 120
+        args.seconds = minimum_seconds
     if args.seconds < 20:
         parser.error("At least 20 seconds is required for complete stress cycles")
     if args.seconds > 3600:
@@ -404,11 +495,15 @@ def main():
     git = shutil.which("git")
     if git is None:
         parser.error("Git is required for source identification")
-    selected = [
-        route
-        for route in routes(dict.fromkeys(args.device), args.basic)
-        if args.route is None or route[0] in args.route
-    ]
+    selected = (
+        [generator_display_route(args.generator_display)]
+        if args.generator_display
+        else [
+            route
+            for route in routes(dict.fromkeys(args.device), args.basic)
+            if args.route is None or route[0] in args.route
+        ]
+    )
     if args.route and set(args.route) - {route[0] for route in selected}:
         parser.error("Unknown route (devices must also be explicitly selected with --device)")
     output = args.output.resolve()
@@ -418,6 +513,8 @@ def main():
     planned = list(profile_cases(selected, args.analysis, tuple(dict.fromkeys(args.stft_size or ())), args.sample_rate))
     for case in planned:
         case["environment"] |= {"SECONDS": str(args.seconds)}
+        if args.generator_display and args.seconds >= GENERATOR_ACCEPTANCE_SECONDS:
+            case["environment"]["GENERATOR_EDITS"] = "1"
         if args.screenshots:
             case["environment"]["SCREENSHOT"] = "repeat"
     patch = subprocess.check_output([git, "diff", "--binary", "HEAD"], cwd=ROOT)  # noqa: S603 - resolved Git, fixed arguments
@@ -449,8 +546,8 @@ def main():
         "os": platform.platform(),
         "duration_seconds": args.seconds,
         "repeated_screenshots": args.screenshots,
-        "acceptance_scope": "basic" if args.basic else "extended",
-        "acceptance_duration": args.seconds >= (20 if args.basic else 120),
+        "acceptance_scope": acceptance_scope,
+        "acceptance_duration": args.seconds >= minimum_seconds,
         "physical_connection": args.physical_connection,
         "limits": LIMITS,
         "planned_cases": len(planned),
@@ -470,6 +567,12 @@ def main():
         started = time.monotonic()
         command = [str(ROOT / "scripts/profile-stage2.sh"), name, *case["app_args"]]
         case_env["MEASURELAB_QA_BINARY"] = str(binary)
+        sampler_dir = ROOT / "dist/stage2-qa"
+        if "GENERATOR_DEVICE" in case_options:
+            sampler_dir = output / name
+            sampler_dir.mkdir()
+            case_env["MEASURELAB_QA_WORKDIR"] = str(sampler_dir)
+        rss = sampler_dir / f"{name}-rss.csv"
         oracles = (
             [ROOT / f"dist/stage4-macos-qa/physical-gui-oracle{suffix}.json" for suffix in ("", ".failure")]
             if "PHYSICAL_OUTPUT" in case_options
@@ -480,17 +583,19 @@ def main():
         try:
             result = run_profile(command, case_env, args.seconds + 90)
             log = result.stdout
+            raw_log = sampler_dir / f"{name}.log"
+            if result.returncode == 124 and "GENERATOR_DEVICE" in case_options and raw_log.is_file():
+                log = raw_log.read_text(encoding="utf-8") + "\n" + log
             passed, values = assess(
                 log,
                 mode,
                 args.seconds,
                 result.returncode,
                 baselines.get(case["baseline_key"]),
-                args.screenshots,
+                "SCREENSHOT" in case_options,
                 analysis=case["analysis"],
                 environment=case_options,
             )
-            rss = ROOT / f"dist/stage2-qa/{name}-rss.csv"
             rss_value = peak_rss(rss)
             if values:
                 values["peak_rss_mib"] = rss_value
@@ -501,7 +606,6 @@ def main():
             log += f"\n{error}\n"
             values, passed, returncode = {}, False, result.returncode
         (output / f"{name}.log").write_text(log, encoding="utf-8")
-        rss = ROOT / f"dist/stage2-qa/{name}-rss.csv"
         if rss.is_file():
             shutil.copy2(rss, output / rss.name)
         for oracle in oracles:

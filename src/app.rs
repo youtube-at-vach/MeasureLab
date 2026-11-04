@@ -709,11 +709,11 @@ impl ScopeApp {
         #[cfg(feature = "qa")]
         if app.profile.is_some() {
             if let Ok(mode) = std::env::var("MEASURELAB_PROFILE_SPECTROGRAM") {
-                if !matches!(mode.as_str(), "live" | "stress") {
-                    return Err("MEASURELAB_PROFILE_SPECTROGRAM must be live or stress".into());
+                if !matches!(mode.as_str(), "hidden" | "live" | "stress") {
+                    return Err(
+                        "MEASURELAB_PROFILE_SPECTROGRAM must be hidden, live or stress".into(),
+                    );
                 }
-                app.presentation
-                    .apply(Action::OpenSingle(Instrument::Spectrogram));
                 app.spectrogram_seconds = 60.0;
                 app.spectrogram_auto_color = true;
             }
@@ -1177,6 +1177,19 @@ impl ScopeApp {
                 app.select_view([true, false, false, false]);
                 app.qa_show(Instrument::Comparison);
             }
+        }
+        #[cfg(feature = "qa")]
+        if app.profile.is_some()
+            && let Ok(mode) = std::env::var("MEASURELAB_PROFILE_SPECTROGRAM")
+        {
+            // Apply the display condition after Generator has configured its
+            // usual views. Both profiles keep the same analysis workers active.
+            let instrument = if mode == "hidden" {
+                Instrument::Spectrum
+            } else {
+                Instrument::Spectrogram
+            };
+            app.presentation.apply(Action::OpenSingle(instrument));
         }
         #[cfg(feature = "qa")]
         if let Ok(zoom) = std::env::var("MEASURELAB_UI_SMOKE_ZOOM") {
@@ -6352,8 +6365,6 @@ impl eframe::App for ScopeApp {
                         "Cepstrum extra log/inverse CPU: {:.3} ms total",
                         self.stft.metrics.cepstrum_nanos.load(Ordering::Relaxed) as f64 / 1e6
                     );
-                    self.finish_spectrogram_profile(finished.as_ref());
-                    let numeric = self.stft_history.snapshot();
                     if let Some(render) = &frame.wgpu_render_state()
                         && let Some(renderer) = render
                             .renderer
@@ -6372,6 +6383,7 @@ impl eframe::App for ScopeApp {
                             assert!(renderer.peak_storage_bytes <= 32 * 1024 * 1024);
                         }
                     }
+                    let numeric = self.stft_history.snapshot();
                     println!(
                         "STFT history profile: {} retained frames, {:.3} s, {:.1} MiB retained / {:.1} MiB peak frames, {} retired, {} storage dropped, collector CPU {:.3} ms total",
                         numeric.frames().len(),
@@ -6389,6 +6401,7 @@ impl eframe::App for ScopeApp {
                             .load(Ordering::Relaxed) as f64
                             / 1e6,
                     );
+                    drop(numeric);
                     if std::env::var_os("MEASURELAB_PROFILE_DEMO_BIN_TONE").is_some() {
                         let snapshot = finished.as_ref().expect("known demo finite endpoint");
                         assert_eq!(snapshot.input_dropped, 0, "known demo acquisition loss");
@@ -6407,15 +6420,19 @@ impl eframe::App for ScopeApp {
                         }
                         println!("Internal Generator Spectrogram output stopped");
                     }
-                    if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_some() {
-                        self.finish_generator_profile(
-                            finished.as_ref().expect("Generator input endpoint"),
-                        )
-                        .expect("Generator profile audit failed");
-                    }
+                    let generator_audit =
+                        if std::env::var_os("MEASURELAB_PROFILE_GENERATOR_DEVICE").is_some() {
+                            self.finish_generator_profile(
+                                finished.as_ref().expect("Generator input endpoint"),
+                            )
+                        } else {
+                            Ok(())
+                        };
                     if let Some(mut fixture) = self.known_output.take() {
                         fixture.restore().expect("QA input rate restoration failed");
                     }
+                    self.finish_spectrogram_profile(finished.as_ref());
+                    generator_audit.expect("Generator profile audit failed");
                     println!("UI QA profile complete: finite result audited and input stopped");
                     self.profile = None;
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);

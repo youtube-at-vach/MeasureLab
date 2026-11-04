@@ -409,6 +409,16 @@ MVPの基本受け入れと、長時間・他の高負荷操作への耐性を�
 
 撮影を伴う比較は`qa_spectrogram.py`へ`--screenshots`を追加する。GPU読み戻しとPNG保存を約1秒ごとに反復し、完了した保存数も合否へ含める。直接profileを起動する場合は`MEASURELAB_PROFILE_SCREENSHOT=repeat`を使う。`STFT transport`はキューの最大使用ブロック数と初期化時間、撮影ログはGUI外での保存時間を記録する。実GPU読み戻し待ち・OS全体の停止とPNG保存を区別し、過去の長いGUI停止やGenerator入力欠落をこの修正だけで解決済みにしない。UAC-232の192 kHzは機器を接続して起動と、入出力停止・ストリーム解放後の再接続を再確認する。
 
+通常Generatorの表示負荷は`--generator-display`で切り分ける。48 kHzの同じ入出力・解析条件で、Spectrum単独（Spectrogram非表示）、Spectrogram単独Live、Live＋反復撮影を直列に実行する。3条件ともSpectrum・STFT・Lock-in・同期比較は連続解析する。非表示でもSTFTの保持結果を照合し、表示用ラスタとGPU転送が0であることを確認する。前面の要求からUI適用までの時間と、Generator編集の応答を別々に集計する。
+
+```sh
+./.venv/bin/python scripts/qa_spectrogram.py --generator-display "ZOOM UAC-232" \
+    --physical-connection "L-L TRS; R-R XLR with -20 dB attenuator" \
+    --output dist/generator-uac232-display-600
+```
+
+上の配線は例。実際の配線と減衰を指定し、接続変更は入出力停止・ストリーム解放後に行う。既定は各600秒・100編集で、`--seconds 20`は短縮試運転。`BlackHole 2ch`と`BlackHole 16ch`を指定した試運転は仮想経路として扱う。各条件のログ・RSS、独立照合、JSON／CSVと解放後のcallback監査は個別に保存する。ウィンドウを前面に保ち、並行ビルドや他の音声試験を避ける。
+
 高Fsの反復操作は、欠落なしだけでUI応答の受け入れにしない。Liveとの差、GPU転送量、UI更新間隔と操作感を確認する。意図したUI停止時間を最大フレーム間隔の退行と取り違えず、取得・FFT窓の欠落と表示更新の省略を区別する。
 
 ### Cepstrogramの検証
@@ -621,6 +631,8 @@ Intel Iris Pro Graphics 6200（BDW GT3）／Vulkanで同じ配布実行ファイ
 | 内部Generator、`6c6feaad`／2ch・48 kHz・f64 | 750 Hz・0.125／0.0625 FS peak・+30°、Scope／Spectrum／Lock-in、1秒UI受信停止・独立Stop・JSON／CSV・OFF復元を確認 |
 | 通常Generator実出力、`03622c6f`／BlackHole 2ch・16ch・UAC-232、48 kHz・f32 | 750 Hz・0.1／0.05 FS peak・+30°、Scope／Spectrum／Lock-in、独立Stop、JSON／CSV・OFF復元を条件付き確認。通常幅1440×860・狭幅900×660の旧GUI確認で、後の表示変更・DPI切り替えの確認ではない |
 | Generator連続評価、`4741b5dc`／同UAC-232配線・release QA・48 kHz・f32・1,024 frames・画面スリープ抑止 | 600秒指定・100編集、入出力通知と取得／Spectrum／STFT入力・結果・履歴保存の欠落0。1秒UI停止中も入出力・FFT・STFT収集が継続し、最終独立Lock-in／比較DFT・保持JSON／CSV・有限Stop・解放後監査まで通過。撮影・並行ビルド・別音声試験なし。最大UIフレーム間隔約29秒を観測し、表示応答の受け入れにはしない。Spectrogramの前面描画は対象外。証拠は上記manifestの`generator-600`とcallback report |
+| Generator表示負荷、`71601722`＋QA差分／release・desktop + qa・Metal、UAC-232・48 kHz・2ch・f32・1,024 frames、L-L TRS／R-R XLR（−20 dB、プリアンプ調整あり） | 非表示／前面Live／Live＋反復撮影を各600秒指定・100編集で実行。UI間隔p95は17.01／28.60／28.83 ms、最大1.004秒（意図的な1秒停止を含む）。前面の要求→UI適用p95は81.3／83.0 ms、撮影保存595件。取得・Spectrum・STFTの欠落、解放後の入出力通知、ウォームアップ後の画面取得省略は0。測定スナップショットの表示更新省略27／26／26件と、表示準備要求の置換0／124／1件を観測。STFT・Lock-in・同期比較の独立照合、JSON／CSV、有限Stopを確認。配布候補と実表示遅延は未確認。証拠は`dist/generator-uac232-display-600-20261104/manifest-audited.json`と条件別ログ・callback report |
+| 段階4.5／5の統合QA、`71601722`＋QA差分／同release QA・48 kHz、内部接続→BlackHole 2ch／16ch→同配線のUAC-232 | 通常Generatorの同じ入力窓の照合、独立Stop、JSON／CSVと同一プロセス内のOFF復元を確認。固定信号の保持QAは別プロセスでの設定・参照復元と再測定を確認。内部の保持保存＋操作QAは合成Scopeレイアウト試験の分離後にdev-fastで再確認。UAC-232は入出力停止・解放後に再接続し、固定信号で保存済み入力設定からの明示Startと数値照合、通常Generatorで新規測定と独立Stopを確認。固定信号の再接続後は接続待機区間の出力通知1件、測定区間0件。通常Generatorの設定を別プロセスでOFF復元してからの再測定は残る。証拠は`dist/generator-comparison-stage45-5-20261104*/`・`dist/generator-comparison-uac232-reconnected-20261104/`の各manifestとログ |
 | 廃止した実USB切断試験の過去記録、`83a0421b`／UAC-232・48 kHz・2ch・f32・dev QA | ERROR保持・入力停止・出力解放、再接続と同じ出力条件の復元でOFFを観測。安全制約により今後の抜去試験・反復抜去は実施しない。停止・解放後の安全な再接続と明示Start後の再測定は別に未確認 |
 | 同期比較、`83a0421b`／Software Loopback・48 kHz・750 Hz、N=4,096・平均4 | ゲイン0.5・+30°、CH交換で2.0・−30°、有限Stop・保存・OFF復元・再測定を確認。この旧SHAの結果を現行版の受け入れへ代用しない |
 
