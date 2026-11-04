@@ -21,6 +21,7 @@
 | 対象 | 正本 |
 | --- | --- |
 | PCM入力・可変callback・CH・Fs・有限終端 | [audio.rs](../../src/audio.rs)、[measurement.rs](../../src/measurement.rs) |
+| 取得バックログ処理中の空き返却 | [measurement.rs](../../src/measurement.rs)の`capture_drain_returns_slots_early_without_extending_the_snapshot`。満杯のキューを消費中に空いた枠へ再投入でき、再投入分は次のpollで入力順に処理されることを確認 |
 | 履歴・トリガー・Scope統計・Single／Autoset・XY | [signal.rs](../../src/signal.rs)、[acquisition.rs](../../src/acquisition.rs)、[xy.rs](../../src/xy.rs)、[cursor.rs](../../src/cursor.rs) |
 | Spectrumの全サイズ・窓・精度・独立FFT／Parseval・校正、ESDのパルス窓長不変性・白色雑音 | [spectrum.rs](../../src/spectrum.rs)、[ESD数値テスト](../../src/spectrum/esd_tests.rs)、[calibration.rs](../../src/calibration.rs) |
 | 全窓／最新窓、欠落、UI受信停止・世代・有限Stop、STFT | [spectrum_worker.rs](../../src/spectrum_worker.rs)、[stft.rs](../../src/stft.rs)、[measurement.rs](../../src/measurement.rs) |
@@ -69,7 +70,28 @@ done
 
 `MEASURELAB_STRESS_ANALYSIS`は既定`spectrogram`、`MEASURELAB_STRESS_STFT_SIZE`は既定1024点で既存の全窓長、`MEASURELAB_STRESS_OVERLAP`は`50`／`75`／`87.5`（既定）を指定できる。レポートには実適用した解析条件・アルゴリズム、追加対数／逆FFTと履歴収集の処理時間、履歴・フレームの容量、最後の整数窓区間も保持する。Spectrogramの追加対数／逆FFT時間は0であることを検査する。入力レート・CH数・競合数・時間・窓長・Overlapを変更し、同一バイナリと条件で両モードを直列比較する。試験中はビルド・他の音声試験を並行実行せず、OS／CPU・Rust版・ソース差分・実行ファイル識別とログを`dist/`へ保存する。
 
-実入力と同じワーカーへの模擬フレーム供給であり、OSの音声callback・物理入出力・GPU／表示応答の受け入れは別に行う。STFTは短時間の取得滞留に備える固定容量と、小さいFFTの高い行頻度に対応する小容量行の追加プールを持つ。大きいFFTは従来のフルサイズ行だけを使い、持続的な処理能力超過では欠落を明示する。CPU側の既定メモリ上限は容量テストで確認する。容量・負荷条件・許容差の正本はコードとする。
+実入力と同じワーカーへの模擬フレーム供給であり、OSの音声callback・物理入出力・GPU／表示応答の受け入れは別に行う。取得・解析・収集は次の境界で判定する。
+
+| 段階 | 転送・処理の上限と欠落指標 |
+| --- | --- |
+| 共通取得 | [audio.rs](../../src/audio.rs)の取得キューは最大262,144フレーム（768 kHzで約341 ms分）。[measurement.rs](../../src/measurement.rs)はpoll開始時に読み取り件数を固定し、最大256フレームごとに使用済みの枠を返す。poll中に追加されたフレームは次回扱う。`input_dropped`は共通取得の欠落 |
+| STFT入力・解析 | [stft.rs](../../src/stft.rs)へ選択1chのf64と元の整数サンプル位置を送る。1,025ブロック、各最大256フレーム（部分ブロックあり）。`stft_missing`はこの転送で欠落したフレーム数で、共通取得の欠落は含まない。位置が飛んだら新たな完全窓まで待つ。Spectrumと共通の順方向FFTで正規化したパワーを求め、Cepstrogramでは相対対数下限とf64逆FFTを適用して符号付き係数を出す |
+| STFT結果・履歴 | 4,096点以下は640行、それより大きい窓は128行の結果プールを使う。別ワーカーの[履歴収集](../../src/spectrogram/history.rs)が数値行を保持して枠を返し、UIへスナップショットを公開する。履歴は120秒・96 MiB以内、保持参照を含むフレームの総量は192 MiB以内。`stft_result_dropped`と`stft_storage_dropped`を別に数える。表示更新の省略や古い履歴の通常の退役とは区別する |
+
+C4の上限探索（`dist/cepstrogram-contention-qa/manifest.json`）では、Intel i5-4690（4論理CPU）・macOS 14.8.9のrelease（GUI・qaなし）で、768 kHz・16chのCH 16・1,024点・hop 128（87.5%）・周期Hann・DC除去あり・f64（Cepstrogramの相対下限−160 dB）・競合3スレッド・各20秒を比較した。Cepstrogramで共通取得が51,165フレーム欠落し、連続時119,993行に対して119,585行を生成した。STFT転送・結果・履歴の欠落は各0、STFTキューの最大滞留は172ブロックだった。対のSpectrogramは取得・STFT各段の欠落0、119,993行だった。両モードとも有限Stopと再開後の数値照合を通過した。この結果は取得キューでの欠落を示す。個々のスケジューリング遅延やCepstrogram演算が原因だったかは特定できない。
+
+取得キューの全スナップショットを処理し終えるまで枠を返さないと、処理済みの枠も再利用できない。分割返却はその滞留を最大1バッチに抑える。C4条件を再比較する場合は、上の例を768,000 Hz・各20秒・`MEASURELAB_STRESS_REQUIRE_CONTINUOUS=false`に変更する。
+
+同じホストで`4b509192`のrelease（GUI・qaなし）と取得キューの分割返却差分を直列比較した。その他の条件は上記のC4と同じで、競合6スレッドも限界探索に加えた。ソース差分・バイナリ識別・各計数は`dist/capture-drain-contention/manifest.json`を参照する。
+
+| 解析・競合数 | 共通取得の欠落フレーム（変更前 → 変更後） | STFT転送の欠落フレーム（変更前 → 変更後） |
+| --- | ---: | ---: |
+| Spectrogram・3 | 0 → 0 | 0 → 0 |
+| Cepstrogram・3（1回目） | 0 → 8,335 | 0 → 0 |
+| Cepstrogram・3（2回目） | 3,599 → 0 | 16,120 → 0 |
+| Cepstrogram・6 | 151,892 → 129,596 | 0 → 0 |
+
+全試行でSTFT結果・履歴保存の欠落は0、Stopは最長122.57 msで完了し、再開後の独立数値照合・世代分離・旧保持結果の不変性を確認した。STFT転送キューが1,025ブロックに達したのは変更前のCepstrogram・競合3スレッドの2回目だけだった。この試行と競合6スレッドの変更前では、Lock-inで数えた欠落が共通取得の欠落を上回った。共通取得の欠落数は試行によって変わり、分割返却による実時間での欠落低減はこの比較からは確定できない。キュー容量・解析条件・欠落の扱いは変わらず、取得ワーカーが長く実行されない場合や持続的な処理能力超過では欠落し得る。768 kHzの無欠落運転は受け入れ未達で、実入出力での安定性は未確認。容量・負荷条件・許容差の正本はコードとする。
 
 ## GUI・入出力QAの再実行
 

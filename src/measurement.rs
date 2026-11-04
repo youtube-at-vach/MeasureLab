@@ -6,7 +6,7 @@ use crate::demo::Demo;
 use crate::{
     acquisition::{self, Acquisition},
     activity::Activity,
-    audio::Capture,
+    audio::{AudioFrame, Capture},
     calibration::{self, Reading},
     channel::{ChannelId, Pair, SCOPE_CHANNELS, ScopeChannels},
     comparison, comparison_worker, lockin, lockin_worker, loopback, output,
@@ -28,6 +28,7 @@ use std::{
 
 const SNAPSHOTS: usize = 3;
 const DISPLAY_INTERVAL: Duration = Duration::from_nanos(33_333_333);
+const CAPTURE_DRAIN_BATCH: usize = 256;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -1151,6 +1152,26 @@ impl Worker {
     }
 }
 
+fn drain_capture_snapshot(
+    consumer: &mut Consumer<AudioFrame>,
+    mut consume: impl FnMut(AudioFrame),
+) {
+    let mut remaining = consumer.slots();
+    while remaining != 0 {
+        let count = remaining.min(CAPTURE_DRAIN_BATCH);
+        // The sole consumer can still read its snapshot even if the producer
+        // appends more. Dropping each chunk iterator returns its slots before
+        // processing the next batch, rather than pinning the whole backlog.
+        let chunk = consumer
+            .read_chunk(count)
+            .expect("capture snapshot available");
+        for frame in chunk {
+            consume(frame);
+        }
+        remaining -= count;
+    }
+}
+
 fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
     let clock = Instant::now();
     match input {
@@ -1246,17 +1267,15 @@ fn poll_input(input: &mut Input, core: &mut Core, final_window: bool) {
             } else {
                 0
             };
-            let available = capture.consumer.slots();
-            if let Ok(chunk) = capture.consumer.read_chunk(available) {
-                for frame in chunk {
-                    core.push_frame(
-                        frame.sequence,
-                        &frame.samples[..capture.channels as usize],
-                        #[cfg(feature = "qa")]
-                        frame.available_at,
-                    );
-                }
-            }
+            let channels = capture.channels as usize;
+            drain_capture_snapshot(&mut capture.consumer, |frame| {
+                core.push_frame(
+                    frame.sequence,
+                    &frame.samples[..channels],
+                    #[cfg(feature = "qa")]
+                    frame.available_at,
+                );
+            });
             if final_window && core.acquisition.state != acquisition::State::Complete {
                 let retained_end = core.history.range().end;
                 if end > retained_end {
@@ -1335,11 +1354,47 @@ impl Drop for Worker {
 mod tests {
     use super::*;
     use crate::{
-        audio::{AudioFrame, Metrics as AudioMetrics},
+        audio::Metrics as AudioMetrics,
         signal::MAX_CHANNELS,
         spectrum::{Precision, Window},
     };
     use std::f64::consts::TAU;
+
+    #[test]
+    fn capture_drain_returns_slots_early_without_extending_the_snapshot() {
+        let capacity = 2 * CAPTURE_DRAIN_BATCH + 1;
+        let (mut producer, mut consumer) = RingBuffer::new(capacity);
+        let frame = |sequence: usize| AudioFrame {
+            sequence: sequence as u64,
+            samples: [0.0; MAX_CHANNELS],
+            #[cfg(feature = "qa")]
+            available_at: None,
+        };
+        for sequence in 0..capacity {
+            producer.push(frame(sequence)).unwrap();
+        }
+
+        let mut next = 0;
+        drain_capture_snapshot(&mut consumer, |received| {
+            assert_eq!(received.sequence, next as u64);
+            if next == CAPTURE_DRAIN_BATCH {
+                // Simulate capture refilling the first batch's slots before
+                // the measurement worker finishes processing the backlog.
+                for sequence in capacity..capacity + CAPTURE_DRAIN_BATCH {
+                    producer.push(frame(sequence)).unwrap();
+                }
+            }
+            next += 1;
+        });
+        assert_eq!(next, capacity);
+        assert_eq!(consumer.slots(), CAPTURE_DRAIN_BATCH);
+        drain_capture_snapshot(&mut consumer, |received| {
+            assert_eq!(received.sequence, next as u64);
+            next += 1;
+        });
+        assert_eq!(next, capacity + CAPTURE_DRAIN_BATCH);
+        assert_eq!(consumer.slots(), 0);
+    }
 
     fn finish(core: &mut Core) -> Snapshot {
         core.feeder.flush();
