@@ -351,6 +351,7 @@ def cases(devices=()):
     yield "io-calibration", True, {"SETTINGS": "calibration", "IDLE": "1", "ZOOM": "1.25"}
     yield "selected-details", True, {"VIEW": "spectrum", "DETAILS": "1", "ZOOM": "1.25"}
     yield "generator-internal", False, {"GENERATOR": "scope"}
+    yield "generator-internal-replay", True, {"GENERATOR": "scope", "GENERATOR_REPLAY": "1"}
     yield "comparison-internal", True, {"COMPARISON": "pair"}
     yield "lockin-all", True, {"LOCKIN": "all"}
     yield "lockin-pair", False, {"LOCKIN": "pair"}
@@ -359,6 +360,11 @@ def cases(devices=()):
     for device in devices:
         name = device.lower().replace(" ", "-")
         yield f"generator-{name}", False, {"GENERATOR": "scope", "GENERATOR_DEVICE": device}
+        yield (
+            f"generator-{name}-replay",
+            True,
+            {"GENERATOR": "scope", "GENERATOR_DEVICE": device, "GENERATOR_REPLAY": "1"},
+        )
         source = "PHYSICAL" if device == "ZOOM UAC-232" else "BLACKHOLE"
         yield f"held-{name}-save", False, {source: device, "COMPARE": "1"}
         yield f"held-{name}-replay", True, {source: device, "REPLAY": "1", "COMPARE": "1"}
@@ -399,14 +405,32 @@ def language_review_cases():
     return names
 
 
+def generator_replay_selection(requested, available):
+    """A replay always consumes a fresh successful producer from this invocation."""
+    requested = set(requested)
+    replays = {name: name.removesuffix("-replay") for name, _, options in available if "GENERATOR_REPLAY" in options}
+    if "generator-replay" in requested:
+        requested.remove("generator-replay")
+        requested.update(replays)
+    requested.update(replays[name] for name in tuple(requested) if name in replays)
+    return requested
+
+
+def generator_checkpoint(directory):
+    return {
+        name: hashlib.sha256((directory / name).read_bytes()).hexdigest() for name in ("settings.json", "results.json")
+    }
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/gui-redesign-qa")
+    parser.add_argument("--connection-note", help="Record physical wiring/attenuation in the QA manifest")
     parser.add_argument(
         "--case",
         action="append",
-        help="Run a named case, header-menus, instrument-menus, scope-review, spectrum-review, spectrogram-review, xy-review, generator-review, lockin-review, comparison-review or language-review (repeatable)",
+        help="Run a named case, generator-replay (save/restart/remeasure), header-menus, instrument-menus, scope-review, spectrum-review, spectrogram-review, xy-review, generator-review, lockin-review, comparison-review or language-review (repeatable)",
     )
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
@@ -425,7 +449,7 @@ def main():
     binary = args.binary.resolve()
     output = args.output.resolve()
     available = list(cases(dict.fromkeys(args.device)))
-    requested = set(args.case or [])
+    requested = generator_replay_selection(args.case or [], available)
     if "header-menus" in requested:
         requested.remove("header-menus")
         requested.update(name for name, _, _ in available if name.startswith("header-menu-"))
@@ -488,17 +512,29 @@ def main():
         "translation_metadata_sha256": hashlib.sha256((ROOT / "i18n/source-hashes.json").read_bytes()).hexdigest(),
         "os": platform.platform(),
         "devices": args.device,
+        "connection_note": args.connection_note,
         "screenshots_required": not args.assertions_only,
         "scope": "GUI events and internal/selected external QA; native monitor DPI and manual normal-build acceptance remain separate.",
         "cases": [],
     }
     failures = []
+    checkpoints = {}
     for name, compact, options in selected:
+        producer = name.removesuffix("-replay")
+        generator_case = name.startswith("generator-") and "GENERATOR" in options
+        directory = output / producer
+        if generator_case:
+            options = options | {"GENERATOR_ARTIFACTS": str(directory)}
         command = [str(binary), "--ui-smoke"] + (["--compact"] if compact else [])
         screenshot = ROOT / "dist/ui-smoke.png"
         screenshot.unlink(missing_ok=True)
         started = time.monotonic()
         try:
+            if "GENERATOR_REPLAY" in options:
+                if producer not in checkpoints:
+                    raise ValueError("Generator replay requires a successful save in this invocation")
+                if generator_checkpoint(directory) != checkpoints[producer]:
+                    raise ValueError("Generator replay checkpoint changed after save")
             result = subprocess.run(  # noqa: S603 - explicitly selected local QA binary; no shell
                 command,
                 cwd=ROOT,
@@ -541,7 +577,23 @@ def main():
                 passed = passed and f"Scope workflow UI OK: {options['SCOPE_FLOW']};" in log
             if "SCOPE_GENERATOR_VIEWS" in options:
                 passed = passed and "Generator view UI OK:" in log
+            if "GENERATOR" in options:
+                passed = passed and "Generator UI OK:" in log and "Comparison independent input oracle OK:" in log
+            if generator_case and passed:
+                checkpoint = generator_checkpoint(directory)
+                if "GENERATOR_REPLAY" in options:
+                    passed = (
+                        "Generator replay OFF OK:" in log
+                        and "Generator replay UI OK:" in log
+                        and checkpoint == checkpoints[producer]
+                    )
+                else:
+                    checkpoints[name] = checkpoint
             returncode = result.returncode
+        except (OSError, ValueError) as error:
+            log = f"GUI QA failed: {error}"
+            passed = False
+            returncode = None
         except subprocess.TimeoutExpired as error:
             log = f"GUI QA timed out: {error}"
             passed = False
@@ -562,6 +614,7 @@ def main():
                 "passed": passed,
                 "returncode": returncode,
                 "seconds": round(time.monotonic() - started, 3),
+                **({"checkpoint_sha256": checkpoints[producer]} if generator_case and producer in checkpoints else {}),
                 "log": f"{name}.log",
                 "screenshot": f"{name}.png" if screenshot.is_file() else None,
             }

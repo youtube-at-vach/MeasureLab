@@ -376,7 +376,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 高密度の波形・Spectrumは物理ピクセルごとの極値を保ち、細いピークを残します。Scope／Spectrum／XYと同期比較の横軸ラベルは文字幅と表示幅に応じて間引き、目盛線とデータの位置は維持します。WGSLで線分を展開し、STFTは変更行だけを循環テクスチャへ転送します。数値測定は表示集約・描画用f32から逆算しません。停止中は連続再描画と不要なGPU転送を省略します。
 
-通常はVSync、`--low-latency`で無効化します。PerformanceのUI fpsはUI更新頻度、Scope prep／Worker FFT／Spectrum prepはCPU処理時間で、GPU実行・実表示の遅延ではありません。残る評価は [PLAN](PLAN.md#継続する制限) に保持します。
+通常はVSync、`--low-latency`で無効化します。PerformanceのUI fpsはUI更新頻度、Scope prep／Worker FFT／Spectrum prepはCPU処理時間で、GPU実行・実表示の遅延ではありません。残る評価は [PLAN](PLAN.md#初回配布と分ける課題) に保持します。
 
 ## 同期2chの比較
 
@@ -392,7 +392,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 ## 検証・計測
 
-共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・過去の実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。CepstrogramとSpectrogramの実時間比較は [全窓長・Overlapと入力経路の実行表](VALIDATION.md#cepstrogramの検証) を使い、同じバイナリと入力条件でLive／Hold・表示操作・UI停止・有限Stopを確認します。通常の連続比較は各120秒以上とし、Software Loopbackと仮想16ch入力の実適用CH・数値・出力解放後の通知監査まで検査します。高Fs・16ch・CPU競合の解析継続と再開後の数値は、両モードを選べる [コア負荷試験](VALIDATION.md#コア解析の負荷耐性qa) で確認します。条件・許容差・合否はテストコードとQAのassertionを正本とします。
+共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。変更の影響を受けるケースを選び、同じソース・条件の証拠を再利用します。CepstrogramとSpectrogramの連続性・性能を評価する場合は [実時間比較](VALIDATION.md#cepstrogramの検証) を各120秒以上で行い、同じバイナリ・入力条件のLive／Hold・表示操作・UI停止・有限Stop、数値と解放後の通知を確認します。高Fs・16ch・CPU競合は必要時に [コア負荷試験](VALIDATION.md#コア解析の負荷耐性qa) を使い、通常の機能変更で全条件を一律再実行しません。条件・許容差・合否はテストコードとQAのassertionを正本とします。
 
 ## コードの入口
 
