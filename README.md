@@ -2,10 +2,8 @@
 
 [日本語](README.ja.md)
 
-[![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain)
-[![Windows release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml?query=event%3Apull_request)
-[![Linux release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml?query=event%3Apull_request)
-[![macOS release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml?query=event%3Apull_request)
+[![CI (main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain%20event%3Apush)
+[![PR package checks](https://img.shields.io/badge/PR_packages-Windows_%2F_Linux_%2F_macOS-64748b)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=event%3Apull_request)
 [![Rust 1.95+](https://img.shields.io/badge/Rust-1.95%2B-dea584?logo=rust&logoColor=white)](Cargo.toml)
 [![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/rust/PLAN.md)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-27d3a2)](LICENSE)
@@ -79,7 +77,7 @@ Generator and synchronous comparison remain experimental while integration accep
 
 The [download selector](https://youtube-at-vach.github.io/MeasureLab/download/?edition=rust&lang=en) distinguishes the Rust prototype from the final Python edition. Rust v0.10.0 is not yet published, and its download buttons remain disabled. Packaging is implemented for Windows 10/11 x64 Setup/ZIP, glibc 2.35+ Linux x86_64 AppImage/tar.gz, and macOS 13+ Intel/Apple Silicon DMGs. No Python or Rust installation is needed to run a binary. See the [binary installation guide](https://youtube-at-vach.github.io/MeasureLab/rust/en/install/) for permissions and signing limits. Package-level hardware acceptance is still pending.
 
-The release-build badges above show the latest pull-request package checks. These workflows build the normal desktop app, verify the packages and retain preview artifacts for 14 days. macOS checks cover both Intel and Apple Silicon. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for the remaining acceptance checks and release process.
+The CI badge shows the latest push result on `main`. The PR packages link opens pull-request CI runs, where Windows, Linux and macOS package jobs build the normal desktop app, verify the packages and retain preview artifacts for 14 days. Open a run to see its package results and artifacts. macOS checks cover both Intel and Apple Silicon. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for the remaining acceptance checks and release process.
 
 To build from source, use **Rust 1.95 or later** and the native prerequisites for your OS. The Rust prototype is available directly from `main`:
 
