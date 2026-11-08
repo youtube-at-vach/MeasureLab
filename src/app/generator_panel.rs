@@ -642,6 +642,16 @@ impl ScopeApp {
 
     #[cfg(feature = "qa")]
     pub(super) fn check_generator_ui(&mut self, mode: &str) -> Result<(), String> {
+        let directory = std::env::var_os("MEASURELAB_UI_SMOKE_GENERATOR_ARTIFACTS")
+            .map(std::path::PathBuf::from)
+            .unwrap_or_else(|| "dist/generator-qa".into());
+        std::fs::create_dir_all(&directory).map_err(|e| e.to_string())?;
+        let replay = std::env::var_os("MEASURELAB_UI_SMOKE_GENERATOR_REPLAY").is_some();
+        let result_stem = if replay {
+            "replayed-results"
+        } else {
+            "results"
+        };
         self.poll_audio();
         self.core = Some(measurement::Worker::new(self.stft.take_feeder()));
         self.source = Source::Generator;
@@ -691,8 +701,48 @@ impl ScopeApp {
         }
         settings.signals[1].phase_degrees = 30.0;
         let audio_device = std::env::var("MEASURELAB_UI_SMOKE_GENERATOR_DEVICE").ok();
-        if let Some(name) = &audio_device {
-            self.setup_generator_device(name, 48000, true)?;
+        let saved = if replay {
+            let saved = settings::load(&directory.join("settings.json"))?;
+            let generator = saved
+                .measurement
+                .generator
+                .as_ref()
+                .ok_or("Saved Generator configuration missing")?;
+            match (&generator.target, audio_device.as_deref()) {
+                (output::Target::Internal, None) if generator.use_as_input => {}
+                (output::Target::Audio { device_name, .. }, Some(name))
+                    if device_name == name && !generator.use_as_input => {}
+                _ => return Err("Saved Generator route does not match requested replay".into()),
+            }
+            if generator.nominal_sample_rate != 48_000
+                || generator.signals.signals.iter().any(|s| {
+                    s.waveform != generator::Waveform::Sine
+                        || s.frequency_hz != 750.0
+                        || s.amplitude_peak() > if audio_device.is_some() { 0.1 } else { 0.125 }
+                })
+            {
+                return Err("Saved Generator conditions are outside this QA fixture".into());
+            }
+            let deadline = Instant::now() + Duration::from_secs(5);
+            while self.busy
+                || (audio_device.is_some()
+                    && (self.devices.is_empty() || self.generator.devices.is_empty()))
+            {
+                self.poll_audio();
+                self.generator.poll();
+                if Instant::now() > deadline {
+                    return Err("Generator replay discovery timed out".into());
+                }
+                std::thread::sleep(Duration::from_millis(2));
+            }
+            self.reference = Some(Box::new(crate::results::load(
+                &directory.join("results.json"),
+            )?));
+            self.reference_label = "Generator reference from previous process".into();
+            self.restore_settings(saved.clone())?;
+            Some(saved)
+        } else if let Some(name) = &audio_device {
+            self.setup_generator_device(name, 48000, false)?;
             self.source = Source::Live;
             let deadline = Instant::now() + Duration::from_secs(5);
             while self.devices.is_empty() {
@@ -708,9 +758,11 @@ impl ScopeApp {
                 .position(|d| &d.name == name)
                 .ok_or("QA input device unavailable")?;
             self.requested_sample_rate = Some(48000);
+            None
         } else {
             self.generator.configure(settings);
-        }
+            None
+        };
         let deadline = Instant::now() + Duration::from_secs(5);
         while self.generator.pending {
             self.generator.poll();
@@ -719,11 +771,37 @@ impl ScopeApp {
             }
             std::thread::sleep(Duration::from_millis(2));
         }
-        if audio_device.is_none() {
+        assert!(self.generator.stopped());
+        if let Some(saved) = &saved {
+            assert!(!self.running());
+            assert_eq!(self.capture_settings()?.measurement, saved.measurement);
+            assert_eq!(
+                self.generator.status.settings,
+                saved.measurement.generator.as_ref().unwrap().signals
+            );
+            let generation = self.generator.status.output_generation;
+            std::thread::sleep(Duration::from_millis(100));
+            self.generator.poll();
+            self.poll_audio();
             assert!(self.generator.stopped());
-            self.generator.start();
+            assert!(!self.running());
+            assert_eq!(self.generator.status.output_generation, generation);
+            assert_eq!(
+                self.core
+                    .as_ref()
+                    .unwrap()
+                    .metrics
+                    .input_frames
+                    .load(Ordering::Relaxed),
+                0
+            );
+            println!(
+                "Generator replay OFF OK: input/output stopped; saved conditions applied before explicit Start"
+            );
+        } else {
+            self.comparison_settings.response_channel = self.lockin_settings.response_channel;
         }
-        self.comparison_settings.response_channel = self.lockin_settings.response_channel;
+        self.generator.start();
         self.start();
         let deadline = Instant::now() + Duration::from_secs(5);
         while self
@@ -776,7 +854,11 @@ impl ScopeApp {
         if audio_device.is_some() {
             crate::qa::physical_lockin::validate_generator(
                 &snapshot,
-                std::path::Path::new("dist/generator-qa/device-oracle.json"),
+                &directory.join(if replay {
+                    "replayed-device-oracle.json"
+                } else {
+                    "device-oracle.json"
+                }),
             )?;
             if audio_device
                 .as_ref()
@@ -798,7 +880,11 @@ impl ScopeApp {
         }
         crate::qa::comparison::validate(
             &snapshot,
-            std::path::Path::new("dist/comparison-qa/generator-ui-oracle.json"),
+            &directory.join(if replay {
+                "replayed-comparison-oracle.json"
+            } else {
+                "comparison-oracle.json"
+            }),
         )?;
         self.accept_snapshot(&mut snapshot);
         if audio_device.is_some() {
@@ -856,28 +942,50 @@ impl ScopeApp {
             );
             assert_eq!(self.generator.status.nominal_sample_rate, 48000);
             let state = self.generator.status;
-            std::fs::write("dist/generator-qa/device-output.json", serde_json::to_vec_pretty(&serde_json::json!({
+            std::fs::write(directory.join(if replay { "replayed-device-output.json" } else { "device-output.json" }), serde_json::to_vec_pretty(&serde_json::json!({
                 "target":self.generator.target, "applied_settings":state.settings,
                 "nominal_output_rate":state.nominal_sample_rate, "generation":state.output_generation,
                 "revision":state.revision, "applied_sample":state.applied_sample, "output_endpoint":state.next_sample,
                 "clock_relation":"Input and output sample positions are independent; no DAC/ADC latency calibration"
             })).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
         }
-        std::fs::create_dir_all("dist/generator-qa").map_err(|e| e.to_string())?;
-        let saved = self.capture_settings()?;
-        settings::save(
-            std::path::Path::new("dist/generator-qa/settings.json"),
-            &saved,
-        )?;
-        export::save(
-            std::path::Path::new("dist/generator-qa/results.json"),
-            &document,
-        )?;
-        crate::results::save_csv(
-            std::path::Path::new("dist/generator-qa/results.csv"),
-            &document,
-        )?;
-        let loaded = crate::results::load(std::path::Path::new("dist/generator-qa/results.json"))?;
+        if replay {
+            let reference = self.reference.as_ref().unwrap();
+            assert_eq!(reference.input.source, document.input.source);
+            assert_eq!(reference.input.channels, document.input.channels);
+            assert_eq!(
+                reference.lockin.as_ref().unwrap().result.settings,
+                document.lockin.as_ref().unwrap().result.settings
+            );
+            assert_eq!(
+                reference.comparison.as_ref().unwrap().result.settings,
+                document.comparison.as_ref().unwrap().result.settings
+            );
+            let lockin = crate::results::lockin_difference(reference, &document);
+            let comparison = crate::results::comparison_difference(reference, &document, 64);
+            if audio_device.is_none() {
+                let difference =
+                    lockin.ok_or("Generator replay does not match saved excitation")?;
+                assert!(difference.amplitude_peak.abs() < 1e-8);
+                assert!(difference.phase_degrees.abs() < 1e-6);
+                assert!(difference.gain.abs() < 1e-7);
+                let difference =
+                    comparison.ok_or("Generator replay comparison conditions changed")?;
+                assert!(difference.gain.abs() < 1e-7);
+                assert!(difference.phase_degrees.abs() < 1e-6);
+            } else {
+                // External output observations are on an independent clock;
+                // each run has its own same-input-window numerical oracle.
+                assert!(lockin.is_none());
+                assert!(comparison.is_none());
+            }
+            self.comparison_current = Some(Box::new(document.clone()));
+        } else {
+            settings::save(&directory.join("settings.json"), &self.capture_settings()?)?;
+        }
+        export::save(&directory.join(format!("{result_stem}.json")), &document)?;
+        crate::results::save_csv(&directory.join(format!("{result_stem}.csv")), &document)?;
+        let loaded = crate::results::load(&directory.join(format!("{result_stem}.json")))?;
         assert_eq!(loaded, document);
         self.generator.stop();
         if audio_device.is_some() {
@@ -891,9 +999,8 @@ impl ScopeApp {
             }
             std::thread::sleep(Duration::from_millis(2));
         }
-        self.restore_settings(settings::load(std::path::Path::new(
-            "dist/generator-qa/settings.json",
-        ))?)?;
+        self.restore_settings(settings::load(&directory.join("settings.json"))?)?;
+        let deadline = Instant::now() + Duration::from_secs(5);
         while self.generator.pending {
             self.generator.poll();
             if Instant::now() > deadline {
@@ -911,8 +1018,14 @@ impl ScopeApp {
             self.capture_results()?.external_output,
             document.external_output
         );
-        // Leave a live Generator alongside held measurements for the screenshot.
-        self.generator.start();
+        if replay {
+            println!(
+                "Generator replay UI OK: saved settings/reference from previous process, OFF restore, explicit Start, independent input/output Stop, same-window oracles, JSON/CSV roundtrip"
+            );
+        } else {
+            // Leave a live Generator alongside held measurements for the screenshot.
+            self.generator.start();
+        }
         println!(
             "Generator UI OK: {:?}, Scope/Spectrum/Lock-in, 1 s UI stall, independent input/output Stop, JSON/CSV roundtrip, OFF restore",
             self.generator.target
