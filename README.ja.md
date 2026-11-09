@@ -2,10 +2,8 @@
 
 [English](README.md)
 
-[![CI](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain)
-[![Windows release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_windows.yml?query=event%3Apull_request)
-[![Linux release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_linux.yml?query=event%3Apull_request)
-[![macOS release build](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml/badge.svg?event=pull_request)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/build_macos.yml?query=event%3Apull_request)
+[![CI (main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain%20event%3Apush)
+[![PR package checks](https://img.shields.io/badge/PR_packages-Windows_%2F_Linux_%2F_macOS-64748b)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=event%3Apull_request)
 [![Rust 1.95+](https://img.shields.io/badge/Rust-1.95%2B-dea584?logo=rust&logoColor=white)](Cargo.toml)
 [![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/rust/PLAN.md)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-27d3a2)](LICENSE)
@@ -79,7 +77,7 @@ Generatorと同期比較は統合評価中の実験段階です。応答測定�
 
 [ダウンロード画面](https://youtube-at-vach.github.io/MeasureLab/download/?edition=rust&lang=ja)でRustとPython最終版を区別します。Rust v0.10.0は未公開で、ダウンロードボタンは無効です。Windows 10／11 x64のSetup／ZIP、glibc 2.35以降のLinux x86_64のAppImage／tar.gz、macOS 13以降のIntel／Apple Silicon別DMGの作成は実装済みです。実行にはPython・Rustの導入は不要です。[バイナリ導入ガイド](https://youtube-at-vach.github.io/MeasureLab/rust/install/)で権限と署名状態を案内します。配布物での実機受け入れは未完了です。
 
-冒頭のリリースビルドバッジは、各OSの最新PRでのパッケージ検証結果を示します。通常デスクトップ版のビルドとパッケージ検証を行い、試用用の成果物を14日間保存します。macOSはIntelとApple Siliconの両方を確認します。残る受け入れ条件と公開手順は [公開準備](guide/rust/RELEASE_PREPARATION.md) を参照してください。
+CIバッジは`main`への最新pushの結果を示します。PR packagesリンクはPRのCI実行一覧を開きます。各実行内のWindows・Linux・macOSのジョブで通常デスクトップ版のビルドとパッケージ検証を行い、試用用の成果物を14日間保存します。検証結果と成果物は各実行を開いて確認できます。macOSはIntelとApple Siliconの両方を確認します。残る受け入れ条件と公開手順は [公開準備](guide/rust/RELEASE_PREPARATION.md) を参照してください。
 
 ソースから試す場合は **Rust 1.95以降** と各OSのビルド環境が必要です。Rustプロトタイプを`main`から取得できます。
 
