@@ -624,6 +624,16 @@ OS別には、利用可能な環境で次を確認し、未確認の環境・権
 
 ## コードで代替できない確認の要約
 
+### v0.10.0 配布候補の確認
+
+候補 `c984de4f` の通常release／desktop（qaなし）で、Windows x64 Setup／ZIP、Linux x86_64 AppImage／tar.gz、macOS Intel／Apple Silicon DMGの候補SHAとSHA-256を照合した。Windowsのインストール・修復・削除、LinuxのUbuntu 22.04／24.04／26.04での起動・ソフトウェアVulkan描画、macOSのDMGからコピーしたバンドルの起動検証は [候補ビルド](https://github.com/youtube-at-vach/MeasureLab/actions/runs/42605390842) を参照する。[候補SHAの必須CI](https://github.com/youtube-at-vach/MeasureLab/actions/runs/42604022870) も通過した。
+
+macOS 14.8.9／Intel Macでは、DMGからコピーした同一実行ファイルのMetal（AMD Radeon R9 M290X）描画と、CLIでのUAC-232の48 kHz・2ch入力、CH 1のSTFT窓順序を確認した。各2秒の取得で入力欠落0、STFT転送・結果欠落0だった。
+
+同じ配布アプリの通常GUIで、Generator内部ループバック（48 kHz・2ch・f64、1 kHz、−20／−26 dBFS peak）の同期比較を確認した。ゲイン0.5012、位相約0°、コヒーレンス1を表示し、入力だけを止めると結果を保持したまま出力が継続し、出力だけを止めると入力が継続してREF信号不足を表示した。通常幅・狭幅で値、単位、無効理由、停止操作を確認した。設定JSON・結果JSON／CSVを保存し、別プロセスで設定と参照結果を読み込み、入出力OFFのまま復元されたことと明示Start後の再測定を確認した。
+
+BlackHole 2chのGUI入出力ではmacOSがマイク許可を求めた。許可を完了していない試行では入力開始が `Unknown property` で失敗し、出力停止処理と通常終了が完了しなかったため、検証プロセスを終了した。許可後のBlackHole測定、UAC-232で励振から保存・復元まで通すGUI確認、他OSの実入出力、最終配布資産との一致は未確認。配布物と実行ファイルのSHA-256、ログ、保存結果はGit管理外の `dist/package-acceptance/c984de4fb1c7eb7f59389304607c577d50a240f3/` に保存した。
+
 ### Windowsネイティブでの開発環境と起動確認
 
 `a98a7d31`のRustソースを、Windows 10 Pro（10.0.19045 x64）／Apple iMac15,1・Core i5-4690・4論理CPU・32 GiB RAMで確認した。Rust 1.99.0のMSVC、Visual Studio Build Tools 2022 17.14.42／Windows SDK 10.0.26100.0、`dev-fast`・既定`desktop`・`qa`なしで`--help`、`--gpu-smoke`、通常GUI（`--compact`）のウィンドウ生成が成功した。GPU読み戻しは`Dx12 · AMD RADEON R9 M290X`（ドライバー15.200.1060.0）を使用した。この環境のハードウェア描画確認であり、測定性能の受け入れではない。ZOOM UAC-232と内蔵マイクの入力列挙も成功したが、入出力ストリームは開始していない。実画面のクリック操作、DPI切り替え、保存復元、長時間動作と配布パッケージは未確認。環境・バイナリSHA-256・起動／描画ログはGit管理外の`dist/windows10-native-setup/`に保存する。
