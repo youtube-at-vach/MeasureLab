@@ -245,7 +245,7 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/python -m pip install ruff
-      - name: Install catalog and GUI QA check tools
+      - name: Install QA and catalog check tools
         run: .venv/bin/python -m pip install -r requirements-i18n.txt
       - name: Check Python tools
         run: |
