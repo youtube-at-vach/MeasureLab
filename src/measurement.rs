@@ -2052,7 +2052,7 @@ mod tests {
                     format: "test f64".into(),
                     metrics: Arc::new(AudioMetrics::default()),
                 },
-                config.clone(),
+                config,
             );
             assert!(worker.stop().external_output.is_none());
             drop(producer);

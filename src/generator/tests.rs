@@ -616,9 +616,9 @@ fn routing_is_exclusive_changes_only_while_stopped_and_unused_channels_are_zero(
         engine.start(settings, 1).unwrap();
         for _ in 0..600 {
             let frame = engine.next_frame().unwrap();
-            for ch in 0..16 {
+            for (ch, &sample) in frame.samples.iter().enumerate() {
                 if ch != channels - 1 && !(channels > 1 && ch == 0) {
-                    assert_eq!(frame.samples[ch], 0.0);
+                    assert_eq!(sample, 0.0);
                 }
             }
         }

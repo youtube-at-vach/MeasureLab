@@ -74,8 +74,8 @@ fn known_integer_fractional_delay_and_gain_sign_keep_integer_clock() {
         assert_eq!(r.sample_range, origin..origin + 4096);
         assert_eq!(r.latest_window, origin + 3072..origin + 4096);
         assert_eq!(r.averaged_windows, 4);
-        for k in 4..=96 {
-            let b = &r.bins[k];
+        for (offset, b) in r.bins[4..=96].iter().enumerate() {
+            let k = offset + 4;
             assert_eq!(b.state, BinState::Valid);
             assert!((b.gain.unwrap() - gain.abs()).abs() < gain.abs() * 1e-7 + 1e-15);
             let h = Complex::from_polar(
