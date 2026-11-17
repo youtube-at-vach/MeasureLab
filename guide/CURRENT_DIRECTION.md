@@ -50,4 +50,4 @@
 
 現行文書は有効な状態を更新し、経過報告・テスト件数・完了手順を積み重ねない。テスト条件・許容差・合否はコード、履歴はGitとCHANGELOGへ置く。コードで再現できない実機確認だけをVALIDATIONへ短く残し、ログ・画像・manifestはGit管理外のQA成果物へ分離する。
 
-旧PythonのGUIガイド、`tech_docs/`、`.github/deepwiki/`は必要な測定上の参考だけを読む。計画項目はIssue作成・実装・マージ・タグ・公開の依頼を意味しない。
+旧Python版の設計を調べるときは[旧GUIガイド](MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)、[DeepWikiの履歴](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/.github/deepwiki/README.md)、[技術資料の履歴](https://github.com/youtube-at-vach/MeasureLab/tree/27887c319bfba4a682c451e22e7780b9572b2766/tech_docs/implementation)を参照する。計画項目はIssue作成・実装・マージ・タグ・公開の依頼を意味しない。

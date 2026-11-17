@@ -51,7 +51,7 @@ The measurement core uses **f64** after capture. An optional f32 FFT path has se
 
 | Scope + Spectrum | Experimental Lock-in |
 | --- | --- |
-| [![Scope with two acquired channels alongside a harmonic spectrum](.github/assets/readme/rust-scope-spectrum.png)](.github/assets/readme/rust-scope-spectrum.png) | [![Experimental Lock-in displaying amplitude and phase from Software Loopback](.github/assets/readme/rust-lockin.png)](.github/assets/readme/rust-lockin.png) |
+| [![Scope with two acquired channels alongside a harmonic spectrum](docs-rust/assets/workspace.png)](docs-rust/assets/workspace.png) | [![Experimental Lock-in displaying amplitude and phase from Software Loopback](.github/assets/readme/rust-lockin.png)](.github/assets/readme/rust-lockin.png) |
 | Inspect a waveform and its frequency content, with readouts and cursors inside the plots. | Explore reference-based amplitude and phase measurement with dedicated R/θ and X/Y views. |
 
 *Screenshots captured from the current Rust QA build. Scope/Spectrum uses synthetic fixtures; Lock-in uses Software Loopback. These illustrate the interface, not physical-device accuracy.*

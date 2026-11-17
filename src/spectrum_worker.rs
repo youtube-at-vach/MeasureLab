@@ -1018,7 +1018,7 @@ mod tests {
             assert!(!p.analyzer.is_ready());
             if size == BLOCK_FRAMES {
                 p.process(
-                    &block(config.clone(), recovered + size as u64 - 1, 1, 0.5),
+                    &block(config, recovered + size as u64 - 1, 1, 0.5),
                     &metrics,
                 );
             } else {
@@ -1084,7 +1084,7 @@ mod tests {
             }
             p.latest(false, &metrics);
             assert_eq!(p.info.updates, 1);
-            p.process(&block(config.clone(), size as u64, 1, 0.25), &metrics);
+            p.process(&block(config, size as u64, 1, 0.25), &metrics);
             p.last_latest -= observation_interval(size);
             p.latest(false, &metrics);
             assert_eq!(p.info.updates, 1);
