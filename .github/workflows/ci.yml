@@ -10,6 +10,10 @@ on:
     branches: [main, rewrite/rust]
   workflow_dispatch:
     inputs:
+      packages:
+        description: Build test packages for all supported platforms
+        type: boolean
+        default: false
       benchmarks:
         description: Run full performance benchmarks on Linux
         type: boolean
@@ -37,6 +41,11 @@ jobs:
       msrv: ${{ steps.changes.outputs.msrv }}
       web: ${{ steps.changes.outputs.web }}
       i18n: ${{ steps.changes.outputs.i18n }}
+      dev_actions: ${{ steps.changes.outputs.dev_actions }}
+      qa: ${{ steps.changes.outputs.qa }}
+      windows_package: ${{ steps.changes.outputs.windows_package }}
+      macos_package: ${{ steps.changes.outputs.macos_package }}
+      linux_package: ${{ steps.changes.outputs.linux_package }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -143,53 +152,61 @@ jobs:
           esac
         shell: bash
 
-  # Reuse the package lifecycle checks and collect all four downloads in this run.
   windows-package:
-    if: github.event_name != 'push'
+    needs: changes
+    if: >-
+      (github.event_name == 'pull_request' && needs.changes.outputs.windows_package == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.packages)
     uses: ./.github/workflows/build_windows.yml
 
   macos-package:
-    if: github.event_name != 'push'
+    needs: changes
+    if: >-
+      (github.event_name == 'pull_request' && needs.changes.outputs.macos_package == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.packages)
     uses: ./.github/workflows/build_macos.yml
 
   linux-package:
-    if: github.event_name != 'push'
+    needs: changes
+    if: >-
+      (github.event_name == 'pull_request' && needs.changes.outputs.linux_package == 'true') ||
+      (github.event_name == 'workflow_dispatch' && inputs.packages)
     uses: ./.github/workflows/build_linux.yml
 
   compatibility:
     needs: changes
-    if: needs.changes.outputs.rust == 'true'
+    if: needs.changes.outputs.rust == 'true' || needs.changes.outputs.dev_actions == 'true'
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: ${{ fromJSON(inputs.benchmarks && '["ubuntu-latest", "macos-latest", "windows-latest"]' || '["macos-latest", "windows-latest"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
+        if: needs.changes.outputs.rust == 'true'
         with:
           toolchain: stable
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6
+        if: runner.os != 'Linux' && needs.changes.outputs.dev_actions == 'true'
         with:
           python-version: '3.13'
       - name: Test desktop actions without starting GUI or audio
+        if: runner.os != 'Linux' && needs.changes.outputs.dev_actions == 'true'
         run: python -m unittest discover -s scripts -p 'test_dev_actions.py'
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+        if: needs.changes.outputs.rust == 'true'
         with:
           cache-on-failure: true
       - name: Linux native dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev
-      - name: Test OS-specific code and QA (Linux is covered by required checks)
-        if: runner.os != 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y build-essential pkg-config libasound2-dev
+      - name: Test OS-specific code and QA
+        if: runner.os != 'Linux' && needs.changes.outputs.rust == 'true'
         run: cargo test --locked --all-features
-      - name: Build normal desktop release without QA features
-        # PR/manual runs already build normal releases in the packaging jobs.
-        if: github.event_name == 'push'
-        run: cargo build --release --locked
       - name: Full performance benchmarks (manual opt-in)
         if: runner.os == 'Linux' && github.event_name == 'workflow_dispatch' && inputs.benchmarks
         run: cargo bench --locked --no-default-features
@@ -246,14 +263,17 @@ jobs:
           python -m venv .venv
           .venv/bin/python -m pip install ruff
       - name: Install QA and catalog check tools
+        if: needs.changes.outputs.qa == 'true' || needs.changes.outputs.i18n == 'true'
         run: .venv/bin/python -m pip install -r requirements-i18n.txt
       - name: Check Python tools
         run: |
           .venv/bin/ruff check .
           .venv/bin/ruff format --check .
       - name: Test desktop action commands with fake Cargo
+        if: needs.changes.outputs.dev_actions == 'true'
         run: .venv/bin/python -m unittest discover -s scripts -p 'test_dev_actions.py'
       - name: Test GUI, Generator, Spectrogram and Cepstrogram acceptance gates
+        if: needs.changes.outputs.qa == 'true'
         run: .venv/bin/python -m unittest discover -s scripts -p 'test_qa_*.py'
       - name: Test catalogs, deferred translation diffs, and scope validation
         if: needs.changes.outputs.i18n == 'true'

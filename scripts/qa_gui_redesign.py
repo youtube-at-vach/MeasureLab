@@ -368,6 +368,7 @@ def cases(devices=()):
         source = "PHYSICAL" if device == "ZOOM UAC-232" else "BLACKHOLE"
         yield f"held-{name}-save", False, {source: device, "COMPARE": "1"}
         yield f"held-{name}-replay", True, {source: device, "REPLAY": "1", "COMPARE": "1"}
+        yield f"scope-{name}-single", True, {source: device, "EXTERNAL_SINGLE": "1"}
 
 
 def language_review_cases():
@@ -427,11 +428,13 @@ def main():
     parser.add_argument("--binary", type=Path, default=ROOT / "target/release/measurelab")
     parser.add_argument("--output", type=Path, default=ROOT / "dist/gui-redesign-qa")
     parser.add_argument("--connection-note", help="Record physical wiring/attenuation in the QA manifest")
-    parser.add_argument(
+    selection = parser.add_mutually_exclusive_group(required=True)
+    selection.add_argument(
         "--case",
         action="append",
         help="Run a named case, generator-replay (save/restart/remeasure), header-menus, instrument-menus, scope-review, spectrum-review, spectrogram-review, xy-review, generator-review, lockin-review, comparison-review or language-review (repeatable)",
     )
+    selection.add_argument("--list-cases", action="store_true", help="List available case names without starting QA")
     parser.add_argument("--locale", choices=LOCALES, help="Render selected cases in this locale for visual review")
     parser.add_argument(
         "--assertions-only",
@@ -449,7 +452,11 @@ def main():
     binary = args.binary.resolve()
     output = args.output.resolve()
     available = list(cases(dict.fromkeys(args.device)))
-    requested = generator_replay_selection(args.case or [], available)
+    if args.list_cases:
+        for name, _, _ in available:
+            print(name)
+        return
+    requested = generator_replay_selection(args.case, available)
     if "header-menus" in requested:
         requested.remove("header-menus")
         requested.update(name for name, _, _ in available if name.startswith("header-menu-"))
@@ -476,7 +483,7 @@ def main():
     if "language-review" in requested:
         requested.remove("language-review")
         requested.update(language_review_cases())
-    selected = [case for case in available if args.case is None or case[0] in requested]
+    selected = [case for case in available if case[0] in requested]
     if requested - {case[0] for case in selected}:
         parser.error("Unknown case name")
     if args.locale:

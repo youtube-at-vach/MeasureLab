@@ -13,6 +13,22 @@ from qa_gui_redesign import cases, generator_replay_selection, main
 
 
 class GeneratorReplayAcceptance(unittest.TestCase):
+    def test_case_selection_is_required_and_listing_only_prints_available_names(self):
+        with patch("sys.argv", ["qa_gui_redesign.py"]), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(SystemExit) as rejected:
+                main()
+        self.assertEqual(rejected.exception.code, 2)
+
+        output = io.StringIO()
+        with (
+            patch("sys.argv", ["qa_gui_redesign.py", "--list-cases", "--device", "BlackHole 2ch"]),
+            patch("qa_gui_redesign.subprocess.run") as run,
+            contextlib.redirect_stdout(output),
+        ):
+            main()
+        run.assert_not_called()
+        self.assertIn("scope-blackhole-2ch-single", output.getvalue().splitlines())
+
     def run_pair(self, *, save_fails=False, replay_marker=True, rewrite_checkpoint=False):
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary).resolve()

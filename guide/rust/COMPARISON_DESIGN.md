@@ -1,6 +1,6 @@
 # 同期2ch比較の定義
 
-段階5の最初の用途は、同じ入力時計で取得したREF／SIGのゲイン・位相・遅延比較である。Generatorや描画へ依存しない。現在の確認範囲と完了判断は [PLAN](PLAN.md)、テストと実機QAの入口は [VALIDATION](VALIDATION.md) に保持する。
+同じ入力時計で取得したREF／SIGのゲイン・位相・遅延を比較する。Generatorや描画から独立して動作する。計画は[現在の方針](../CURRENT_DIRECTION.md)、テストと実機の範囲は[検証ガイド](VALIDATION.md)を参照する。
 
 ## 入力・窓・平均
 

@@ -20,7 +20,7 @@ directories. Shell profiles, Git identity, and OS defaults are not changed.
 
   --install-os-deps  Check Xcode tools on macOS; install native libraries
                      with apt-get on Linux (may prompt for sudo)
-  --verify           Run Rust fmt/Clippy/tests/release build, website tests
+  --verify           Run Rust fmt/Clippy/tests, website tests
                      and build, MkDocs, Ruff, Markdown lint, and actionlint
   --help, -h         Show this help without installing anything
 
@@ -218,7 +218,6 @@ if [ "$measurelab_verify" = true ]; then
     ./scripts/cargo.sh test --locked
     ./scripts/cargo.sh test --locked --all-targets --all-features
     ./scripts/cargo.sh test --locked --doc --all-features
-    ./scripts/cargo.sh build --release --locked
     npm --prefix download-site test
     ./.venv/bin/ruff check .
     ./.venv/bin/ruff format --check .

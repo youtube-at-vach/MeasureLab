@@ -5,7 +5,7 @@
 [![CI (main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain%20event%3Apush)
 [![PR package checks](https://img.shields.io/badge/PR_packages-Windows_%2F_Linux_%2F_macOS-64748b)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=event%3Apull_request)
 [![Rust 1.95+](https://img.shields.io/badge/Rust-1.95%2B-dea584?logo=rust&logoColor=white)](Cargo.toml)
-[![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/rust/PLAN.md)
+[![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/CURRENT_DIRECTION.md)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-27d3a2)](LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/youtube-at-vach/MeasureLab/badge)](https://securityscorecards.dev/viewer/?uri=github.com/youtube-at-vach/MeasureLab)
 
@@ -17,7 +17,7 @@ Turn your PC and audio interface into a place to explore signals. See the wavefo
 
 [![Rust manual](https://img.shields.io/badge/Rust_Manual-Read_online-2563eb?style=for-the-badge)](https://youtube-at-vach.github.io/MeasureLab/rust/en/)
 [![Try the prototype](https://img.shields.io/badge/Try_the_Prototype-Build_from_source-16856b?style=for-the-badge)](#try-the-prototype)
-[![Roadmap](https://img.shields.io/badge/Roadmap-See_whats_next-7c3aed?style=for-the-badge)](guide/rust/PLAN.md)
+[![Roadmap](https://img.shields.io/badge/Roadmap-See_whats_next-7c3aed?style=for-the-badge)](guide/CURRENT_DIRECTION.md)
 
 [![MeasureLab Rust Scope with instrument navigation and console tabs](.github/assets/readme/rust-workspace.png)](.github/assets/readme/rust-workspace.png)
 
@@ -62,7 +62,7 @@ The measurement core uses **f64** after capture. An optional f32 FFT path has se
 
 ## Where we are heading
 
-The next step is to make a small audio measurement lab dependable from input to saved result. The [roadmap](guide/rust/PLAN.md) grows from that foundation:
+The next step is to make a small audio measurement lab dependable from input to saved result. The [roadmap](guide/CURRENT_DIRECTION.md) grows from that foundation:
 
 1. **Finish the essentials.** Refine two-channel Scope/Spectrum workflows and evaluate calibration, long runs, real devices and the experimental Lock-in.
 2. **Evaluate generation and comparison together.** Validate the implemented Generator and synchronous gain/phase/delay comparison through internal, virtual and physical paths, including stop, disconnect and saved-result reuse.
@@ -90,7 +90,7 @@ cargo run --release --locked
 For a new macOS/Linux development environment, the [setup guide](guide/rust/SETUP.md) covers local tool installation:
 
 ```sh
-./scripts/setup_dev_env.sh --install-os-deps --verify
+./scripts/setup_dev_env.sh --install-os-deps
 source .tools/env.sh
 ./scripts/debug.sh
 ```
@@ -127,7 +127,7 @@ Try the prototype, share a measurement use case, report a reproducible issue, or
 
 For [bug reports](https://github.com/youtube-at-vach/MeasureLab/issues), include the edition and commit/version, OS/GPU, input device, sample rate, channel routing, FFT settings and reproduction steps. Use the [security policy](SECURITY.md) for vulnerabilities.
 
-For development, read [Current direction](guide/CURRENT_DIRECTION.md) → [implementation roadmap](guide/rust/PLAN.md). The stack is Rust, CPAL, RustFFT, egui/eframe and wgpu. CI covers static checks, normal/QA/headless numerical and regression tests, the minimum Rust version, workflows and documentation, with separate three-OS release builds. Local commands are in [Tool Usage Guide](.agents/workflows/tool_usage.md).
+For development, read [current direction and roadmap](guide/CURRENT_DIRECTION.md). The stack is Rust, CPAL, RustFFT, egui/eframe and wgpu. CI covers static checks, normal/QA/headless numerical and regression tests, the minimum Rust version, workflows and documentation, with package checks selected by the affected platform. Local commands are in [validation guide](guide/rust/VALIDATION.md).
 
 ## 📜 License
 

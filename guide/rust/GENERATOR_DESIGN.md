@@ -1,6 +1,6 @@
 # シグナルジェネレーターの設計契約
 
-通常Generatorのf64コア・内部接続・CPAL出力は実装済み。次の作業は [PLAN](PLAN.md#現在地と次の作業)、操作は [README](README.md#generatorの出力と内部ループバック)、テストと実機QAは [VALIDATION](VALIDATION.md)。この文書は信号・時計・制御・保存の契約を保持する。
+この文書はGeneratorの信号・時計・制御・保存の契約を保持する。次の作業は[現在の方針](../CURRENT_DIRECTION.md#現在地と次の作業)、操作は[README](README.md#generatorの出力と内部ループバック)、テストと実機QAは[検証ガイド](VALIDATION.md)を参照する。
 
 ## 範囲と信号
 

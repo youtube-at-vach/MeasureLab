@@ -1,6 +1,6 @@
 # MeasureLab の現在の方針
 
-**正確な測定を、無料で、すべての人へ。** PCを測定器として使い、測定条件と結果を再現できることを目指す。この文書は目的・判断・不変条件、[Rust PLAN](rust/PLAN.md) は現在の範囲と未完了条件を保持する。
+**正確な測定を、無料で、すべての人へ。** PCを測定器として使い、測定条件と結果を再現できることを目指す。
 
 ## 判断の優先順位
 
@@ -19,7 +19,6 @@
 ## 決定事項
 
 * Rust版を`main`で育てる。GUIはegui / eframe、描画はwgpu、I/OとDSPもRust。既存実装を基盤に、小さな検証単位で改善する。
-* Python最終版は`v0.9.1`／`archive/python-v0.9.1`。必要な仕様・測定手法だけを参考にし、旧版の構造・GUI方式・全機能移植を現行要件にしない。
 * Audio I/O・測定演算・描画・デバイス管理・ファイルI/Oの責務と実行を分離する。UI停止・非表示で取得・重要な解析・生成が止まらないことを条件にする。
 * 取得後のサンプル、履歴、校正、測定演算、Generatorの位相・振幅はf64基準。f32 FFTは精度と性能から明示的に選び、PCM・描画への変換は境界で行う。描画用f32を精密測定へ戻さない。
 * まず2chの測定用途を結果再利用まで仕上げる。1〜16ch同期入力を維持し、必要CHへ解析器を割り当てる。全CHの全解析を常時動かさない。
@@ -29,25 +28,39 @@
 
 ## 測定の不変条件
 
-* 物理デバイスの安全上の必須制約として、測定・出力中のUSB抜去試験は今後実施しない。機器を破損する可能性のある手順を受け入れ条件や未確認課題へ戻さない。接続変更は入出力の停止・ストリーム解放後に行い、エラー処理は模擬通知で確認する。
+* 物理機器の接続変更は、[停止・解放の手順](rust/VALIDATION.md#物理デバイスの安全制約)に従う。
 * 結果から入力世代、整数サンプル区間、CH、Fs、解析設定、校正の識別・版、欠落を追跡できるようにする。
 * 未取得・欠落・範囲外・未校正を正常値で代用しない。保持結果の条件を後から変更せず、入力変更・再開で旧世代を混ぜない。
 * コールバックで待機・ロック・動的確保・ファイルI/O・重い解析を行わない。転送・履歴・解析の容量を制限し、飽和時の欠落・無効化を結果へ伝える。
 * 表示更新の省略と入力・解析窓の欠落を区別する。連続解析・平均を描画回数へ結び付けず、不足した窓をゼロ埋めしない。
 * 公称Fsと校正された実レート、入力時計と出力時計、内部ループバックと物理経路を区別する。f64化だけでADC・時計の精度が上がるとは説明しない。
-* 内部演算→アプリ内Software Loopback→外部仮想I/O→物理デバイスの4層で確認する。内部デモや過去の成功を、別経路・現行リビジョンの検証へ代用しない。
+* 既知入力の内部演算、Software Loopback、外部仮想I/O、物理デバイスで確認範囲を区別する。
 
-## 文書の役割
+## 現在地と次の作業
 
-作業開始時は [AGENTS](../AGENTS.md) とこの文書、[PLAN](rust/PLAN.md) を読む。その後は対象に必要な文書・コードだけを参照する。
+Generatorで励振し、同期2chで応答を測り、結果を保存・復元する操作は実装済み。初回`v0.10.0`は実験段階のPrereleaseとし、次は同一SHAの候補で配布物・操作・文書・既知の制限を照合する。残作業は[公開準備](rust/RELEASE_PREPARATION.md#初回プロトタイプ配布前のタスク)、過去の観測は[実機確認](rust/VALIDATION.md#コードで代替できない確認の要約)を参照する。
 
-| 文書 | 読む場面 |
+## 後続の課題
+
+| 対象 | 残る範囲 |
 | --- | --- |
-| [Rust README](rust/README.md) | 操作・数値の意味・コードの入口を調べる |
-| [Generator設計](rust/GENERATOR_DESIGN.md)／[同期比較設計](rust/COMPARISON_DESIGN.md) | 対象機能の契約・数値定義を変更する |
-| [Tool Usage Guide](../.agents/workflows/tool_usage.md)／[VALIDATION](rust/VALIDATION.md) | 共通検証／機能別テスト・実機QAを実行する |
-| [公開準備](rust/RELEASE_PREPARATION.md)／[セットアップ](rust/SETUP.md) | 配布・サイト運用／開発環境を扱う |
+| 高Fs・多ch・高負荷 | UAC-232の192 kHz起動時STFT欠落、物理4〜16ch、768 kHz・CPU競合時の取得／解析欠落。768 kHzは設定上限 |
+| GUI | 実モニター間DPI、実表示遅延、最大設定・ディスクI/O負荷 |
+| 物理校正 | 実時計、物理振幅、CH間位相、出力、DAC／ADC絶対遅延、UAC-232小信号の位相変化 |
+| 保存の拡張 | Spectrogram／XY、カーソル、全CH長時間記録、Spectrum全生入力。現行範囲は[保持結果の書き出し](rust/README.md#保持結果の書き出し)を参照 |
 
-現行文書は有効な状態を更新し、経過報告・テスト件数・完了手順を積み重ねない。テスト条件・許容差・合否はコード、履歴はGitとCHANGELOGへ置く。コードで再現できない実機確認だけをVALIDATIONへ短く残し、ログ・画像・manifestはGit管理外のQA成果物へ分離する。
+### 最小の応答測定フロー
 
-旧Python版の設計を調べるときは[旧GUIガイド](MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)、[DeepWikiの履歴](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/.github/deepwiki/README.md)、[技術資料の履歴](https://github.com/youtube-at-vach/MeasureLab/tree/27887c319bfba4a682c451e22e7780b9572b2766/tech_docs/implementation)を参照する。計画項目はIssue作成・実装・マージ・タグ・公開の依頼を意味しない。
+初回配布の範囲とは別に、既存Generatorと同期2ch比較を使い、2ch REF／応答のFRF／Bodeを作る。
+
+* 入出力の所有権と手動操作との競合を定義し、完了・停止・失敗・復元時に出力停止を保つ。
+* 周波数点ごとに励振・整定・取得を行い、既知ゲインとフィルターを内部、仮想I/O、物理系で照合する。
+* 入力区間・校正・欠落・時計を追跡できる結果を保存し、同じ条件で再実行できるようにする。
+
+任意波形・スイープ／変調・同期／Mix、ESDとトリガーの連携、時間軸校正、歪み／IR／インピーダンス、外部ADC／MCP、表示拡張は、用途と妥当性を個別に検証してから計画する。
+
+## 設計と旧版の参照先
+
+現行の数値・実行契約は[Generator設計](rust/GENERATOR_DESIGN.md)と[同期比較設計](rust/COMPARISON_DESIGN.md)に置く。GUIは主要値・単位・有効性・停止操作をグラフの近くに置き、操作と結果の対応を見せる。
+
+Python最終版は`v0.9.1`／`archive/python-v0.9.1`。旧版の[GUI設計](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/guide/MEASUREMENT_INSTRUMENT_DESIGN_GUIDELINES.md)、[認知原則](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/guide/UIUX-Cognitive-Principles.md)、[DeepWiki](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/.github/deepwiki/README.md)、[技術資料](https://github.com/youtube-at-vach/MeasureLab/tree/27887c319bfba4a682c451e22e7780b9572b2766/tech_docs/implementation)は、測定手法や過去の設計を調べるときに使う。

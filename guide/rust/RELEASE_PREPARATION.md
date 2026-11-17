@@ -1,42 +1,21 @@
 # Rust プロトタイプの公開準備
 
-Rust版は`main`へ統合済みで、開発PRのbaseも`main`とする。ここには配布前の未完了条件と公開運用を置く。測定機能の受け入れは [PLAN](PLAN.md)、実機の確認範囲は [VALIDATION](VALIDATION.md) を参照する。mainへの統合、CIビルド、ローカル.app作成を配布済みとは扱わない。
+初回 `v0.10.0` はPrerelease、Latest=false。Python v0.9.1のLatestと `version.json` を維持する。Rust配布は `rust-release.json` で管理し、`published:false` の間はダウンロードを無効にする。タグ・Draft・公開は依頼された段階で進める。
 
-## 今回の作業範囲と検証の分担
-
-この文書は、進行中の実装とは別に、初回プロトタイプを公開するまでの残作業・成果物・完了条件を整理する正本とする。残作業の文章化と、実装修正・実機確認・公開操作の実施は別タスクとして扱う。
-
-* **エージェントが行うアプリの検証はmacOS（Intel）に集中する。** 代表的な測定から停止・保存・復元までを十分に確認し、既存の証拠と変更の影響から追加範囲を選ぶ。
-* **Windows・Linuxの確認はユーザーが行う。エージェントは不具合が報告された場合だけ、該当条件を調査・確認する。** 報告がない段階で両OSの網羅テストや再試験を追加せず、エージェントによる確認を公開前の必須条件にしない。
-* Apple Siliconの実機確認も今回のエージェント作業には追加しない。既存のarm64パッケージ作成は維持し、実機未確認の範囲を案内する。
-* 既存CI・パッケージ生成の仕組みは利用する。これらの成功とユーザーの実機確認を記録し、同じ条件の検証をエージェントが重ねない。テストマトリクスやCIの変更は今回の作業に含めない。
-
-以降のOS別手順は配布方法と必要時の参照資料であり、全OSの試験をエージェントへ割り当てるものではない。現在のIntel Macで実施できない手動GUI・実モニター間DPI操作は、既存の [環境除外](VALIDATION.md#検証対象環境と既存成果物) を維持し、公開待ちの条件へ戻さない。
-
-## 初回公開に向けた準備範囲
-
-現在はリリース日・公開実行を決めず、公開できる状態への準備を進める。タグ作成・Draft作成・公開・Latest変更は依頼された段階で行う。
-
-* 配布候補はWindows 10／11 x64、glibc 2.35以降のLinux x86_64、macOS 13以降のIntel／Apple Silicon。形式は下記の既存パッケージを使う。ビルド下限と実機の確認済みOS・CPU・経路を区別し、未受け入れの組合せを動作保証へ広げない。
-* 初回の機能案内は1〜16ch入力、4ch Scope／Spectrum、Spectrogram／Cepstrogram／XY、校正・条件付き保存復元を基本とする。Generator・Lock-in・同期2ch比較は実装済みだが実験段階と明記する。Generator／同期比較の最大Fs・反復再接続・長時間・物理校正を受け入れ済みとはしない。[PLAN](PLAN.md#現在地と次の作業) の代表条件での統合評価は完了しており、その結果を引き継ぐ。FRF／Bode等の新機能を初回準備の必須条件へ加えない。
-* 配布物の通常GUI、入出力の独立停止、保存復元・OFF復元は公開候補で短く確認する。エージェントはmacOS Intel、Windows・Linuxはユーザーが確認する。精度・継続性は対象ソースと条件を識別した開発QAを使い、各OS・CPU・配布形式で同じ数値試験を繰り返さない。既知の欠落や高負荷停止、未確認環境は制限として案内する。
-* 初回は現在の署名状態を案内して準備する。WindowsはAuthenticode未署名、Linuxは発行元署名なし、macOSはad-hoc署名・Developer ID署名／公証なし。署名・公証の追加は後続改善とし、チェックサムとbuild-infoを発行元認証と説明しない。Sigstore・統合チェックサム・VirusTotalは任意の改善候補で、旧処理を自動復活させない。
-* 初回`v0.10.0`は**Prerelease、Latest=false**とする。Python v0.9.1のLatestと`version.json`を維持し、Rustは`rust-release.json`で別に管理する。公開前の`published:false`ではRustのダウンロードボタンを無効にする。
+配布対象はWindows 10／11 x64、glibc 2.35以降のLinux x86_64、macOS 13以降のIntel／Apple Silicon。初回の機能範囲は[現在の方針](../CURRENT_DIRECTION.md)、実機で観測した条件は[検証ガイド](VALIDATION.md#コードで代替できない確認の要約)を参照する。Generator・Lock-in・同期2ch比較は実験段階と案内する。
 
 ## 初回プロトタイプ配布前のタスク
 
-配布の仕組みを作り直す段階ではない。Windows Setup／ZIP、Linux AppImage／tar.gz、macOS Intel／arm64 DMG、チェックサム・build-info、共通Draft Release、Python／Rustのダウンロード分離、マニュアルと不具合報告窓口は実装済み。ローカルで確認した公開設定はCargo `0.10.0`、`rust-release.json`が`published:false`、Pythonの`version.json`が`0.9.1`である。候補SHA・最終配布物・GitHub上のRelease／Pagesの状態は別途確定する。
-
-以下は未完了の残作業であり、文書へ記載しただけでは完了にしない。R1〜R6を公開前に整え、R7〜R8は公開を依頼された段階で実行する。
+既存のOS別パッケージ、build-info・チェックサム、Release workflowを使う。R1〜R6を公開前に整え、R7〜R8は公開の依頼後に実行する。
 
 | 順序 | 残作業・対象 | 成果物と完了条件 |
 | --- | --- | --- |
-| R1 | 公開範囲と候補を確定する：[PLAN](PLAN.md)、[Cargo.toml](../../Cargo.toml) | 進行中の実装から初回へ含める変更と版を決め、公開用文書を揃えた時点で配布候補SHAを固定する。段階4.5／5の評価結果を引き継ぎ、この配布準備で同じ実装・評価を二重に進めない。Generator・Lock-in・同期比較は実験段階とし、新機能を追加の公開条件にしない |
+| R1 | 公開範囲と候補を確定する：[現在の方針](../CURRENT_DIRECTION.md)、[Cargo.toml](../../Cargo.toml) | 進行中の実装から初回へ含める変更と版を決め、公開用文書を揃えた時点で配布候補SHAを固定する。段階4.5／5の評価結果を引き継ぎ、この配布準備で同じ実装・評価を二重に進めない。Generator・Lock-in・同期比較は実験段階とし、新機能を追加の公開条件にしない |
 | R2 | 既知問題の扱いを決める：[確認済みの条件と制限](VALIDATION.md#コードで代替できない確認の要約) | 代表条件で測定を完遂できない問題、保存結果の誤り、独立Stop／OFF復元の不具合は修正対象として切り出す。高Fs・高負荷・未校正条件は再現条件、回避策または推奨条件、未確認範囲を記した公開説明にまとめる。UAC-232の48 kHz表示負荷QAで過去の長い停止が再現しなかったことと、192 kHz起動欠落・小信号位相の未解決を区別する |
 | R3 | 利用者文書を現行仕様へ揃える：[README日英](../../README.ja.md)、[Rustマニュアル](../../docs-rust/index.md)、[詳細操作](README.md) | README日英のGenerator「2信号の正弦波」を最大16カード・Sine／Square／Triangle／Noiseへ更新する。Spectrogram内のCepstrogram、入出力の独立開始・停止、結果保存の対象と制限を各入口で一貫して案内する。通常の開始→観察→停止→保存を既存クイックスタートから辿れ、必要な画像だけ現行Rust画面と照合する |
 | R4 | 同梱説明と保存形式を揃える：[packaging/](../../packaging/)、[CHANGELOG](../../CHANGELOG.md)、[配布受け入れ手順](VALIDATION.md#配布パッケージの受け入れ) | macOS／Linuxの同梱READMEにある「要求時だけ設定を保存」を、現行の設定自動保存・停止中復元と、利用者が明示保存する結果に分けて直す。設定版11（旧1〜10）・結果JSON版7（旧1〜6）を [settings.rs](../../src/settings.rs)／[export.rs](../../src/export.rs) と照合し、CHANGELOGと受け入れ手順の旧v9／v6表記を更新する |
 | R5 | リリースノートを仕上げる：[CHANGELOGのv0.10.0節](../../CHANGELOG.md) | 機能・互換性・実験段階・署名状態・推奨条件・未確認範囲を記す。古い約29秒のUI停止と、その後の48 kHz表示負荷QAの結果を区別し、確認済みの安全な再接続と通常Generatorの別プロセスOFF復元・再測定を反映する。公開日が決まったらタグ作成前にUnreleasedを公開日へ変更し、既存の抽出処理でDraft説明へ渡せる状態にする |
-| R6 | 配布候補を揃え、Intel Macの確認を終える：[既存workflow](../../.github/workflows/release.yml)、[最小確認セット](#公開前の最小確認セット) | 候補の既存CI結果と全14資産の版・CPU・通常desktop／qaなし・ソース識別・ハッシュ・同梱物を照合する。macOS Intelの配布物に必要な確認を行い、Windows・Linuxはユーザーの確認結果を受け取る。不具合が報告された場合だけ該当OSを調査する。未確認の組合せは明記し、エージェントの全OS再試験を条件にしない |
+| R6 | 配布候補を揃え、利用可能な環境で確認する：[既存workflow](../../.github/workflows/release.yml)、[最小確認セット](#公開前の最小確認セット) | 候補の既存CI結果と全14資産の版・CPU・通常desktop／qaなし・ソース識別・ハッシュ・同梱物を照合する。利用可能なmacOSの配布物を確認し、Windows・Linuxはユーザーの確認結果を受け取る。不具合が報告された場合だけ該当OSを調査する。未確認の組合せは明記し、エージェントの全OS再試験を条件にしない |
 | R7 | タグ・Draftを作り公開する：[公開運用](#公開候補の通し確認と公開運用) | 依頼後にCargoと一致するタグと共通Draftを作り、最終資産・リリースノート・Prerelease=true・Latest=falseを確認して公開する。Python v0.9.1のLatestを維持する。既存workflowの成功を使い、最終資産と受け入れた実行ファイルが同じことを確認する |
 | R8 | ダウンロードと案内を公開版へ切り替える：[rust-release.json](../../rust-release.json)、[配布サイト](../../download-site/)、[Rustマニュアル](../../docs-rust/install.md) | Releaseの全資産を取得できた後に`published:true`へ変更し、README日英・Rust導入案内の「未公開／ソースのみ」を公開状態へ揃える。サイトと文書の既存チェックを通し、依頼後にPagesへ反映する。公開URLの新旧切り替え・全6パッケージ・チェックサム・マニュアル・報告窓口を確認する。Pythonの配布と既存URLは維持する |
 
@@ -48,16 +27,12 @@ FRF／Bode・THD／IR・VST3、旧Python版の全機能移植、Generatorのス�
 
 ## 公開前の最小確認セット
 
-これはR6のmacOS（Intel）で行う確認範囲であり、残作業全体をテストの完了待ちへ置き換えるものではない。P0は公開前必須、P1は必要に応じて確認する後続課題とする。配布物は同一候補SHAの通常release／desktop・qaなしを使い、起動・停止・保存復元を短く通す。精度・欠落・エラー処理は既存の自動テストと対象ソース・条件が一致する開発QAを再利用する。QA版での成功を配布実行ファイルの起動・操作確認と読み替えない。文書だけの更新では、実装・依存・ビルド条件の変更がないことを確認し、Rust全検証や実機評価を重複実行しない。
-
-現在のIntel MacではGUI操作手段の技術的制約により、手動GUI操作チェックと実モニター間DPI操作を検証計画から除外する。この環境では該当するP0／P1の手動操作を公開前の未完了条件に数えず、対象外と記録する。実行可能な自動QA・数値・連続動作評価、配布物と実入出力の条件は維持する。手動操作のためだけにWindows・Linuxへ確認を広げない。詳細は [検証対象環境](VALIDATION.md#検証対象環境と既存成果物) を参照する。
-
-測定・出力中のUSB抜去は [安全上の必須制約](VALIDATION.md#物理デバイスの安全制約) により実施しない。以下の再接続は入出力停止・ストリーム解放後に限る。抜去試験を公開前条件へ戻さない。
+同一候補SHAの通常release／desktop・qaなしで、起動・独立Stop・保存とOFF復元を短く確認する。初回候補のエージェント確認は利用可能なmacOS環境、Windows・Linuxはユーザー確認と不具合報告に応じた調査を対象とする。旧Intel環境で操作できなかった手動GUIと実モニター間DPI、Apple Silicon実機などは、実施範囲を判定に添える。[既存証拠の再利用](VALIDATION.md#検証対象環境と既存成果物)と[物理機器の停止・解放](VALIDATION.md#物理デバイスの安全制約)に従う。
 
 | 優先 | 項目 | 完了・判断の基準 |
 | --- | --- | --- |
 | P0 | Generator→同期2ch比較の代表条件 | 48 kHzの内部・BlackHole・UAC-232で同じ入力窓の独立照合、独立Stop、JSON／CSV・別プロセスOFF復元・明示Start後の再測定。REF／SIG交換、低REF・欠落、ERROR保持・解放は既存の自動QAを使う |
-| P0 | 配布物の短い通し確認 | macOS Intelで入出力選択→測定→独立停止→保存→再起動・OFF復元を行う。通常幅・狭幅の主要値・単位・無効理由・停止操作を確認する。変更のない全メニュー・カード操作・波形・配色の網羅を繰り返さない |
+| P0 | 配布物の短い通し確認 | 利用可能なmacOSで入出力選択→測定→独立停止→保存→再起動・OFF復元を行う。通常幅・狭幅の主要値・単位・無効理由・停止操作を確認する。変更のない全メニュー・カード操作・波形・配色の網羅を繰り返さない |
 | P0 | OS／CPU別パッケージとCI | 配布対象のWindows MSVC Setup／ZIP、Linux AppImage／tar.gz、macOS Intel／arm64 DMGを既存のCIで検証する。実機確認は利用可能な環境で行い、未確認OS・GPU・機器と権限操作をリリースノートに明記する |
 | P0 | 最終資産と公開内容の一致 | 受け入れた実行ファイルと最終資産のハッシュ、実測・失敗・未確認を記すリリースノート、Prerelease=true・Latest=false、Python v0.9.1維持 |
 | P1 | 高Fs・多ch・負荷・再接続 | 物理4〜16ch、UAC-232の192 kHz起動欠落、最大設定、長時間・反復撮影・繰り返し再接続は関連変更や不具合調査に応じて実施する。再接続は停止・解放後に限る |
@@ -67,7 +42,7 @@ FRF／Bode・THD／IR・VST3、旧Python版の全機能移植、Generatorのス�
 
 ## PRの実機検証用Artifacts
 
-main宛PRとCIの手動実行では、[CI](../../.github/workflows/ci.yml) から既存のOS別パッケージworkflowを呼び出す。PRの変更ファイルにかかわらず4種類を同じrunのArtifactsへ集める。PRのChecksからCIの実行詳細を開き、各ジョブのSummaryのリンク、またはArtifacts一覧から対象をダウンロードする。OS別workflowの手動実行も同じ検証用構成を使う。保持期間は14日。
+PRでは[入力の分類](../../scripts/ci_changes.py)に従い、変更された配布入力に対応するOSのジョブを実行する。Cargoの依存・共通ビルド入力は全OSを対象とする。通常の実装変更で実機用の配布物が必要なら、ブランチを選び、OS別workflowを手動実行するか、[CI](../../.github/workflows/ci.yml)の手動実行で `packages` を有効にして全OSを作る。各ジョブのSummaryとArtifactsから取得できる。保持期間は14日。
 
 | Artifact名 | ZIP展開後のパッケージ | 起動手順 |
 | --- | --- | --- |
@@ -165,7 +140,7 @@ Developer ID署名・Appleの公証は未整備で、初回はこの状態を明
 
 1. 候補を`main`へ統合し、そのSHAの必須3チェックを確認する。ブランチのRelease workflowを手動実行する（例：`gh workflow run release.yml --ref main`）。実行詳細の`headSha`が候補SHAであることを確認する。ブランチ実行ではDraftを作らない。
 2. Windows、Linux、macOS Intel／Apple Siliconの4 artifactをダウンロードする。Windows 4、Linux 4、macOS各3の計14ファイル、版・ソースSHA・clean・release／desktop・対象CPU、全チェックサムを確認する。ソースをビルドし直した別実行ファイルで受け入れを置き換えない。
-3. [配布パッケージの受け入れ](VALIDATION.md#配布パッケージの受け入れ) を同じ配布実行ファイルで行う。エージェントはmacOS Intel、Windows・Linuxはユーザーが確認する。OS・CPU別の未実施、失敗と既知の問題を区別し、受け入れ範囲を利用者文書とリリースノートへ反映する。ソース修正後は新しい候補SHAへ戻り、変更の影響がある範囲を担当に従って再確認する。
+3. [配布パッケージの受け入れ](VALIDATION.md#配布パッケージの受け入れ) を同じ配布実行ファイルで行う。[最小確認セット](#公開前の最小確認セット)の分担で確認する。OS・CPU別の未実施、失敗と既知の問題を区別し、受け入れ範囲を利用者文書とリリースノートへ反映する。ソース修正後は新しい候補SHAへ戻り、変更の影響がある範囲を担当に従って再確認する。
 4. リリースを依頼された段階でCargoと一致するタグを作り、タグのRelease workflowで共通Draftを作る。手動ビルドの成功はタグ時のCI・全資産検証・Draft作成の代わりにはならない。Draftの14ファイル・SHA・リリースノート・Prerelease=true・Latest=falseを確認する。Draftの再ビルド資産も受け入れた実行ファイルのハッシュと照合し、異なれば受け入れをやり直す。
 5. 公開を依頼された段階でDraftを公開する。ログアウト状態でもタグ別Releaseと全資産を取得でき、SHA-256が一致することを確認する。Python v0.9.1が引き続きLatestであることも確認する。
 6. 公開後、`rust-release.json`の`version`を公開したCargo版へ合わせ、`published:true`にする。`version.json`は変更しない。サイトテスト・新旧MkDocs strict・統合ビルドと必須CIを通し、サイト反映を依頼された段階でmainへ統合する。mainへの統合はPages公開を起こす。全資産の確認前に`published:true`にしない。
@@ -180,15 +155,15 @@ Developer ID署名・Appleの公証は未整備で、初回はこの状態を明
 
 ## CIの運用ポイント
 
-実行条件とコマンドの正本は [ci.yml](../../.github/workflows/ci.yml)、変更分類は [ci_changes.py](../../scripts/ci_changes.py) と [回帰テスト](../../scripts/test_ci_changes.py)。ローカル手順は [Tool Usage Guide](../../.agents/workflows/tool_usage.md)。main宛PRとmainへのPush、手動実行を使い、PRの旧実行はキャンセルする。PRの`edited`も監視し、前提PRの統合後に宛先をmainへ変更した場合も検証する。本文・タイトルの編集も再実行になる。mainのPages公開は中断しない。
+実行条件とコマンドの正本は [ci.yml](../../.github/workflows/ci.yml)、変更分類は [ci_changes.py](../../scripts/ci_changes.py) と [回帰テスト](../../scripts/test_ci_changes.py)。ローカル手順は [検証ガイド](VALIDATION.md)。main宛PRとmainへのPush、手動実行を使い、PRの旧実行はキャンセルする。PRの`edited`も監視し、前提PRの統合後に宛先をmainへ変更した場合も検証する。本文・タイトルの編集も再実行になる。mainのPages公開は中断しない。
 
 | ステータス | 役割 |
 | --- | --- |
 | `lint-and-test`（必須） | Linuxのfmt・全ターゲット全機能Clippy・GUIなし／通常／QAテスト・doctest。関連変更ではRust 1.95の全ターゲット確認も実行 |
-| `docs-lint`（必須、job IDは`build`） | Ruff・Markdown lintは常時。関連変更で新旧MkDocs strict、サイトテスト／ビルド、URL・内部リンク検証、preview |
+| `docs-lint`（必須、job IDは`build`） | Ruff・Markdown lintは常時。関連変更で翻訳・QA runner・起動コマンドの回帰、またはPagesビルドとpreview |
 | `actionlint`（必須） | workflow構文・式・シェルを確認 |
-| `compatibility`（任意） | macOS／WindowsのQAテスト。通常desktop releaseはmain Pushで3 OSをビルドし、PR／手動ではパッケージジョブと重複させない |
-| OS別パッケージ（任意） | PR／手動CIの4種類の実機検証用Artifacts。同じrunに完成済みパッケージを集め、各OSのパッケージ・実行検証を行う |
+| `compatibility`（任意） | Rust変更時のmacOS／Windowsテスト、起動ラッパー変更時の実行コマンド回帰 |
+| OS別パッケージ（任意） | 配布入力の変更または手動実行で起動。Release workflowは全OSの資産と実行を検証 |
 | 性能・実機評価 | 手動の反復benchとローカルQA。共有runnerの数値テストとは別に判定 |
 
 必須名は保護ルールとの互換性のため維持する。workflow全体のpathsフィルターで必須ステータスを消さない。関連変更がない場合の省略は変更分類の成功を前提とし、判定失敗・履歴不足・未知入力は全検証へ戻す。任意ビルドの失敗を隠さない。
@@ -205,10 +180,10 @@ Developer ID署名・Appleの公証は未整備で、初回はこの状態を明
 
 [build_pages.py](../../scripts/build_pages.py) が旧マニュアル→Rust→downloadの順で`site/`へ組み立て、旧ページの日英ルート・主要資産・旧版ラベル・配布JSONと全生成HTMLの内部リンクを検証する。旧版を別ディレクトリへ移さない。PDF自動生成は退役済みで、既存ReleaseのPDF資産は保持する。
 
-PRはpreviewを作る。**mainへマージするとPagesが自動更新される**。公開は新旧サイトビルドと必須3チェックの成功後に限る。タグ・アプリのReleaseとは別の運用である。
+公開サイトの入力が変わるPRではpreviewを作る。**mainへマージするとPagesが自動更新される**。公開は新旧サイトビルドと必須3チェックの成功後に限る。タグ・アプリのReleaseとは別の運用である。
 
 ## 継続運用の課題
 
 * 文書用Python依存の版固定・更新、CI初回／キャッシュ復元後の時間・容量、Cargo依存の脆弱性・ライセンス確認を整える。依存更新を全自動でマージしない。
-* macOS IntelのGPU／音声・長時間評価で既存の証拠を再利用し、追加確認の対象SHAと条件をQA成果物に保存する。Windows・Linuxはユーザー確認と不具合報告に応じた調査を基本とし、全OSの評価環境整備を初回公開の前提にしない。
+* macOSのGPU／音声・長時間評価で対象条件が一致する既存の証拠を再利用し、追加確認の対象SHAと条件をQA成果物に保存する。Windows・Linuxはユーザー確認と不具合報告に応じた調査を基本とし、全OSの評価環境整備を初回公開の前提にしない。
 * 旧版のURLと原本の意味を維持する。Pythonアプリの機能追加・旧テスト環境の復元は再開しない。

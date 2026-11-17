@@ -5,7 +5,7 @@
 [![CI (main)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml/badge.svg?branch=main&event=push)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=branch%3Amain%20event%3Apush)
 [![PR package checks](https://img.shields.io/badge/PR_packages-Windows_%2F_Linux_%2F_macOS-64748b)](https://github.com/youtube-at-vach/MeasureLab/actions/workflows/ci.yml?query=event%3Apull_request)
 [![Rust 1.95+](https://img.shields.io/badge/Rust-1.95%2B-dea584?logo=rust&logoColor=white)](Cargo.toml)
-[![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/rust/PLAN.md)
+[![Rust prototype](https://img.shields.io/badge/status-Rust_prototype-8b5cf6)](guide/CURRENT_DIRECTION.md)
 [![License: Unlicense](https://img.shields.io/badge/license-Unlicense-27d3a2)](LICENSE)
 [![OpenSSF Scorecard](https://api.securityscorecards.dev/projects/github.com/youtube-at-vach/MeasureLab/badge)](https://securityscorecards.dev/viewer/?uri=github.com/youtube-at-vach/MeasureLab)
 
@@ -17,7 +17,7 @@ PCとオーディオインターフェースを、信号を探究する測定ラ
 
 [![Rust manual](https://img.shields.io/badge/Rust_Manual-Read_online-2563eb?style=for-the-badge)](https://youtube-at-vach.github.io/MeasureLab/rust/)
 [![Try the prototype](https://img.shields.io/badge/Try_the_Prototype-Build_from_source-16856b?style=for-the-badge)](#プロトタイプを試す)
-[![Roadmap](https://img.shields.io/badge/Roadmap-See_whats_next-7c3aed?style=for-the-badge)](guide/rust/PLAN.md)
+[![Roadmap](https://img.shields.io/badge/Roadmap-See_whats_next-7c3aed?style=for-the-badge)](guide/CURRENT_DIRECTION.md)
 
 [![Scopeと計器一覧・コンソールのタブを表示したMeasureLabのRustワークスペース](.github/assets/readme/rust-workspace.png)](.github/assets/readme/rust-workspace.png)
 
@@ -62,7 +62,7 @@ PCとオーディオインターフェースを、信号を探究する測定ラ
 
 ## これからのMeasureLab
 
-次の目標は、入力から結果の保存まで、安心して使える小さなオーディオ測定ラボを仕上げることです。[実装計画](guide/rust/PLAN.md) は、その土台から段階的に広げていきます。
+次の目標は、入力から結果の保存まで、安心して使える小さなオーディオ測定ラボを仕上げることです。[実装計画](guide/CURRENT_DIRECTION.md) は、その土台から段階的に広げていきます。
 
 1. **基礎測定器を仕上げる。** 2chのScope／Spectrumの測定手順を磨き、校正・長時間動作・実機・実験段階のLock-inを評価します。
 2. **Generatorと同期比較を統合評価する。** 実装済みの励振とゲイン・位相・遅延比較を内部・仮想・物理経路で照合し、停止・切断・結果再利用を確認します。
@@ -90,7 +90,7 @@ cargo run --release --locked
 新しいmacOS／Linux環境では [セットアップガイド](guide/rust/SETUP.md) に従い、ローカルツールをまとめて用意できます。
 
 ```sh
-./scripts/setup_dev_env.sh --install-os-deps --verify
+./scripts/setup_dev_env.sh --install-os-deps
 source .tools/env.sh
 ./scripts/debug.sh
 ```
@@ -127,7 +127,7 @@ Python版の開発は **v0.9.1** で終了しました。完全なソースと�
 
 [不具合報告](https://github.com/youtube-at-vach/MeasureLab/issues) には、版とコミット、OS・GPU、入力機器、Fs・CH・FFT設定、再現手順を添えてください。脆弱性の報告は [Security Policy](SECURITY.md) に従ってください。
 
-開発では [現在の方針](guide/CURRENT_DIRECTION.md) → [実装計画](guide/rust/PLAN.md) の順に参照してください。Rust、CPAL、RustFFT、egui / eframe、wgpuを使っています。CIは静的チェック、通常／QA／GUIなしの数値・回帰テスト、最小Rust版、workflowと文書を確認し、3 OSのreleaseビルドも別途実行します。ローカルの手順は [Tool Usage Guide](.agents/workflows/tool_usage.md) を参照してください。
+開発では [現在の方針と実装計画](guide/CURRENT_DIRECTION.md) の順に参照してください。Rust、CPAL、RustFFT、egui / eframe、wgpuを使っています。CIは静的チェック、通常／QA／GUIなしの数値・回帰テスト、最小Rust版、workflowと文書を確認し、配布物は関連変更で対象OSのCIを実行します。ローカルの手順は [検証ガイド](guide/rust/VALIDATION.md) を参照してください。
 
 ## 📜 ライセンス
 

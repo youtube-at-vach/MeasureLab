@@ -1,28 +1,22 @@
 # Rust 開発環境のセットアップ
 
-新しい環境でRustアプリ、ダウンロードサイト、公開マニュアルを開発するための手順です。以前の [Python版セットアップスクリプト](https://github.com/youtube-at-vach/MeasureLab/blob/v0.9.1/scripts/setup_dev_env.sh) を参考に、現在の構成に合わせた [setup_dev_env.sh](../../scripts/setup_dev_env.sh) を用意しています。Pythonは公開マニュアルとリリースノート用に使用します。
+新しい環境でRustアプリ、ダウンロードサイト、公開マニュアルを開発するための手順です。[setup_dev_env.sh](../../scripts/setup_dev_env.sh)はツールをリポジトリ内に導入します。
 
 ## 自動セットアップ
 
 macOSとglibcを使うLinuxのx86_64／ARM64に対応します。リポジトリをクローンした後、ルートで実行してください。
 
 ```sh
-./scripts/setup_dev_env.sh --install-os-deps --verify
+./scripts/setup_dev_env.sh --install-os-deps
 source .tools/env.sh
 ./scripts/debug.sh
 ```
 
 `--install-os-deps`はLinuxでapt-getからOSライブラリを導入し、macOSではXcodeツールの導入を確認します。必要な場合はsudoのパスワード入力があります。スクリプト全体をsudoで実行せず、通常のユーザーで起動してください。
 
-`--verify`はRustのfmt・全ターゲット／全機能のClippyとテスト・GUIなし／通常構成のテスト・releaseビルド、サイトのテストと新旧マニュアルを含むPagesビルド、Ruff、Markdown lint、actionlintを実行します。引数なしでは依存関係を整え、デスクトップの`dev-fast`ビルドと文書用ライブラリの読み込みを確認します。検証に失敗すると終了コードは非ゼロになります。
+引数なしのセットアップは依存関係を整え、`dev-fast`と文書用ライブラリの読み込みを確認します。OSのライブラリを導入済みなら `--install-os-deps` は省略できます。全体を確認する場合は `--verify` を追加し、Rustの共通チェック、サイトとPagesのビルド、Ruff、Markdown lint、actionlintを実行します。日常の確認コマンドは[検証ガイド](VALIDATION.md)を参照してください。
 
-OSのライブラリを導入済みの場合、または自分で管理する場合は、次のコマンドを使います。
-
-```sh
-./scripts/setup_dev_env.sh --verify
-```
-
-ネットワーク接続が必要です。初回のRustビルドには時間がかかります。再実行ではローカルツールとCargoのビルドキャッシュを再利用し、依存関係を再確認します。
+移行先では `target/`、`.tools/`、`.venv/`、`download-site/node_modules/`、`site/` をセットアップとビルドで再生成できます。`dist/` の実機証拠、測定設定・結果の保存ファイル、[起動設定](README.md#起動設定の自動保存復元)は必要分を引き継ぎ、移行先で使用するデバイスを確認してください。初回のセットアップはネットワーク接続が必要です。
 
 ## OSごとの事前準備
 
@@ -59,7 +53,7 @@ sudo apt-get install -y build-essential pkg-config \
 
 ### その他の環境
 
-muslを使うLinuxやその他のCPUは手動セットアップの対象です。[Rust README](README.md#起動) と [Tool Usage Guide](../../.agents/workflows/tool_usage.md) を参照してください。
+muslを使うLinuxやその他のCPUは手動セットアップの対象です。[Rust README](README.md#起動) と [検証ガイド](VALIDATION.md) を参照してください。
 
 ## 導入先とツール
 
@@ -88,23 +82,7 @@ node --version
 python --version
 ```
 
-Rustだけなら、環境の読み込みなしでも既存の`./scripts/cargo.sh`と`./scripts/debug.sh`を使用できます。Finderでは`Debug-MeasureLab.command`から実入力を選ぶ画面を起動できます。内部デモは`--demo`を明示した検証用起動に限定しています。
-
-```sh
-./scripts/debug.sh
-./scripts/debug.sh --demo
-./scripts/debug.sh --full-debug
-./scripts/debug.sh --release
-./scripts/debug.sh --ui-smoke
-./scripts/debug.sh --gpu-smoke
-./scripts/bundle-macos.sh
-```
-
-GPU／UI確認は画面と対応GPUを使うため、`--verify`とは別に実行します。実入力を使う際はmacOSのマイクアクセスを許可してください。BlackHole 2ch／16chや物理オーディオ機器は必要な入力試験に合わせて用意し、セットアップスクリプトでは導入しません。
-
-日常のGUI確認は`dev-fast`、完全なデバッガー情報は`--full-debug`、測定・描画の性能評価は`--release`で選びます。各プロファイルの初回は依存関係をコンパイルするため、差分ビルドと分けて考えてください。設定と計測手順は [Tool Usage Guide](../../.agents/workflows/tool_usage.md#開発ビルドと時間計測) を参照してください。
-
-コミット前にGitの名前・メールを、GitHubへの送信前に認証を確認してください。日常の検証コマンドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、操作は [Rust README](README.md) を参照してください。
+PATHを読み込まずに `./scripts/cargo.sh` と `./scripts/debug.sh` を使うこともできます。起動プロファイルは[開発ビルドと時間計測](VALIDATION.md#開発ビルドと時間計測)、OS・機器を使う確認は[GUI・入出力QA](VALIDATION.md#gui入出力qaの再実行)を参照してください。BlackHole・物理機器は使用する経路に応じて用意します。
 
 ## ChatGPTアプリからの起動と検証
 

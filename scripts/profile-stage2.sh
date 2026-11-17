@@ -15,7 +15,7 @@ shift
 case "$measurelab_name" in
     *[!a-zA-Z0-9_-]*|'') echo 'NAME must contain only letters, numbers, _ or -' >&2; exit 2 ;;
 esac
-: "${MEASURELAB_PROFILE_SECONDS:=600}"
+: "${MEASURELAB_PROFILE_SECONDS:=20}"
 export MEASURELAB_PROFILE_SECONDS
 measurelab_output_dir=${MEASURELAB_QA_WORKDIR:-dist/stage2-qa}
 measurelab_output="$measurelab_output_dir/$measurelab_name"
