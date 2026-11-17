@@ -11,7 +11,7 @@
 | ステータス | 旧Python版の参考資料（Rust版の規範文書ではない） |
 | 元の適用対象 | Python版のメインウィンドウ、測定ウィジェット、共通 UI、プロット、ダイアログ |
 | 基準日 | 2026-08-27 |
-| 主な入力資料 | [MeasureLab DeepWiki](../.github/deepwiki/README.md) と [`guide/` の調査資料](#参考資料) |
+| 主な入力資料 | [MeasureLab DeepWiki](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/.github/deepwiki/README.md) と [`guide/` の調査資料](#参考資料) |
 
 ## 1. このガイドラインの使い方
 
@@ -903,22 +903,14 @@ GUI 変更は、次を満たして初めて完了とする。
 
 本文書は次のリポジトリ内資料を統合し、MeasureLab 固有の規範へ再構成した。
 
-- [MeasureLab DeepWiki](../.github/deepwiki/README.md)
-    - [MeasureLab Overview](../.github/deepwiki/1-measurelab-overview.md)
-    - [Module Registry and UI Layout](../.github/deepwiki/1.2-module-registry-and-ui-layout.md)
-    - [Core Architecture](../.github/deepwiki/2-core-architecture.md)
-    - [Configuration and Calibration](../.github/deepwiki/2.2-configuration-and-calibration.md)
-    - [Localization and Theming](../.github/deepwiki/2.4-localization-and-theming.md)
-    - [Data Export and Comparison](../.github/deepwiki/4-data-export-and-comparison.md)
-    - [Testing and Quality Assurance](../.github/deepwiki/6-testing-and-quality-assurance.md)
+- [MeasureLab DeepWiki](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/.github/deepwiki/README.md)
 - 調査資料
-    - [音響測定 GUI の総合調査](basic.md)
-    - [物理計測器と PC GUI の比較](measure_app.md)
-    - [長時間利用するデスクトップアプリ](desktop_app.md)
-    - [科学技術アプリの UI パターン](sci_app.md)
-    - [信号解析プロットの設計](plot.md)
-- MeasureLab の現行制約と実装資料
-    - [Agent Guide](../AGENTS.md)
+    - [音響測定 GUI の総合調査](https://github.com/youtube-at-vach/MeasureLab/blob/2c850192920b7ce64afe4b4697e23a44eefc0414/guide/basic.md)
+    - [物理計測器と PC GUI の比較](https://github.com/youtube-at-vach/MeasureLab/blob/2c850192920b7ce64afe4b4697e23a44eefc0414/guide/measure_app.md)
+    - [長時間利用するデスクトップアプリ](https://github.com/youtube-at-vach/MeasureLab/blob/2c850192920b7ce64afe4b4697e23a44eefc0414/guide/desktop_app.md)
+    - [科学技術アプリの UI パターン](https://github.com/youtube-at-vach/MeasureLab/blob/2c850192920b7ce64afe4b4697e23a44eefc0414/guide/sci_app.md)
+    - [信号解析プロットの設計](https://github.com/youtube-at-vach/MeasureLab/blob/2c850192920b7ce64afe4b4697e23a44eefc0414/guide/plot.md)
+- 旧版の実装資料
     - [ウィジェット共通機能 実装状況マトリクス](../docs/widget_feature_implementation_matrix.md)
     - [Detachable Wrapper](../docs/widgets/detachable_wrapper.md)
 

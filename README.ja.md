@@ -51,7 +51,7 @@ PCとオーディオインターフェースを、信号を探究する測定ラ
 
 | Scope + Spectrum | 実験段階のLock-in |
 | --- | --- |
-| [![2ch入力のScopeと高調波スペクトル](.github/assets/readme/rust-scope-spectrum.png)](.github/assets/readme/rust-scope-spectrum.png) | [![Software Loopbackによる振幅と位相を表示した実験段階のLock-in](.github/assets/readme/rust-lockin.png)](.github/assets/readme/rust-lockin.png) |
+| [![2ch入力のScopeと高調波スペクトル](docs-rust/assets/workspace.png)](docs-rust/assets/workspace.png) | [![Software Loopbackによる振幅と位相を表示した実験段階のLock-in](.github/assets/readme/rust-lockin.png)](.github/assets/readme/rust-lockin.png) |
 | 波形と周波数成分を並べて観察。数値とカーソルをプロット内で確認できます。 | REFを使った振幅・位相測定を、専用のR/θ・X/Y表示で試せます。 |
 
 *現行RustのQAビルドで撮影。Scope／Spectrumは合成信号、Lock-inはSoftware Loopbackを使っています。操作画面の紹介であり、物理デバイスの精度を示す画像ではありません。*

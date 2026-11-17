@@ -101,7 +101,7 @@ npx markdownlint-cli2 "**/*.md" "#node_modules"
 
 The shared build runs both MkDocs configurations with `--strict`, builds the download site and verifies preserved Python routes plus Rust routes in `site/`. The Pages workflow runs on PRs, uploads a preview, and deploys only from `main`. Keep Python v0.9.1 URLs and archive labels when changing documentation; do not describe its features as Rust features.
 
-Rust CI covers Linux/macOS/Windows on stable Rust, plus the declared Rust 1.95 minimum on Linux. Normal-build launch tests must run without `qa`; all-features testing alone cannot check that QA controls are excluded. Shared CI does not validate physical audio, GPU rendering, latency or long-duration performance. Use the test assertions as the source of numerical conditions and tolerances; keep only a compact summary of hardware observations in [validation](guide/rust/VALIDATION.md).
+Required Rust CI covers static checks and regression tests on Linux, with a Rust 1.95 job for changes that affect the minimum version. Linux, macOS and Windows release builds run in separate checks. Normal-build launch tests must run without `qa`; all-features testing alone cannot check that QA controls are excluded. Shared CI does not validate physical audio, GPU rendering, latency or long-duration performance. Use the test assertions as the source of numerical conditions and tolerances; keep only a compact summary of hardware observations in [validation](guide/rust/VALIDATION.md).
 
 Run `actionlint` after workflow changes. Dependency updates must preserve the locked build and minimum Rust version. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for packaging, signing, website operation and remaining checks.
 
