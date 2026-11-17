@@ -141,7 +141,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Build failed' }
 cargo run --locked --profile dev-fast --features qa -- --ui-smoke
 ```
 
-PR前は [共通検証](../../.agents/workflows/tool_usage.md#rust-アプリ) と同じ構成をPowerShellで実行する。Cargoは通常のPowerShellからVisual Studio／SDKを検出するため、まず追加のリンカー指定なしで確認する。
+PR前は [共通検証](VALIDATION.md#rustの共通チェック) と同じ構成をPowerShellで実行する。Cargoは通常のPowerShellからVisual Studio／SDKを検出するため、まず追加のリンカー指定なしで確認する。
 
 容量が少ない場合は、検証専用のPowerShellで次を指定するとシンボルとインクリメンタル成果物を省ける。検証結果にこの設定を記録し、日常の開発や完全なデバッガー情報が必要な作業は新しいPowerShellで実行する。
 
@@ -151,17 +151,7 @@ $env:CARGO_PROFILE_TEST_DEBUG = '0'
 $env:CARGO_INCREMENTAL = '0'
 ```
 
-```powershell
-cargo fmt --all -- --check
-cargo clippy --locked --all-targets --all-features -- -D warnings
-cargo test --locked --no-default-features
-cargo test --locked
-cargo test --locked --all-targets --all-features
-cargo test --locked --doc --all-features
-cargo build --release --locked
-```
-
-PowerShellは外部コマンドの非ゼロ終了だけでは後続処理を止めない。一括実行する場合は各コマンド直後の`$LASTEXITCODE`を確認し、失敗した検証を成功扱いしない。
+PowerShellで一括実行する場合は各コマンド直後に `$LASTEXITCODE` を確認する。配布物が必要な場合は[該当OSのCI](RELEASE_PREPARATION.md#prの実機検証用artifacts)を使う。
 
 起動オプションの回帰テストは、実入出力やGUIを開始しないケースでも`$env:LOCALAPPDATA/MeasureLab/instance.lock`へ書き込む。`--new-instance`もこのパスの書き込み権限を不要にはしない。制限付きの実行環境で`PermissionDenied`になる場合は、許可された通常の開発用PowerShellで同じ検証を再実行し、アプリの検証失敗と実行環境の制限を区別する。
 

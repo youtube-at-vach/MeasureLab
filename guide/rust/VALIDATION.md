@@ -1,13 +1,60 @@
 # Rust の検証
 
-[共通チェック](../../.agents/workflows/tool_usage.md)に加えて、変更が影響する経路だけを検証する。合否・試験条件・許容差はテストとQAのコードを正本とする。配布候補の完了条件と担当は[公開準備](RELEASE_PREPARATION.md#初回プロトタイプ配布前のタスク)を参照する。
+テスト条件・許容差・合否はコードを正本とする。回帰は該当モジュールの既存テストに追加し、実機の観測だけを[確認の要約](#コードで代替できない確認の要約)に残す。
+
+## 変更に応じた検証
+
+| 変更 | 確認 |
+| --- | --- |
+| Rustの動作・数値 | [共通チェック](#rustの共通チェック)と影響した経路。取得・Stopは欠落と世代分離、測定式は既知入力、ファイル形式は旧版の読み込みと往復 |
+| GUI・文言 | 対象計器・画面の操作と幅。翻訳は[対象言語と画面](I18N.md)を選ぶ |
+| I/O・連続性・性能 | 変更が影響する入力経路・負荷を選び、短い試験で再現できない場合に実時間比較を使う |
+| 配布・インストーラー | [該当OSのCIと配布物](RELEASE_PREPARATION.md#prの実機検証用artifacts)。初回公開は[公開準備](RELEASE_PREPARATION.md#初回プロトタイプ配布前のタスク)を参照 |
+| 開発文書・サイト・CI | Markdown lint、Ruff、変更対象のPythonテスト・actionlint。公開マニュアルとサイトの入力変更は[Pagesビルド](#サイトと静的チェック)も実行 |
+
+## Rustの共通チェック
+
+リポジトリルートで実行する。Windowsは `cargo` または `./scripts/pwsh.cmd -File ./scripts/cargo.ps1` を使う。[CI](../../.github/workflows/ci.yml)では関連変更でRust 1.95も確認する。
+
+```sh
+./scripts/cargo.sh fmt --all -- --check
+./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
+./scripts/cargo.sh test --locked --no-default-features
+./scripts/cargo.sh test --locked
+./scripts/cargo.sh test --locked --all-targets --all-features
+./scripts/cargo.sh test --locked --doc --all-features
+```
+
+ベンチは `cargo test` で各条件1回、反復計測は `cargo bench --locked --no-default-features` を使う。ローカルのreleaseビルドは性能・release固有の調査・配布物の確認で必要なときに実行する。
+
+### 開発ビルドと時間計測
+
+日常の起動は `./scripts/debug.sh`（`target/dev-fast/measurelab`）、型・変数を調べる場合は `--full-debug`、性能評価は `--release`。`--demo` と `--ui-smoke` は `qa` を有効にする。
+
+ビルド時間は `./scripts/cargo.sh build --locked --profile dev-fast --timings` を使い、`target/cargo-timings/` を参照する。OS・CPU・Rust・機能構成を揃え、初回は未使用の `--target-dir` を指定し、変更なしと小変更後の計測を区別する。
+
+## サイトと静的チェック
+
+```sh
+./.venv/bin/ruff check .
+./.venv/bin/ruff format --check .
+npx --yes markdownlint-cli2@0.23.3 '**/*.md' '#node_modules'
+```
+
+CI変更は `actionlint`、Pythonの回帰は `./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'` のように対象を選ぶ。翻訳のPR前チェックは[I18N](I18N.md)を参照する。
+
+```sh
+npm --prefix download-site ci
+npm --prefix download-site test
+./.venv/bin/python scripts/build_pages.py
+```
+
+サイト単体のビルドは `npm --prefix download-site run build`。PagesビルドはPython 3.12以降の `.venv` に `requirements-docs.txt` を導入して実行する。新旧MkDocsのstrictビルドとサイト統合、公開URLを確認する。
 
 ## 検証対象環境と既存成果物
 
-- 初回配布に向けたエージェントのアプリ検証はmacOS Intelを対象とする。Windows・Linuxの実機確認はユーザーが行い、エージェントは不具合報告時に調査する。Apple Siliconの実機確認は今回のエージェントの範囲外とする。
-- 現在のIntel Macでは、通常ビルドの手動GUIと実モニター間DPIは操作手段の制約により対象外とし、公開前の未完了条件には数えない。自動操作・撮影・数値照合と、配布物・入出力の確認はそれぞれ記録する。
-- ソースSHAと作業差分、プロファイル・機能構成、バイナリSHA-256、環境と測定条件が一致する結果は再利用する。内部信号、Software Loopback、外部仮想I/O、物理I/O、qaなしの配布候補はそれぞれ実施した範囲を記録する。
-- 証拠はGit管理外の `dist/` に置く。実機試験の要約にはリビジョン・条件・観測結果・制限を残す。自動テストの履歴はCI、過去の実機試験の詳細は[整理前の検証ガイド](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/guide/rust/VALIDATION.md)を参照する。
+- ソースSHAと作業差分、構成とバイナリのSHA-256、環境・設定・経路が一致する証拠は再利用する。未確認の経路と環境は明記する。
+- 証拠はGit管理外の `dist/`、自動チェックはCIを参照する。過去の詳細は[整理前の検証ガイド](https://github.com/youtube-at-vach/MeasureLab/blob/27887c319bfba4a682c451e22e7780b9572b2766/guide/rust/VALIDATION.md)にある。配布候補の対象環境と担当は[公開準備](RELEASE_PREPARATION.md#公開前の最小確認セット)を参照する。
 
 ## 物理デバイスの安全制約
 
@@ -58,7 +105,7 @@ done
     --binary target/dev-fast/measurelab --case widget-interactions
 ```
 
-[GUI runner](../../scripts/qa_gui_redesign.py)の `--help` で対象ケースを選ぶ。`widget-interactions` は実ウィジェット、`startup-preferences` は一時ファイルと模擬デバイスによる起動設定の復元、`scope-flow-*` は内部入力での取得から停止・保持までを確認する。撮影できない場合は `--assertions-only` と専用の出力先を指定し、画像は未確認と記録する。macOSの撮影は必要に応じて `caffeinate -du` を使い、Metalの `Occluded` がログに出る場合はウィンドウの重なりを確認する。
+[GUI runner](../../scripts/qa_gui_redesign.py)の `--list-cases` で名前を調べ、対象を `--case` で明示する。`widget-interactions` は実ウィジェット、`startup-preferences` は一時ファイルと模擬デバイスでの設定復元、`scope-flow-*` は内部入力の取得・停止・保持を確認する。撮影できない場合は `--assertions-only` と専用の出力先を指定する。macOSの画面撮影では必要に応じて `caffeinate -du` を使い、Metalの `Occluded` はウィンドウの重なりを確認する。
 
 通常Generatorの別プロセス復元は次で内部経路を実行する。保存時の設定・参照JSONを検証し、復元後OFF、明示Start後の再測定、独立Stopと同じ入力窓でのLock-in／DFT照合を確認する。
 
@@ -68,9 +115,9 @@ done
     --output dist/generator-restart-qa
 ```
 
-外部経路は `--device` で明示する。物理QAではL出力→L入力、R出力→R入力を接続し、配線と減衰を `--connection-note` に記録する。UAC-232のQA出力は最大0.1 FS peak・DCなし。同じ生入力窓と照合し、外部入出力の時計と物理校正の条件を記録する。保持QAの `held-replay` には対応する保存ケースが必要。
+外部経路は `--device` と対象の `--case` を明示する。保持結果の復元には対応する `held-…-save` と `held-…-replay` を選ぶ。外部Single取得は `scope-blackhole-2ch-single` などの該当ケースを使う。物理QAではL→L・R→Rの配線と減衰を `--connection-note` に記録する。UAC-232のQA出力は最大0.1 FS peak・DCなし。
 
-仮想・物理デバイスの短いCLI確認は、対象バイナリの `--list-devices`、`--audio-smoke`、`--stft-smoke` と `--help` を使う。`--channel` は1始まり。Lock-inの実機試験と有限Stop・解放後監査の入口は[macOS統合runner](../../scripts/validate_stage4_macos.py)を参照する。
+仮想・物理デバイスの短いCLI確認は `--list-devices`、`--audio-smoke`、`--stft-smoke` を使う（`--channel` は1始まり）。Lock-inの既知信号はQA版の `--lockin-smoke` または `--physical-lockin-smoke` を使い、機器は `--input-device`、試験時間は `MEASURELAB_LOCKIN_SECONDS` で指定する。特定のLock-in状態を調べる場合は `MEASURELAB_UI_SMOKE_LOCKIN=ref-loss ./scripts/debug.sh --ui-smoke` のように状態を指定する。
 
 ### 多言語基盤（I5）
 
@@ -84,11 +131,11 @@ done
 
 独立DFT／逆DFTと符号付き係数は [cepstrum.rs](../../src/cepstrum.rs)、全窓長・窓関数・Overlapと実ワーカーは[統合テスト](../../tests/cepstrogram.rs)、CPU容量と解放は[容量テスト](../../tests/spectrogram_capacity.rs)で検証する。表示の確認はGPUスモークと `MEASURELAB_UI_SMOKE_CEPSTROGRAM=1 ./scripts/debug.sh --ui-smoke` を使う。
 
-SpectrogramとCepstrogramの実時間比較は、[STFT QA runner](../../scripts/qa_spectrogram.py)でLiveと反復表示操作を同じ条件で直列に実行する。短い基本確認には `--basic` を使う。連続性と表示応答を比較する場合は各120秒以上とし、内部・仮想・物理経路のうち対象となるものを選ぶ。
+SpectrogramとCepstrogramの実時間比較は[STFT QA runner](../../scripts/qa_spectrogram.py)で対象の `--analysis` と `--route` を指定する。短い確認は `--basic`（各20秒）、連続性・表示応答の評価は各120秒以上。`--generator-display` の各600秒は、Generator出力に対する表示・撮影負荷を比較するときに使う。
 
 ```sh
 ./scripts/cargo.sh build --release --locked --features qa
-./.venv/bin/python scripts/qa_spectrogram.py --analysis both --seconds 120 \
+./.venv/bin/python scripts/qa_spectrogram.py --analysis both --basic \
     --route software --stft-size 1024 --output dist/stft-comparison
 ./.venv/bin/python scripts/qa_spectrogram.py --audit dist/stft-comparison/manifest.json
 ```
@@ -97,10 +144,10 @@ UI停止中の継続、有限Stop後の数値、欠落・通知、UI間隔と表
 
 ## 性能・継続性
 
-[profile-stage2.sh](../../scripts/profile-stage2.sh)で実時間のログ・CPU・RSSを採取する。窓、精度、更新モード、表示数、入力経路を揃え、ビルドや他の音声試験を止めて比較する。`MEASURELAB_PROFILE_UI_STALL=1` では停止中に取得・生成・解析が進むことを確認する。実時間の受け入れは有限Stop、数値照合、通知、欠落まで判定する。
+[profile-stage2.sh](../../scripts/profile-stage2.sh)で対象条件のログ・CPU・RSSを採取する。設定と入力経路を揃え、ビルドや他の音声試験を止めて比較する。`MEASURELAB_PROFILE_UI_STALL=1` は画面停止時の継続確認に使う。
 
 ```sh
-MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
+MEASURELAB_PROFILE_SECONDS=20 ./scripts/profile-stage2.sh demo-20 --demo
 ./scripts/cargo.sh bench --locked --no-default-features --bench spectrogram
 ```
 
@@ -112,7 +159,7 @@ MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
 
 1. 配布ファイルと展開後の実行ファイルのSHA-256、build-infoのソースSHA・版・CPU・機能を記録する。
 2. インストール／展開後の起動と停止状態を確認する。内部経路と対象機器で、測定→独立Stop→[設定と結果の保存](README.md#保持結果の書き出し)→別プロセスでのOFF復元→明示Start後の再測定を行う。
-3. macOSではDMGからコピーしたアプリをFinderで開き、マイク許可は利用者が行う。WindowsはMSVCのSetup／ZIP、LinuxはAppImage／tar.gzの配布物を識別して結果を記録する。手動GUIとDPIの扱いは[対象環境](#検証対象環境と既存成果物)に従う。
+3. macOSではDMGからコピーしたアプリをFinderで開き、マイク許可は利用者が行う。WindowsはMSVCのSetup／ZIP、LinuxはAppImage／tar.gzの配布物を識別して結果を記録する。手動GUIとDPIは実施範囲を記録する。
 
 証拠は `dist/package-acceptance/<SHA>/<OS-CPU>/` に置く。manifestにはハッシュ、OS・CPU・GPU、機器・配線・Fs・CH・PCM、結果・ログ・未実施条件を記録する。
 
@@ -136,7 +183,7 @@ MEASURELAB_PROFILE_SECONDS=120 ./scripts/profile-stage2.sh demo-120 --demo
 | 高Fs・CPU競合 | Intel Macのrelease・GUIなし。768 kHz・16chの模擬入力で、Cepstrogram実行時に共通取得の欠落を観測。取得キューの分割返却との比較は `dist/capture-drain-contention/manifest.json`、従来の上限探索は `dist/cepstrogram-contention-qa/manifest.json` |
 | 物理Lock-in | `1c0373dc`、UAC-232 LL／RR TRS、44.1／48／96／192 kHzで生入力窓との独立照合。48 kHzのGUIなし600秒を確認。小信号の位相変化の原因、物理振幅・実時計の校正は未確認。証拠は `dist/lockin-physical-qa/` |
 
-高負荷での長時間GUI停止、起動／再接続時のCoreAudio通知、物理4〜16ch・実モニター間DPI・実表示遅延は、関連変更時に[計画](PLAN.md#初回配布と分ける課題)に沿って扱う。
+高負荷での長時間GUI停止、起動／再接続時のCoreAudio通知、物理4〜16ch・実モニター間DPI・実表示遅延は、関連変更時に[後続の課題](../CURRENT_DIRECTION.md#後続の課題)に沿って扱う。
 
 ### Windowsネイティブでの開発環境と起動確認
 

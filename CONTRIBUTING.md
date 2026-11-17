@@ -32,80 +32,17 @@ We welcome contributions of all kinds! This document provides guidelines for con
 
 ---
 
-## Current development stage
+## Development
 
-This branch contains the Rust prototype of MeasureLab. The Python application's source, dependencies, tests, packaging, and development tasks are archived in `v0.9.1` and `archive/python-v0.9.1`.
+Read the [current direction and roadmap](guide/CURRENT_DIRECTION.md) before planning or changing Rust behavior. The [Rust guide](guide/rust/README.md) covers current behavior and links to relevant code. The final Python edition is preserved under `v0.9.1` and `archive/python-v0.9.1`. Its public manual retains the existing URLs. The Rust manual under `docs-rust/` is published separately under `/rust/`.
 
-For the old application environment, use the [Python v0.9.1 development guide](https://github.com/youtube-at-vach/MeasureLab/blob/v0.9.1/docs/development.en.md) from the archived edition.
+On macOS and Linux, follow the [setup guide](guide/rust/SETUP.md) and use `./scripts/setup_dev_env.sh --install-os-deps`, then `source .tools/env.sh`. For Windows, see the [MSVC setup](guide/rust/WINDOWS.md#msvcでのセットアップ). The default build uses `dev-fast` for everyday development.
 
-The existing public manual describes Python v0.9.1; `docs-rust/` contains the separate Rust manual prepared for `/rust/`. The [Rust guide](guide/rust/README.md) documents the new application's current behavior. Contributions to the download website, documentation, and measurement/design references remain possible during the rewrite.
+## Validation
 
-Before planning or changing Rust behavior, read the [current direction](guide/CURRENT_DIRECTION.md) and [Rust plan](guide/rust/PLAN.md). Build on the existing prototype and finish a small measurement use case with numerical validation before expanding the feature set. The former Rust/QML plan and Python GUI guide are reference material, not current implementation requirements.
+Use the [validation guide](guide/rust/VALIDATION.md) to select checks for the change. Before a Rust PR, run the shared checks for the headless core, normal desktop and QA configurations. The normal desktop tests check that QA entry points are excluded. For public manuals and site changes, validate the [combined Pages build](guide/rust/VALIDATION.md#サイトと静的チェック). Run Markdown lint for Markdown changes and actionlint for workflow changes.
 
-Keep working documents focused on current decisions, constraints, unresolved problems, and completion criteria. Update the relevant state instead of appending a work diary; retain detailed measurements separately with their conditions and verification limits.
-
-## Development environment setup
-
-On macOS and Linux, use the [setup guide](guide/rust/SETUP.md) to prepare native prerequisites, then run:
-
-```sh
-./scripts/setup_dev_env.sh --install-os-deps --verify
-source .tools/env.sh
-```
-
-The script installs local Rust, Node.js, documentation Python, and lint tools. Omit `--install-os-deps` when native libraries are already installed. `--verify` runs the checks below and the desktop release build; without it, setup builds the debug application and checks the documentation runtime.
-
-## Rust checks
-
-Use Rust 1.95 or later and your operating system's build tools. Run these commands from the repository root before opening a Rust PR:
-
-```sh
-./scripts/cargo.sh fmt --all -- --check
-./scripts/cargo.sh clippy --locked --all-targets --all-features -- -D warnings
-./scripts/cargo.sh test --locked --no-default-features
-./scripts/cargo.sh test --locked
-./scripts/cargo.sh test --locked --all-targets --all-features
-./scripts/cargo.sh test --locked --doc --all-features
-./scripts/cargo.sh build --release --locked
-```
-
-`cargo test` exercises each harness-free benchmark case once. Use `./scripts/cargo.sh bench --locked --no-default-features` for repeated performance measurements; real-time 120/600-second profiling is separate from PR checks. Numerical assertions and FFT size/precision coverage remain part of the normal tests.
-
-The required statuses are `lint-and-test`, `docs-lint` and `actionlint`. Rust changes require Linux Clippy, normal/QA/headless tests and the applicable Rust 1.95 check. Three-OS release builds and macOS/Windows tests run separately and do not gate merging. The [CI policy](guide/rust/RELEASE_PREPARATION.md#ciの運用ポイント) describes triggers, caching, selected jobs and release review.
-
-## Website and documentation checks
-
-Run commands from the repository root. Validate the download website with Node.js and npm:
-
-```bash
-npm --prefix download-site ci
-npm --prefix download-site test
-npm --prefix download-site run build
-```
-
-For both manuals and the combined Pages output, use Python 3.12 or later and the Node.js environment above. CI helper tests use the standard library (`./.venv/bin/python -m unittest discover -s scripts -p 'test_ci_changes.py'`). PDF generation is retired; Pango/WeasyPrint are not required:
-
-```bash
-python3 -m venv .venv
-./.venv/bin/python -m pip install -r requirements-docs.txt ruff
-./.venv/bin/python scripts/build_pages.py
-./.venv/bin/ruff check .
-./.venv/bin/ruff format --check .
-```
-
-After Markdown changes, run:
-
-```bash
-npx markdownlint-cli2 "**/*.md" "#node_modules"
-```
-
-The shared build runs both MkDocs configurations with `--strict`, builds the download site and verifies preserved Python routes plus Rust routes in `site/`. The Pages workflow runs on PRs, uploads a preview, and deploys only from `main`. Keep Python v0.9.1 URLs and archive labels when changing documentation; do not describe its features as Rust features.
-
-Required Rust CI covers static checks and regression tests on Linux, with a Rust 1.95 job for changes that affect the minimum version. Linux, macOS and Windows release builds run in separate checks. Normal-build launch tests must run without `qa`; all-features testing alone cannot check that QA controls are excluded. Shared CI does not validate physical audio, GPU rendering, latency or long-duration performance. Use the test assertions as the source of numerical conditions and tolerances; keep only a compact summary of hardware observations in [validation](guide/rust/VALIDATION.md).
-
-Run `actionlint` after workflow changes. Dependency updates must preserve the locked build and minimum Rust version. See [publication preparation](guide/rust/RELEASE_PREPARATION.md) for packaging, signing, website operation and remaining checks.
-
-The `.legacy-python/` directory is a local backup excluded from version control and validation. It is not required by the website or documentation build.
+The required CI statuses are `lint-and-test`, `docs-lint` and `actionlint`. CI selects optional native package jobs for affected packaging inputs. You can request test packages for a branch in the [CI workflow](.github/workflows/ci.yml). See [release preparation](guide/rust/RELEASE_PREPARATION.md#ciの運用ポイント) for packaging, signing and publication. Record hardware observations with their conditions and verification limits in the validation guide.
 
 ## Pull requests
 

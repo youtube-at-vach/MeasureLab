@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from qa_spectrogram import (
     STFT_SIZES,
@@ -13,6 +14,7 @@ from qa_spectrogram import (
     audit_manifest,
     comparisons,
     generator_display_route,
+    main,
     manifest_passed,
     peak_rss,
     profile_cases,
@@ -175,6 +177,17 @@ Generator callback report: callback-profile.json (streams released: true)
 
 
 class ComparisonMatrix(unittest.TestCase):
+    def test_comparison_requires_an_explicit_route(self):
+        error = io.StringIO()
+        with (
+            patch("sys.argv", ["qa_spectrogram.py", "--basic"]),
+            contextlib.redirect_stderr(error),
+            self.assertRaises(SystemExit) as rejected,
+        ):
+            main()
+        self.assertEqual(rejected.exception.code, 2)
+        self.assertIn("Select a comparison route with --route", error.getvalue())
+
     def test_generator_comparison_isolates_display_and_capture_on_one_route(self):
         cases = list(profile_cases([generator_display_route("ZOOM UAC-232")], "spectrogram"))
         hidden, live, capture = cases

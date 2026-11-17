@@ -455,7 +455,11 @@ def main():
         "--screenshots", action="store_true", help="Repeat GPU readback and PNG writing during each case"
     )
     parser.add_argument("--physical-connection", help="Record the actual UAC-232 cabling and attenuation")
-    parser.add_argument("--route", action="append", help="Run only named routes (repeatable)")
+    parser.add_argument(
+        "--route",
+        action="append",
+        help="Required for STFT comparison (repeatable): demo-50, demo-75, demo-87_5, software, generator, or a device route",
+    )
     parser.add_argument(
         "--generator-display",
         choices=DEVICES,
@@ -474,6 +478,8 @@ def main():
     args = parser.parse_args()
     if args.audit:
         raise SystemExit(0 if audit_manifest(args.audit.resolve()) else 1)
+    if not args.route and not args.generator_display:
+        parser.error("Select a comparison route with --route")
     if args.generator_display:
         if args.basic or args.screenshots or args.route or args.device or args.analysis != "spectrogram":
             parser.error("--generator-display selects its own route, analysis, and screenshot conditions")
@@ -498,11 +504,7 @@ def main():
     selected = (
         [generator_display_route(args.generator_display)]
         if args.generator_display
-        else [
-            route
-            for route in routes(dict.fromkeys(args.device), args.basic)
-            if args.route is None or route[0] in args.route
-        ]
+        else [route for route in routes(dict.fromkeys(args.device), args.basic) if route[0] in args.route]
     )
     if args.route and set(args.route) - {route[0] for route in selected}:
         parser.error("Unknown route (devices must also be explicitly selected with --device)")

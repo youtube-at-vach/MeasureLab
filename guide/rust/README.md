@@ -1,128 +1,30 @@
 # MeasureLab — Rust Audio Measurement Lab
 
-CPALで実際のオーディオ入力を取り込み、egui / eframeと`wgpu`で波形・FFTスペクトル・スペクトログラム・XY / Lissajousを同時に描画するRustプロトタイプです。この文書は現在使える操作と構成を説明します。目的・設計原則は [現在の方針](../CURRENT_DIRECTION.md)、実装状態・制限と次の完了条件は [PLAN.md](PLAN.md) を参照してください。
+CPALで実際のオーディオ入力を取り込み、egui / eframeと`wgpu`で波形・FFTスペクトル・スペクトログラム・XY / Lissajousを同時に描画するRustプロトタイプです。この文書は現在使える操作と構成を説明します。設計原則と次の完了条件は[現在の方針](../CURRENT_DIRECTION.md)を参照してください。
 
 表示言語は **View → Language**（狭幅では **Menu → View → Language**）で9言語から選び、次回起動へ保存できます。初回・未知の言語設定と未確認の訳には英語を使います。表示言語は測定条件・保持結果・出力状態と独立しています。以下の操作名は英語表記です。翻訳の開発者向け手順は[開発・翻訳手順](I18N.md)を参照してください。
 
 ## 起動
 
-Rust 1.95以上と各OSのビルドツールが必要です。開発・検証にはRust 1.99を使用しています。
+[セットアップ](SETUP.md)後、日常の開発は `./scripts/debug.sh`（`dev-fast`）で起動します。macOSはFinderの `Debug-MeasureLab.command`、Windowsは[PowerShell手順](WINDOWS.md#ビルド起動検証)を使えます。`--compact` は小窓、`--full-debug` は型・変数を調べるビルド、`--release` は性能評価に使います。アプリの引数は `./scripts/debug.sh -- --help`、QAは[検証ガイド](VALIDATION.md)を参照してください。
 
-新しいmacOS／Linux環境では`./scripts/setup_dev_env.sh --install-os-deps --verify`でRust・サイト・文書用ツールを導入できます。前提条件と導入先、手動設定は [開発環境のセットアップ](SETUP.md) を参照してください。
+通常起動はScopeの単独表示で、入出力は停止しています。**Audio I/O → Input / output** で入力を選び、**Start input** を押します。待機・未設定・エラーは波形領域に状態と案内を表示します。停止すると最後の波形を保持し、再開で新しい取得世代に移ります。macOSで物理入力や仮想入力を使うときはマイクアクセスを許可してください。
 
-### デバッグ時の簡単な起動
-
-リポジトリのルートにある **Debug-MeasureLab.command** をmacOSのFinderでダブルクリックすると、開発用の`dev-fast`ビルドを更新して実入力を選ぶ画面で起動します。ターミナルからは以下を使います。
-
-```sh
-./scripts/debug.sh
-./scripts/debug.sh --demo
-./scripts/debug.sh --compact
-./scripts/debug.sh --full-debug
-./scripts/debug.sh --release
-```
-
-引数なしでは実入力を選ぶ画面で停止した状態から始まります。デバイスを選んで **Start input** を押します。`--audio`も同じ動作です。`--demo`を明示すると、検証用の`qa`機能を有効にして内部信号で起動します。通常は差分ビルド向けの`dev-fast`を使い、panic時のファイル・行番号付きバックトレースを有効にします。`RUST_BACKTRACE`を指定済みならその値を使います。デバッガーで型・変数情報が必要なときは`--full-debug`、CPU処理時間や実時間の性能確認には`--release`を使います。
-
-`dev-fast`は既存devのアプリ最適化レベル1・依存ライブラリ2、インクリメンタルコンパイル、debug assertion・整数overflow検査を引き継ぎ、デバッグ情報を行番号中心に絞り、LTOを無効にします。出力は`target/dev-fast/measurelab`です。devの完全なデバッグ情報とreleaseのThin LTO・codegen-units=1は維持します。切り替えとビルド時間の調べ方は [Tool Usage Guide](../../.agents/workflows/tool_usage.md#開発ビルドと時間計測) を参照してください。
-
-初回は依存関係のビルドに時間がかかり、以後は変更した部分を再ビルドします。スクリプトは作業ディレクトリに依存せず、`scripts/cargo.sh`経由でPATH上または`.tools/`のRust環境を使います。アプリを閉じるまでターミナルにビルド結果と実行時の出力が残ります。Finderからの起動に失敗した場合はEnterを押すまでエラーを確認できます。
-
-画面確認は次の1コマンドで実行できます。`--ui-smoke`の指定時は`qa`機能を自動的に有効にし、撮影後に終了します。画像は`dist/ui-smoke.png`へ保存されます。
-
-```sh
-./scripts/debug.sh --ui-smoke
-./scripts/debug.sh --ui-smoke --compact
-./scripts/debug.sh --gpu-smoke
-./scripts/debug.sh --help
-```
-
-`--compact`などのアプリ引数も渡せます。`--`以降はすべてアプリへ渡すため、アプリ自体のヘルプは`./scripts/debug.sh -- --help`で確認できます。
-
-### Cargoからの起動
-
-```sh
-cargo run --release
-```
-
-この作業環境ではプロジェクト専用のRust環境を`.tools/`に用意しています。通常の`cargo`がPATHにない場合も、次のコマンドで起動できます。
-
-```sh
-./scripts/cargo.sh run --release
-```
-
-入力を設定済みの起動直後は、Scope中央に控えめな **Input stopped** だけを表示します。**Audio I/O → Input / output** から入力を選び、上部の **Start input** を押してください。開始すると停止表示は消え、開始待ち・サンプル待ち・トリガー待ちは状態文字だけで示します。入力デバイス未設定や取得・設定エラーでは必要な説明と **Open input settings** を表示します。CH数の確定前は範囲外と表示しません。取得済みの波形には案内を重ねず、エラー・欠落情報を残します。停止すると最後の波形が保持されます。再開時は新しい入力で履歴を作り直します。音声ファイルへの保存は行いません。Generatorでは内部ループバックまたは音声デバイスへ正弦波を出力できます。
-
-**Audio I/O → Input / output** の **SAMPLE RATE · INPUT + OUTPUT** は、入力と現在の出力CH数・PCMの両方が対応する公称Fsを一か所で選びます。入力・出力を停止して適用し、保持結果のFsは変えません。**Separate sample rates** をONにすると、Input欄で **Device default** または対応する公称レート、Output欄で個別のFs／CH数／PCMを選べます。選択肢の上限は768 kHzで、44.1／48／88.2／96／176.4／192／352.8／384／705.6／768 kHzなどから対応する値と、デバイス固有のレートを表示します。入力CH数を維持できる設定を使います。入力デバイスを明示的に変更するとDevice defaultへ戻ります。Refresh devicesは保存したID・CH数・Fsを再照合し、同じ入力の設定と校正を保持します。個別設定での入力取得中の変更は新しい入力世代で再開始し、履歴・平均・保持・カーソルをリセットします。停止中の変更は次回Startに適用し、保持結果のFsと時間・周波数軸は変えません。開始時に対応設定を再確認し、失敗時はエラーを表示します。
-
-**Audio I/O → Input / output** は共通の入出力設定です。広幅ではInput／Outputを左右に、狭幅では上下に表示します。Inputで入力元・入力デバイス、Outputで出力デバイス・CH数・PCMを設定し、Fsと **Refresh devices** は共通欄にまとめます。レートが異なる既存設定を開くだけでは変更せず、共通の値を明示選択するまで両方の値を表示します。**Separate sample rates** で個別設定に切り替えられます。GENカードの追加・信号条件・ON／OFF・OUT割当はGeneratorで操作し、Output欄には表示しません。内部接続はInputの **Generator loopback** を選び、OUT 1／2を入力CH 1／2へ対応させます。Calibrationは同じAudio I/Oメニューの別画面です。
-
-通常の起動はユーザー単位のファイルロックで重複を防ぎ、2つ目は既に起動中と表示して終了します。意図的に複数起動する場合は`--new-instance`を追加してください。音声を取得するQAコマンドも同じロックを使い、デバイス列挙とGPU読み戻しは対象外です。起動制御は測定コアから分離しています。ロックファイルは残りますが、[OSのファイルロック](https://doc.rust-lang.org/std/fs/struct.File.html#method.try_lock)はプロセス終了時に解放されるため、異常終了後にファイルを手で削除する必要はありません。旧ビルドにはこの制御がないため、旧版との重複は防げません。
-
-通常ビルドの **Audio I/O → Input / output → Software Loopback** から、マイクを使わず共通入力経路で既知信号を測定できます。条件の詳細は下記のSoftware Loopback節を参照してください。旧QA専用の内部デモは、`qa`機能を有効にしたビルドへ`--demo`を明示して使います。この起動時だけ左側の **Demo signal (QA) / Audio input** で入力を切り替えられます。`qa`ビルドでも、通常起動ではデモの選択肢を表示しません。
-
-```sh
-./scripts/cargo.sh run --release --features qa -- --demo
-```
-
-`--compact`を追加すると、小さなウィンドウで起動します。複数区画の寸法が不足する場合はタブ表示へ退避します。コンソールで追加の測定詳細や4数値表示が区画高を超える場合は、その区画内を縦にスクロールできます。共通の入出力状態・停止操作と区画名はスクロールの外に残ります。
-
-デモでは周波数、振幅、ノイズを変更し、正弦波／高調波付き正弦波／帯域制限した矩形波を比較できます。CH 2の位相と振幅比も変更できます。**0° / 90° / 180°** ボタンはノイズなし・同振幅の正弦波を設定し、XYの同相・円・逆相を確認できます。CH 2 gainを下げると楕円になります。デモ信号は内部だけで使い、スピーカーには出力しません。
-
-通常起動は入力・出力停止の **Scope単独表示** です。左の計器一覧からScope／Spectrum／Spectrogram／XY／Lock-in／Synchronous 2ch／Generatorを選ぶと、その計器だけを表示します。同じ名前を再選択しても解除しません。名称・用途で検索できます。狭幅では上部の **Instrument** メニューから選びます。表示操作で取得・解析・出力を開始／停止しません。
-
-一覧は1計器1行のアイコン＋名称で、選択行全体を強調します。上部の切り替えボタンでアイコンだけのコンパクト表示にすると、幅が縮まりプロット領域が広がります。7計器は常に同じ順序で並び、クリックで選択、ホバーで名称と実行状態を確認できます。選択中は背景、実行状態は右下の点で区別し、緑は実行中、黄は開始・停止処理中や入力待ち、灰は停止、橙は出力エラーです。最下部の4区画アイコンは **Multi-instrument view** です。通常表示ではMonitorの共通入力状態を見出しにまとめ、解析と出力の状態を各行の右端へ表示します。保持結果や測定の有効性は各計器内で確認します。
-
-表示モードは自動保存し、次回起動時に復元します。測定設定ファイルとは独立した表示の設定で、起動時の入出力は停止のままです。狭幅ではサイドバーを一時的に隠し、**Menu → View → Compact sidebar** でもモードを変更できます。広げると選んだモードへ戻ります。
-
-単独表示の **Split view with…** は現在の計器と選んだ計器の2区画を作ります。既存コンソールを置き換える場合はメニューで案内し、コンソールの **Arrange view… → Undo replacement** で直前の構成へ戻せます。**Multi-instrument view** は保持した構成を開き、**Add instrument…** で追加します。同じ計器は複製せず選択します。区画のクリック、名前付きタブ、Ctrl＋左右キーで対象を選び、**Open single** で単独表示へ戻ります。**Remove from view** は表示からだけ外し、解析やGenerator出力は続きます。最後の区画を外すと追加案内を表示します。
-
-配置は **Arrange view…** の **Side by side / Stacked / 2 × 2 / Tabs** を選びます。同時表示できる区画は見出しのクリックで選択し、上段の選択行はタブ表示や区画数超過時だけ表示します。各区画の **⋯** に **Open single / Remove from view** をまとめます。2区画／4区画を超えた計器は名前付きタブで選択します。寸法が不足するとタブ表示へ退避し、広げると希望配置へ戻ります。**View** の **First pane share** で分割比率、**Display scale** で表示倍率を調整できます。倍率は75／90／100／110／125／150／175%から選び、クリックで確定したときだけ画面へ反映してメニューを閉じます。候補へのホバーやEscで閉じる操作では倍率は変わりません。100%を選ぶと標準倍率へ戻ります。狭幅では **Menu → View → Display scale** から選びます。単独表示とコンソールの往復・リサイズで構成と比率は消えません。
-
-右の詳細欄は選択中の計器だけを扱い、ホバーでは対象を変えません。**View / Selected instrument details** で表示を切り替えます。狭幅では中央の **Measurement / Details** へ退避します。ScopeのCH選択と表示ON/OFFは波形直下の4chバー、カーソルは本体で操作します。取得・トリガー状態とカーソルを同じ行にまとめ、時間軸・選択CHの縦軸倍率・Autosetと倍率方式はその下の操作行で調整します。時間軸の重複ラベルを省き、狭幅では必要に応じて折り返します。停止したNormal／Singleでは保持波形の時間軸と次回Startに適用する設定を区別して表示します。
-
-Scopeの見出しは単独表示で一つにまとめ、複数計器表示では区画名を残します。詳細欄の **Scope settings** はAcquisition／Trigger／Horizontal／Verticalの枠で区切り、Verticalには選択CHと同じ色を付けます。Acquisitionは取得モード・Start single capture・Autoset、Triggerはエッジ・入力CH・レベル、Horizontalは時間軸・水平位置、Verticalは選択CHの振幅・オフセット・Fit amplitude・入力割当を扱います。時間軸と振幅は対数スライダー、位置・レベルは線形スライダーで調整し、値のドラッグやダブルクリックによる数値入力も使えます。
-
-波形の **Amplitude [FS] · CH… axis** は選択CHのraw FS、**Time [ms]** はトリガー基準からの時刻です。**FS** はデジタルのフルスケール、**Fs** は公称サンプルレート、**div** はグリッドの1目盛りを表します。RMS／P-Pは取得時のCH校正を適用した数値で、各値に単位を表示します。波形軸・トリガーレベルのraw FSと区別してください。時刻・周波数は取得時の公称Fsに基づき、実時計の校正済み値ではありません。
-
-**Per-channel scale** は各CHの独立した倍率とオフセットを使います。振幅が異なっても同じ高さに見える場合があります。**Common scale** は選択CHの縦軸設定を全CHへ適用し、その後のCH選択でも共通軸を保ちます。共通モードの倍率・オフセット・Fit amplitude・Shift＋ホイールは全CHへ作用し、Fit／Autosetは表示中CHの最大Peakに合わせます。独立モードへ戻すと元のCH別設定を復元します。倍率方式と共通軸は設定ファイルへ保存します。各CHのRMS／P-Pと単位は波形の近くに併記します。Autoset通知は **Last Autoset** として前回の結果を示し、入力元の切替・再開始時に解除します。周波数変更後の現在値を連続検出する表示ではありません。
-
-上端の **T** は時刻0 ms、右端の **T** はトリガーソースCHのraw FSレベルを示します。右端の位置はソースCHの縦軸設定に従い、選択CHの振幅軸と異なる場合があります。未取得やトリガー未成立では **T markers: settings only**、トリガー成立済みの区間では **T markers: captured** と表示します。マーカーへのホバー、Scope settings、Helpで意味を確認できます。
-
-ポインターが波形内にある間だけ、読み取り位置を示す薄い縦ガイド線を表示します。プロット外へ移動すると消え、配置したA／Bカーソルと取得データは保持します。Tマーカーは短い印で、縦ガイド線やA／Bカーソルとは別です。
-
-XYの詳細欄も枠で区切り、Observationで観察時間幅とスケールのリセット、X Axis／Y Axisでそれぞれの入力CHと振幅範囲、CursorsでFree／Trace Snapを設定します。Trace SnapではScopeと共通のTriggerも同じ詳細欄で編集できます。狭幅では **Details** で開きます。**Place cursor: A / B**・**Clear cursors** と読み値はグラフ側に残ります。
-
-**Place cursor: A / B** は次にクリック／ドラッグで配置する対象です。A／Bを選ぶだけでは配置せず、**Placed: none / A / B / A, B** が配置済みの対象を示します。Scope・Spectrogram・XYの **Clear cursors** は共通の時間・周波数・XY自由配置とSpectrogramフレーム選択を解除します。Spectrumの **Clear cursors** と履歴Spectrumの **Clear frequency** は周波数だけを解除し、時間・フレーム選択・XY自由配置を保ちます。取得済みのデータは消去しません。
-
-FFT・窓・平均なども各計器の詳細欄です。Generatorの周波数・振幅・位相・波形・OUT・カード管理・ON／OFF・Start outputは本体、刻み幅・Noiseのseed・選択カードの適用値は詳細欄です。出力開始付近には出力先と現在選択中の入力元を併記し、**Open input settings** で接続設定を開けます。内部出力ではGenerator loopbackの選択状態とOUT→CH対応を示します。外部出力は物理・仮想経路の接続を別途行い、入力・出力はそれぞれ明示的に開始します。
-
-上部は左のメニューと右の入出力操作を1行にまとめ、**Start input / Stop input** を右端に置きます。狭幅ではメニューを **Menu** にまとめ、状態の接頭辞を **IN / OUT** に短縮します。**Audio I/O** の **Input / output** と **Calibration** は共通設定画面を開きます。**Back to instruments** またはEscで元の計器・選択区画へ戻ります。**Start input / Stop input** は共通入力、**Stop output** は独立したGenerator出力を扱います。出力状態と停止操作は計器や設定画面に関係なく常設です。**Stop output** は完全停止時だけ無効になり、開始待ち・設定適用待ち・停止処理中やエラー時には停止要求を送れます。**Analysis status…** で非表示のLock-in／同期比較の解析状態を確認・停止できます。入力待ち、解析停止、取得状態、有効性を区別します。
-
-**File** は設定・保持結果の保存／復元と **Compare saved reference**、**View** は配置・詳細欄・倍率、**Help** はショートカット・単位・診断を扱います。Ctrl＋1〜7で一覧順に計器を選択し、Tab／Shift＋Tabで編集へ移動できます。Spaceによる入力操作は入力ボタンが使える場合に限り、一押しで一度だけ切り替えます。入力欄・メニューの操作中、修飾キー付き・長押しの反復では取得状態を変えません。
-
-計器・区画選択のショートカットも一押しで一度だけ扱い、Ctrl以外の修飾キーを併用した場合や、入力欄・メニュー・Help・File paths & statusの操作中は背後の選択を変えません。Help・File paths & statusを開いている間はSpaceによる共通入力ショートカットを無効にします。入出力画面ではCtrl＋左右キーで背後の区画を選択しません。Escは編集中の項目や前面メニュー／ウィンドウで扱い、同じ一押しで背後の入出力画面・狭幅の詳細から戻りません。編集や前面表示を終えた後の一押しで元の計器へ戻ります。
-
-各測定器は取得状態を **LIVE / HELD / WAITING / NOT ACQUIRED / FINISHING** で示し、トリガーやREF・比較の有効性を別に表示します。起動直後のFsは未取得、停止後は保持入力の公称Fsです。Scopeは波形・トリガーがraw FS、RMS／P-PがCHごとの校正単位であることを同じ領域に表示します。主要数値は読みやすい桁数へ整え、詳細のホバーとJSON／CSVにはf64の精度を残します。
-
-macOSではマイクへのアクセスを許可する必要があります。許可がない場合は「システム設定 → プライバシーとセキュリティ → マイク」で、起動に使うアプリ／ターミナルを確認してください。独立したアプリとして起動するには以下を使います。
-
-```sh
-./scripts/bundle-macos.sh
-open dist/MeasureLab.app
-```
-
-DMGを作る場合は`./.venv/bin/python scripts/macos_package.py build`を使います。Intel／Apple SiliconそれぞれのMacで通常版をビルドし、Applicationsへのコピー用リンクとマイク権限の説明を含めます。署名・公証の制限と検証手順は [macOS配布](RELEASE_PREPARATION.md#macos配布) を参照してください。
-
-LinuxではALSAおよびウィンドウシステムの開発ライブラリが必要です。Ubuntuの場合:
-
-```sh
-sudo apt-get install build-essential pkg-config libasound2-dev libxkbcommon-dev libwayland-dev libx11-dev libxrandr-dev libxi-dev libxcursor-dev
-```
-
-Windowsの標準構成はRustのMSVCツールチェーンとVisual Studio C++ Build Toolsです。VMで起動を確認したGNU／LLDの構成とPowerShellの手順は [Windowsでのビルドと起動確認](WINDOWS.md) を参照してください。
+同一ユーザーの重複起動はファイルロックで制限されます。意図的に複数起動する場合は `--new-instance` を使います。ロックはプロセス終了時に解放されます。既知信号は通常版の[Software Loopback](#software-loopbackと実験段階lock-in)で測定でき、開発用の内部デモは `./scripts/debug.sh --demo` で起動します。
 
 ## 操作
+
+### 入出力と表示
+
+**Audio I/O → Input / output** の **SAMPLE RATE · INPUT + OUTPUT** では、両方向のCH数・PCMに対応する公称Fsを選べます。**Separate sample rates** ではInputの **Device default** または対応レートと、OutputのFs／CH数／PCMを個別に選べます。入力デバイスを変更するとDevice defaultに戻ります。取得中の個別入力設定変更は新しい入力世代を開始し、停止中の変更は次回Startに適用します。停止中の設定変更は保持結果の軸や値を変えません。**Stop output** は入力と独立し、開始待ち・停止処理中・エラー時にも停止要求を出せます。**Analysis status…** では非表示のLock-in・同期比較を確認・停止できます。
+
+計器一覧で名称・用途を検索し、狭幅では **Instrument** から選びます。コンパクト表示の状態点は緑が実行、黄が処理中・待機、灰が停止、橙が出力エラーです。**Split view with…** は2区画、**Multi-instrument view** は保存した複数計器の構成を開きます。置き換えた構成は **Arrange view… → Undo replacement** で戻せます。寸法や区画数に応じてタブへ退避します。**View** で分割比率・倍率（75〜175%）・詳細欄を選び、狭幅での詳細は **Measurement / Details** を使います。
+
+Ctrl＋1〜7は計器、Ctrl＋左右はコンソールの区画、Spaceは入力の開始・停止です。入力欄や前面メニューの操作、長押しの反復では背後の状態を変えません。Escは現在の編集や前面表示を閉じ、次の一押しで元の計器に戻れます。
+
+**Common scale** では選択CHの縦軸・オフセットを全CHへ適用し、Fit／Autosetは表示中CHの最大Peakに合わせます。**Per-channel scale** に戻すと元のCH別設定を復元します。Scopeの上端の **T** は時刻0 ms、右端の **T** はトリガーソースCHのraw FSレベルです。トリガーの設定値と成立済み区間は **settings only / captured** で区別します。
+
+### 操作一覧
 
 | 操作 | 内容 |
 | --- | --- |
@@ -376,7 +278,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 高密度の波形・Spectrumは物理ピクセルごとの極値を保ち、細いピークを残します。Scope／Spectrum／XYと同期比較の横軸ラベルは文字幅と表示幅に応じて間引き、目盛線とデータの位置は維持します。WGSLで線分を展開し、STFTは変更行だけを循環テクスチャへ転送します。数値測定は表示集約・描画用f32から逆算しません。停止中は連続再描画と不要なGPU転送を省略します。
 
-通常はVSync、`--low-latency`で無効化します。PerformanceのUI fpsはUI更新頻度、Scope prep／Worker FFT／Spectrum prepはCPU処理時間で、GPU実行・実表示の遅延ではありません。残る評価は [PLAN](PLAN.md#初回配布と分ける課題) に保持します。
+通常はVSync、`--low-latency`で無効化します。PerformanceのUI fpsはUI更新頻度、Scope prep／Worker FFT／Spectrum prepはCPU処理時間を示します。実表示の遅延は[後続の課題](../CURRENT_DIRECTION.md#後続の課題)です。
 
 ## 同期2chの比較
 
@@ -392,7 +294,7 @@ STFT行（f64線形値） → 履歴収集ワーカー → 不変フレーム公
 
 ## 検証・計測
 
-共通のチェック・ビルドは [Tool Usage Guide](../../.agents/workflows/tool_usage.md)、機能別テスト・GUI／入出力QA・性能計測・実機確認範囲は [VALIDATION](VALIDATION.md) を参照してください。変更の影響を受けるケースを選び、同じソース・条件の証拠を再利用します。CepstrogramとSpectrogramの連続性・性能を評価する場合は [実時間比較](VALIDATION.md#cepstrogramの検証) を各120秒以上で行い、同じバイナリ・入力条件のLive／Hold・表示操作・UI停止・有限Stop、数値と解放後の通知を確認します。高Fs・16ch・CPU競合は必要時に [コア負荷試験](VALIDATION.md#コア解析の負荷耐性qa) を使い、通常の機能変更で全条件を一律再実行しません。条件・許容差・合否はテストコードとQAのassertionを正本とします。
+共通チェック・GUI／入出力QA・性能計測は[検証ガイド](VALIDATION.md)を参照してください。
 
 ## コードの入口
 
