@@ -28,6 +28,8 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
+  # Update explicitly so new rustfmt or Clippy rules cannot land mid-PR.
+  CI_RUST_VERSION: '1.100.0'
   CARGO_INCREMENTAL: '0'
   CARGO_PROFILE_DEV_DEBUG: '0'
   CARGO_PROFILE_TEST_DEBUG: '0'
@@ -85,7 +87,7 @@ jobs:
           persist-credentials: false
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
         with:
-          toolchain: stable
+          toolchain: ${{ env.CI_RUST_VERSION }}
           components: rustfmt, clippy
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
@@ -189,7 +191,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@89b12181fb390509a0842a86cc55eeb8eb928c1d # stable
         if: needs.changes.outputs.rust == 'true'
         with:
-          toolchain: stable
+          toolchain: ${{ env.CI_RUST_VERSION }}
       - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v6
         if: runner.os != 'Linux' && needs.changes.outputs.dev_actions == 'true'
         with:
